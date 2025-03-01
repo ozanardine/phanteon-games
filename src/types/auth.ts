@@ -10,11 +10,13 @@ export interface UserProfile {
   discordId?: string;
   discordUsername?: string;
   steamId?: string;
+  steamUsername?: string;
   createdAt: Date;
   subscription?: UserSubscription;
 }
 
 export interface UserSubscription {
+  id?: string;
   tier?: 'vip'; // Simplificado para apenas 'vip'
   status: 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete' | 'unpaid';
   currentPeriodEnd: Date;
@@ -37,7 +39,7 @@ export interface SteamAuthData {
 export interface DiscordUser {
   id: string;
   username: string;
-  discriminator: string;
+  discriminator?: string;
   avatar: string;
   email?: string;
   verified?: boolean;
@@ -49,6 +51,16 @@ export interface DiscordToken {
   expires_in: number;
   refresh_token: string;
   scope: string;
+}
+
+// Tipos para autenticação Steam
+export interface SteamUser {
+  steamid: string;
+  personaname: string;
+  profileurl: string;
+  avatar: string;
+  avatarmedium: string;
+  avatarfull: string;
 }
 
 // Tipos para estado de autenticação
@@ -71,8 +83,11 @@ export interface UseAuthReturn extends AuthState, AuthMethods {
   isAdmin: boolean;
   hasActiveSubscription: boolean;
   signInWithDiscord: () => Promise<void>;
+  signInWithSteam: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  sendPasswordResetEmail: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
 }
 
 // Interfaces para respostas de autenticação

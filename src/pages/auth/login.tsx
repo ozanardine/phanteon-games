@@ -1,13 +1,14 @@
 // src/pages/auth/login.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Image from 'next/image';
 import Layout from '../../components/layout/Layout';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import { FaDiscord, FaSteam, FaEnvelope, FaLock, FaUser } from 'react-icons/fa';
+import { FaDiscord, FaSteam, FaEnvelope, FaLock, FaUser, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuth } from '../../hooks/useAuth';
+import toast from 'react-hot-toast';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -15,9 +16,18 @@ const LoginPage = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { signInWithEmail, signUpWithEmail, signInWithDiscord, error } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithDiscord, signInWithSteam, error, sendPasswordResetEmail } = useAuth();
   const router = useRouter();
+  const { redirect } = router.query;
+
+  // Exibir erros como toast
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,12 +36,18 @@ const LoginPage = () => {
     try {
       if (isLogin) {
         await signInWithEmail(email, password);
+        toast.success('Login bem-sucedido!');
       } else {
         await signUpWithEmail(email, password, firstName, lastName);
+        toast.success('Conta criada com sucesso!');
       }
-      // Redirecionamento é feito pelo hook de autenticação
+      
+      // Redirecionamento condicional baseado no parâmetro redirect
+      if (typeof redirect === 'string') {
+        router.push(redirect);
+      }
     } catch (err) {
-      console.error('Erro de autenticação:', err);
+      console.error('Authentication error:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -40,10 +56,35 @@ const LoginPage = () => {
   const handleDiscordLogin = async () => {
     try {
       await signInWithDiscord();
-      // Redirecionamento é feito pelo provedor OAuth
     } catch (err) {
-      console.error('Erro ao autenticar com Discord:', err);
+      console.error('Error authenticating with Discord:', err);
     }
+  };
+
+  const handleSteamLogin = async () => {
+    try {
+      await signInWithSteam();
+    } catch (err) {
+      console.error('Error authenticating with Steam:', err);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error('Por favor, informe seu email');
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(email);
+      toast.success('Email de redefinição de senha enviado! Verifique sua caixa de entrada.');
+    } catch (err) {
+      console.error('Error sending password reset email:', err);
+    }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -59,8 +100,7 @@ const LoginPage = () => {
                 <Image
                   src="/logo.png"
                   alt="Phanteon Games Logo"
-                  width={64}
-                  height={64}
+                  fill
                   className="object-contain"
                 />
               </div>
@@ -74,15 +114,9 @@ const LoginPage = () => {
                 : 'Registre-se para acessar recursos exclusivos da comunidade'}
             </p>
           </div>
-
-          {error && (
-            <div className="mb-6 p-3 bg-red-900/50 border border-red-800 rounded-md text-sm text-white">
-              {error}
-            </div>
-          )}
-
+          
           <div className="space-y-4 mb-6">
-            <Button
+            <Button 
               fullWidth
               variant="outline"
               className="border-indigo-600 hover:bg-indigo-600"
@@ -91,11 +125,12 @@ const LoginPage = () => {
             >
               Continuar com Discord
             </Button>
-            <Button
+            <Button 
               fullWidth
               variant="outline"
               className="border-blue-600 hover:bg-blue-600"
               leftIcon={<FaSteam />}
+              onClick={handleSteamLogin}
             >
               Continuar com Steam
             </Button>
@@ -179,13 +214,20 @@ const LoginPage = () => {
                 </div>
                 <input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
-                  className="bg-zinc-900 border border-zinc-700 text-white rounded-md pl-10 pr-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  className="bg-zinc-900 border border-zinc-700 text-white rounded-md pl-10 pr-10 py-2 w-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   placeholder={isLogin ? 'Sua senha' : 'Crie uma senha'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button 
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-500 hover:text-zinc-300"
+                  onClick={togglePasswordVisibility}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
               </div>
             </div>
 
@@ -202,11 +244,13 @@ const LoginPage = () => {
                     Lembrar-me
                   </label>
                 </div>
-                <div className="text-sm">
-                  <Link href="/auth/forgot-password" className="text-amber-500 hover:text-amber-400">
-                    Esqueceu a senha?
-                  </Link>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-sm text-amber-500 hover:text-amber-400"
+                >
+                  Esqueceu a senha?
+                </button>
               </div>
             )}
 

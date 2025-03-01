@@ -1,70 +1,60 @@
-// src/pages/auth/discord-callback.tsx
+// src/pages/auth/steam-callback.tsx
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/layout/Layout';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import Card from '../../components/common/Card';
-import { FaDiscord, FaCheck, FaTimes } from 'react-icons/fa';
-import { handleDiscordAuth } from '../../lib/discord/discordAuth';
+import { FaSteam, FaCheck, FaTimes } from 'react-icons/fa';
+import { handleSteamAuth } from '../../lib/steam/steamAuth';
 import toast from 'react-hot-toast';
 
-const DiscordCallbackPage = () => {
+const SteamCallbackPage = () => {
   const router = useRouter();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('Processando autenticação do Discord...');
+  const [message, setMessage] = useState('Processando autenticação do Steam...');
 
   useEffect(() => {
     // Aguardar os parâmetros da URL estarem disponíveis
-    if (!router.isReady) return;
-
-    const { code, error } = router.query;
-    
-    // Se há um erro no retorno do Discord
-    if (error) {
-      setStatus('error');
-      setMessage(`Erro na autenticação do Discord: ${error}`);
-      return;
-    }
-    
-    // Se não temos um código, algo deu errado
-    if (!code) {
-      setStatus('error');
-      setMessage('Código de autenticação não encontrado');
-      return;
-    }
+    if (!router.isReady || Object.keys(router.query).length === 0) return;
 
     const processAuth = async () => {
       try {
-        // Processar o código de autenticação
-        if (typeof code === 'string') {
-          const result = await handleDiscordAuth(code);
-          
-          if (result.success) {
-            setStatus('success');
-            setMessage(`Autenticação realizada com sucesso! Bem-vindo, ${result.discordUsername}.`);
-            
-            // Verificar se há um redirecionamento específico
-            const { redirect } = router.query;
-            
-            // Redirecionar após um breve período
-            setTimeout(() => {
-              if (typeof redirect === 'string' && redirect.startsWith('/')) {
-                router.push(redirect);
-              } else {
-                router.push('/perfil');
-              }
-            }, 2000);
-          } else {
-            throw new Error('Falha na autenticação do Discord');
+        // Converter query params para o formato correto
+        const queryParams: Record<string, string> = {};
+        Object.keys(router.query).forEach(key => {
+          if (typeof router.query[key] === 'string') {
+            queryParams[key] = router.query[key] as string;
           }
+        });
+
+        // Processar a autenticação Steam
+        const result = await handleSteamAuth(queryParams);
+        
+        if (result.success) {
+          setStatus('success');
+          setMessage(`Autenticação realizada com sucesso! Bem-vindo, ${result.steamUsername}.`);
+          
+          // Verificar se há um redirecionamento específico
+          const { redirect } = router.query;
+          
+          // Redirecionar após um breve período
+          setTimeout(() => {
+            if (typeof redirect === 'string' && redirect.startsWith('/')) {
+              router.push(redirect);
+            } else {
+              router.push('/perfil');
+            }
+          }, 2000);
+        } else {
+          throw new Error('Falha na autenticação do Steam');
         }
       } catch (err) {
-        console.error('Erro ao processar autenticação do Discord:', err);
+        console.error('Erro ao processar autenticação do Steam:', err);
         setStatus('error');
-        setMessage(err instanceof Error ? err.message : 'Falha na autenticação do Discord');
+        setMessage(err instanceof Error ? err.message : 'Falha na autenticação do Steam');
         
         // Exibir erro como toast
-        toast.error('Falha na autenticação do Discord. Por favor, tente novamente.');
+        toast.error('Falha na autenticação do Steam. Por favor, tente novamente.');
       }
     };
 
@@ -73,16 +63,16 @@ const DiscordCallbackPage = () => {
 
   return (
     <Layout
-      title="Autenticação com Discord - Phanteon Games"
-      description="Processando autenticação com Discord"
+      title="Autenticação com Steam - Phanteon Games"
+      description="Processando autenticação com Steam"
     >
       <div className="container mx-auto px-4 py-16 flex justify-center">
         <Card className="max-w-md w-full text-center">
           <div className="py-8 px-6">
             <div className="flex justify-center mb-6">
               {status === 'loading' && (
-                <div className="bg-indigo-600 w-16 h-16 rounded-full flex items-center justify-center">
-                  <FaDiscord className="text-white text-3xl" />
+                <div className="bg-blue-600 w-16 h-16 rounded-full flex items-center justify-center">
+                  <FaSteam className="text-white text-3xl" />
                 </div>
               )}
               
@@ -100,7 +90,7 @@ const DiscordCallbackPage = () => {
             </div>
             
             <h1 className="text-2xl font-bold mb-4">
-              {status === 'loading' && 'Conectando com Discord'}
+              {status === 'loading' && 'Conectando com Steam'}
               {status === 'success' && 'Autenticação Concluída'}
               {status === 'error' && 'Erro na Autenticação'}
             </h1>
@@ -124,4 +114,4 @@ const DiscordCallbackPage = () => {
   );
 };
 
-export default DiscordCallbackPage;
+export default SteamCallbackPage;

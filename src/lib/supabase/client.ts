@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -7,7 +8,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Supabase URL and/or anonymous key not defined in environment variables');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 // Type definitions for Supabase tables
 export type ProfilesRow = {
@@ -66,6 +67,8 @@ export type PaymentHistoryRow = {
 
 export type DiscordAuthRow = {
   user_id: string;
+  discord_id: string;
+  discord_username: string;
   access_token: string;
   refresh_token: string;
   expires_at: string;

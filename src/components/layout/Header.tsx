@@ -4,11 +4,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { FaDiscord, FaSteam, FaBars, FaTimes } from 'react-icons/fa';
+import { useAuth } from '@/hooks/useAuth';
+import UserMenu from '@/components/auth/UserMenu';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
+  const { isAuthenticated, loading } = useAuth();
 
   // Detectar scroll para alterar o estilo do cabeçalho
   useEffect(() => {
@@ -26,6 +29,7 @@ const Header = () => {
     { name: 'Eventos', path: '/eventos' },
     { name: 'Comunidade', path: '/comunidade' },
     { name: 'VIP', path: '/vip' },
+    { name: 'Leaderboard', path: '/leaderboard' },
   ];
 
   return (
@@ -81,16 +85,29 @@ const Header = () => {
             >
               <FaSteam className="w-6 h-6" />
             </a>
-            <Link 
-              href="/auth/login"
-              className="ml-3 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded transition-colors"
-            >
-              Entrar
-            </Link>
+            
+            {/* Mostrar UserMenu quando autenticado ou botão de login quando não */}
+            {!loading && (
+              isAuthenticated ? (
+                <UserMenu className="ml-2" />
+              ) : (
+                <Link 
+                  href="/auth/login"
+                  className="ml-3 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded transition-colors"
+                >
+                  Entrar
+                </Link>
+              )
+            )}
           </div>
           
           {/* Botão Mobile */}
           <div className="flex items-center md:hidden">
+            {/* Mostrar UserMenu quando autenticado em mobile */}
+            {!loading && isAuthenticated && (
+              <UserMenu className="mr-2" />
+            )}
+            
             <button
               type="button"
               className="text-zinc-200"
@@ -143,12 +160,15 @@ const Header = () => {
                 </a>
               </div>
               
-              <Link 
-                href="/auth/login"
-                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded transition-colors"
-              >
-                Entrar
-              </Link>
+              {/* Mostrar botão de login quando não estiver autenticado em mobile */}
+              {!loading && !isAuthenticated && (
+                <Link 
+                  href="/auth/login"
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded transition-colors"
+                >
+                  Entrar
+                </Link>
+              )}
             </div>
           </div>
         </div>
