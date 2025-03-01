@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { Loading } from '@/components/ui/Loading';
-import { FaPix, FaCreditCard, FaPaypal } from 'react-icons/fa';
+import { FaCreditCard, FaPaypal } from 'react-icons/fa';
+import { FaPix } from "react-icons/fa6";
 
 type PaymentMethod = 'pix' | 'card' | 'paypal';
 
