@@ -9,7 +9,7 @@ import {
 } from '../lib/api/steamApi';
 
 // Re-exportando os tipos importados
-export { ServerInfo, ServerEvent, ServerStatusResponse };
+export type { ServerInfo, ServerEvent, ServerStatusResponse };
 
 // Alias para ServerPlayer para manter compatibilidade com código existente
 export type Player = ServerPlayer;
