@@ -147,7 +147,7 @@ export const fetchMonuments = async (
     // Mapear resposta da API para nosso formato
     return data.map((monument: any) => ({
       name: monument.name,
-      position: {
+      coords: {  // Alterado de position para coords
         x: monument.position?.x || 0,
         y: monument.position?.y || 0
       },
@@ -279,73 +279,73 @@ function getFallbackMonuments(): Monument[] {
   return [
     {
       name: 'Launch Site',
-      position: { x: 1250, y: 1500 },
+      coords: { x: 1250, y: 1500 },  // Alterado de position para coords
       type: 'military',
       tier: 'high'
     },
     {
       name: 'Airfield',
-      position: { x: 2300, y: 1800 },
+      coords: { x: 2300, y: 1800 },  // Alterado de position para coords
       type: 'military',
       tier: 'medium'
     },
     {
       name: 'Military Tunnels',
-      position: { x: 2800, y: 2200 },
+      coords: { x: 2800, y: 2200 },  // Alterado de position para coords
       type: 'military',
       tier: 'high'
     },
     {
       name: 'Power Plant',
-      position: { x: 1800, y: 2600 },
+      coords: { x: 1800, y: 2600 },  // Alterado de position para coords
       type: 'industrial',
       tier: 'medium'
     },
     {
       name: 'Water Treatment',
-      position: { x: 900, y: 2100 },
+      coords: { x: 900, y: 2100 },  // Alterado de position para coords
       type: 'industrial',
       tier: 'medium'
     },
     {
       name: 'Dome',
-      position: { x: 3200, y: 1200 },
+      coords: { x: 3200, y: 1200 },  // Alterado de position para coords
       type: 'scientific',
       tier: 'medium'
     },
     {
       name: 'Harbor',
-      position: { x: 500, y: 3000 },
+      coords: { x: 500, y: 3000 },  // Alterado de position para coords
       type: 'naval',
       tier: 'low'
     },
     {
       name: 'Lighthouse',
-      position: { x: 350, y: 350 },
+      coords: { x: 350, y: 350 },  // Alterado de position para coords
       type: 'naval',
       tier: 'low'
     },
     {
       name: 'Gas Station',
-      position: { x: 2100, y: 1000 },
+      coords: { x: 2100, y: 1000 },  // Alterado de position para coords
       type: 'civilian',
       tier: 'low'
     },
     {
       name: 'Supermarket',
-      position: { x: 1500, y: 3200 },
+      coords: { x: 1500, y: 3200 },  // Alterado de position para coords
       type: 'civilian',
       tier: 'low'
     },
     {
       name: 'Satellite Dish',
-      position: { x: 2800, y: 900 },
+      coords: { x: 2800, y: 900 },  // Alterado de position para coords
       type: 'scientific',
       tier: 'low'
     },
     {
       name: 'Junkyard',
-      position: { x: 1100, y: 2800 },
+      coords: { x: 1100, y: 2800 },  // Alterado de position para coords
       type: 'civilian',
       tier: 'low'
     }
