@@ -15,7 +15,7 @@ export interface UserProfile {
 }
 
 export interface UserSubscription {
-  tier?: string; // Adicionando a propriedade tier que estava faltando
+  tier?: 'vip'; // Simplificado para apenas 'vip'
   status: 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete' | 'unpaid';
   currentPeriodEnd: Date;
   cancelAtPeriodEnd: boolean;

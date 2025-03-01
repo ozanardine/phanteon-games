@@ -57,13 +57,7 @@ export default function App({ Component, pageProps }: AppProps) {
               steamId: profileData.steam_id,
               createdAt: new Date(profileData.created_at),
               subscription: profileData.subscriptions ? {
-                tier: profileData.subscriptions.plan_id?.includes('bronze') 
-                  ? 'bronze' 
-                  : profileData.subscriptions.plan_id?.includes('gold')
-                    ? 'gold'
-                    : profileData.subscriptions.plan_id?.includes('elite')
-                      ? 'elite'
-                      : undefined,
+                tier: 'vip', // Simplificado para apenas "vip"
                 status: profileData.subscriptions.status,
                 currentPeriodEnd: new Date(profileData.subscriptions.current_period_end),
                 cancelAtPeriodEnd: !!profileData.subscriptions.cancel_at,
@@ -109,13 +103,7 @@ export default function App({ Component, pageProps }: AppProps) {
               steamId: profileData.steam_id,
               createdAt: new Date(profileData.created_at),
               subscription: profileData.subscriptions ? {
-                tier: profileData.subscriptions.plan_id?.includes('bronze') 
-                  ? 'bronze' 
-                  : profileData.subscriptions.plan_id?.includes('gold')
-                    ? 'gold'
-                    : profileData.subscriptions.plan_id?.includes('elite')
-                      ? 'elite'
-                      : undefined,
+                tier: 'vip', // Simplificado para apenas "vip"
                 status: profileData.subscriptions.status,
                 currentPeriodEnd: new Date(profileData.subscriptions.current_period_end),
                 cancelAtPeriodEnd: !!profileData.subscriptions.cancel_at,

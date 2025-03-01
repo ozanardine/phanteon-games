@@ -16,10 +16,11 @@ export const useAuth = (): UseAuthReturn => {
     new Date(user.subscription.currentPeriodEnd) > new Date();
 
   // Verificar se o usuário é admin (exemplo simples)
-  const isAdmin = !!user?.email && (
+  // Fix: Garantindo que isAdmin sempre retorne um booleano
+  const isAdmin = !!(user?.email && (
     user.email.endsWith('@phanteongames.com') || 
-    process.env.NEXT_PUBLIC_ADMIN_EMAILS?.includes(user.email)
-  );
+    (process.env.NEXT_PUBLIC_ADMIN_EMAILS && process.env.NEXT_PUBLIC_ADMIN_EMAILS.includes(user.email))
+  ));
   
   // Login com Discord
   const signInWithDiscord = useCallback(async () => {
@@ -82,13 +83,7 @@ export const useAuth = (): UseAuthReturn => {
             steamId: profileData.steam_id,
             createdAt: new Date(profileData.created_at),
             subscription: profileData.subscriptions ? {
-              tier: profileData.subscriptions.plan_id.includes('bronze') 
-                ? 'bronze' 
-                : profileData.subscriptions.plan_id.includes('gold')
-                  ? 'gold'
-                  : profileData.subscriptions.plan_id.includes('elite')
-                    ? 'elite'
-                    : undefined, // Changed null to undefined to match the UserSubscription type
+              tier: 'vip', // Simplificado para apenas "vip"
               status: profileData.subscriptions.status,
               currentPeriodEnd: new Date(profileData.subscriptions.current_period_end),
               cancelAtPeriodEnd: !!profileData.subscriptions.cancel_at,

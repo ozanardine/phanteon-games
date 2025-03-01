@@ -55,6 +55,7 @@ const VipPage = () => {
           cancelUrl: `${window.location.origin}/payment/cancel`,
           customerEmail: user?.email,
           customerName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
+          provider: paymentProvider
         }),
       });
 

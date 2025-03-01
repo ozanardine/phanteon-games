@@ -7,25 +7,15 @@ const PAYPAL_API_BASE = process.env.NODE_ENV === 'production'
   ? 'https://api-m.paypal.com'
   : 'https://api-m.sandbox.paypal.com';
 
-// VIP prices in USD (for PayPal)
-const VIP_PRICES_USD = {
-  monthly: 5.99,
-  quarterly: 5.39 * 3,
-  semiannual: 4.79 * 6,
-  annual: 3.99 * 12,
-};
+// VIP price in USD (for PayPal)
+const VIP_PRICE_USD = 5.99;
 
-// Mapping of product/plan IDs in PayPal
-const PAYPAL_PLAN_IDS = {
-  monthly: process.env.PAYPAL_VIP_MONTHLY_PLAN_ID,
-  quarterly: process.env.PAYPAL_VIP_QUARTERLY_PLAN_ID,
-  semiannual: process.env.PAYPAL_VIP_SEMIANNUAL_PLAN_ID,
-  annual: process.env.PAYPAL_VIP_ANNUAL_PLAN_ID,
-};
+// Mapping of plan ID in PayPal
+const PAYPAL_PLAN_ID = process.env.PAYPAL_VIP_PLAN_ID;
 
 // Parameter types
 interface CreateSubscriptionParams {
-  billingCycle: 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+  billingCycle?: 'monthly'; // Simplificado para apenas mensal
   userId: string;
   successUrl: string;
   cancelUrl: string;
@@ -68,7 +58,6 @@ async function getAccessToken(): Promise<string> {
  * Creates a PayPal subscription
  */
 export async function createSubscription({
-  billingCycle,
   userId,
   successUrl,
   cancelUrl,
@@ -83,10 +72,10 @@ export async function createSubscription({
     // Get access token
     const accessToken = await getAccessToken();
 
-    // Get plan ID based on billing cycle
-    const planId = PAYPAL_PLAN_IDS[billingCycle];
+    // Get plan ID
+    const planId = PAYPAL_PLAN_ID;
     if (!planId) {
-      throw new Error(`Plan not found for cycle ${billingCycle}`);
+      throw new Error(`VIP plan ID not configured`);
     }
 
     // Create subscription
@@ -139,7 +128,6 @@ export async function createSubscription({
  * Creates a one-time payment with PayPal (for non-subscription models)
  */
 export async function createPayment({
-  billingCycle,
   userId,
   successUrl,
   cancelUrl,
@@ -153,18 +141,6 @@ export async function createPayment({
 
     // Get access token
     const accessToken = await getAccessToken();
-
-    // Get price based on tier and cycle
-    const price = VIP_PRICES_USD[billingCycle];
-    if (!price) {
-      throw new Error(`Price not found for cycle ${billingCycle}`);
-    }
-
-    // Determine details based on plan type
-    const cycleName = 
-      billingCycle === 'monthly' ? 'Monthly' :
-      billingCycle === 'quarterly' ? 'Quarterly' :
-      billingCycle === 'semiannual' ? 'Semi-Annual' : 'Annual';
 
     // Create payment order
     const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
@@ -180,24 +156,24 @@ export async function createPayment({
           {
             amount: {
               currency_code: 'USD',
-              value: price.toFixed(2),
+              value: VIP_PRICE_USD.toFixed(2),
               breakdown: {
                 item_total: {
                   currency_code: 'USD',
-                  value: price.toFixed(2),
+                  value: VIP_PRICE_USD.toFixed(2),
                 },
               },
             },
-            description: `Phanteon Games VIP - ${cycleName}`,
-            custom_id: `${userId}:vip:${billingCycle}`,
+            description: `Phanteon Games VIP`,
+            custom_id: `${userId}:vip`,
             items: [
               {
-                name: `VIP - ${cycleName}`,
+                name: `VIP`,
                 description: `Phanteon Games VIP subscription`,
                 quantity: '1',
                 unit_amount: {
                   currency_code: 'USD',
-                  value: price.toFixed(2),
+                  value: VIP_PRICE_USD.toFixed(2),
                 },
                 category: 'DIGITAL_GOODS',
               },

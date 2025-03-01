@@ -9,7 +9,7 @@ const client = new MercadoPagoConfig({ accessToken: mpAccessToken });
 const paymentClient = new Payment(client);
 const preferenceClient = new Preference(client);
 
-// O plano é apenas mensal - preço fixo
+// Preço fixo do plano VIP
 const VIP_PRICE = 29.90;
 
 // Types for functions
@@ -38,16 +38,15 @@ export const createPaymentPreference = async ({
 
   try {
     // Create a payment preference
-    // Ajustando de acordo com a tipagem correta do SDK v2
     const preferenceData = {
       items: [
         {
-          id: `vip-monthly-${Date.now()}`,
-          title: `Phanteon Games VIP - Mensal`,
+          id: `vip-${Date.now()}`,
+          title: `Phanteon Games VIP`,
           quantity: 1,
           currency_id: 'BRL',
           unit_price: VIP_PRICE,
-          description: 'Plano Mensal VIP Phanteon Games'
+          description: 'Plano VIP Phanteon Games'
         }
       ],
       payer: {

@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Obter o provider a partir do pat
+    // Obter o provider a partir do path
     const provider = req.query.provider as string;
     
     if (!provider) {
@@ -80,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const resource = eventData.resource;
             
             // Buscar informações da transação/assinatura associada
-            subscriptionId = resource.billing_agreement_id;
+            subscriptionId = resource.billing_agreement_id || resource.id;
             status = 'active';
             
             // Em uma implementação real, você buscaria o ID do usuário
@@ -115,6 +115,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (userId && status) {
       // Atualizar status da assinatura
       if (subscriptionId && ['active', 'canceled', 'past_due'].includes(status)) {
+        // Calcular data de término (30 dias a partir de agora)
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 30);
+        
         // Atualizar tabela de assinaturas
         const { error: subError } = await supabase
           .from('subscriptions')
@@ -122,7 +126,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             user_id: userId,
             status,
             payment_provider_id: subscriptionId,
-            // Adicionar outros campos conforme necessário
+            current_period_start: new Date().toISOString(),
+            current_period_end: endDate.toISOString(),
+            created_at: new Date().toISOString()
           });
 
         if (subError) {
@@ -141,7 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             user_id: userId,
             status: status === 'active' ? 'succeeded' : status,
             payment_provider: provider,
-            // Outros campos conforme necessários
+            created_at: new Date().toISOString()
           });
 
         if (paymentError) {

@@ -66,7 +66,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       case 'paypal':
         // Create one-time PayPal payment
         checkoutUrl = await createPayment({
-          billingCycle: 'monthly',
           userId,
           successUrl,
           cancelUrl,
@@ -94,7 +93,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('checkout_attempts')
       .insert({
         user_id: userId,
-        billing_cycle: 'monthly',
         payment_provider: provider,
         payment_method: 'onetime',
         created_at: new Date().toISOString()
