@@ -5,7 +5,7 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { useServerStatus } from '../hooks/useServerStatus';
 import { formatTimeRemaining } from '../lib/utils/dateUtils';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaTrophy, FaUsers, FaBell } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaTrophy, FaUsers, FaBell, FaDiscord } from 'react-icons/fa';
 
 const EventsPage = () => {
   const { currentEvents, isOnline } = useServerStatus();
