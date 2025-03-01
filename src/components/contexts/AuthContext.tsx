@@ -1,3 +1,4 @@
+// src/components/contexts/AuthContext.tsx
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@/types/database.types';
 import { supabase } from '@/lib/supabase';
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = async () => {
     const userData = await getCurrentUser();
     setUser(userData);
-    return userData;
+    // Removendo o "return userData" para corresponder ao tipo Promise<void>
   };
 
   useEffect(() => {
