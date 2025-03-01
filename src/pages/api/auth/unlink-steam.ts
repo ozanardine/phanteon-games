@@ -1,5 +1,7 @@
+// src/pages/api/auth/unlink-steam.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -9,12 +11,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { userId } = req.body;
 
-    // Verificar token de autenticação atual
-    const { data: sessionData } = await supabaseAdmin.auth.getSession({
-      req: { headers: req.headers as HeadersInit },
-    });
+    // Criar um cliente do Supabase para o servidor com contexto da requisição
+    const supabase = createServerSupabaseClient({ req, res });
     
-    if (!sessionData.session || sessionData.session.user.id !== userId) {
+    // Verificar token de autenticação atual
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session || session.user.id !== userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
