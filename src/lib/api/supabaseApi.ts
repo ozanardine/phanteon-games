@@ -185,7 +185,7 @@ export const fetchOnlinePlayers = async (serverId: string = DEFAULT_SERVER_ID): 
  * Busca dados de performance do servidor diretamente do Supabase
  * @param serverId ID do servidor
  */
-export const fetchPerformanceStats = async (serverId: string = DEFAULT_SERVER_ID): Promise<ServerPerformance | null> => {
+export const fetchPerformanceStats = async (serverId: string = DEFAULT_SERVER_ID): Promise<ServerPerformance | undefined> => {
   try {
     const { data, error } = await supabase
       .from('performance_stats')
@@ -195,7 +195,7 @@ export const fetchPerformanceStats = async (serverId: string = DEFAULT_SERVER_ID
 
     if (error || !data) {
       console.error('Erro ao buscar dados de performance:', error);
-      return null;
+      return undefined; // Retorna undefined em vez de null
     }
 
     return {
@@ -206,7 +206,7 @@ export const fetchPerformanceStats = async (serverId: string = DEFAULT_SERVER_ID
     };
   } catch (error) {
     console.error('Erro ao buscar dados de performance:', error);
-    return null;
+    return undefined; // Retorna undefined em vez de null
   }
 };
 
