@@ -4,7 +4,8 @@ import Card from '../common/Card';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { supabase } from '../../lib/supabase/client';
 import { formatTimeRemaining } from '../../lib/utils/dateUtils';
-import { FaShip, FaHelicopter, FaPlane, FaTank, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
+import { FaShip, FaHelicopter, FaPlane, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
+import { TbTank } from "react-icons/tb";
 
 interface ServerEvent {
   event_id: string;
@@ -112,7 +113,7 @@ const ServerEventsSection: React.FC<ServerEventsSectionProps> = ({
       case 'airdrop':
         return <FaPlane className="text-green-400" />;
       case 'bradley_apc':
-        return <FaTank className="text-amber-500" />;
+        return <TbTank className="text-amber-500" />;
       case 'chinook':
         return <FaHelicopter className="text-emerald-400" />;
       default:
