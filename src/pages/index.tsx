@@ -1,5 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/router'; // Adicionando importação do useRouter
 import Layout from '../components/layout/Layout';
 import ServerStatus from '../components/server/ServerStatus';
 import Button from '../components/common/Button';
@@ -9,6 +10,7 @@ import { useServerStatus } from '../hooks/useServerStatus';
 import { FaSteam, FaDiscord, FaCalendarAlt, FaUsers, FaMap } from 'react-icons/fa';
 
 const HomePage = () => {
+  const router = useRouter(); // Inicializando o hook useRouter
   const { playerCount, maxPlayers, mapSize, seed, isOnline } = useServerStatus();
 
   return (
@@ -139,10 +141,18 @@ const HomePage = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Button size="lg" variant="primary" onClick={() => window.location.href = 'steam://connect/game.phanteongames.com:28015'}>
+            <Button 
+              size="lg" 
+              variant="primary" 
+              onClick={() => window.location.href = 'steam://connect/game.phanteongames.com:28015'}
+            >
               Entrar no Servidor Agora
             </Button>
-            <Button size="lg" variant="outline" onClick={() => router.push('/vip')}>
+            <Button 
+              size="lg" 
+              variant="outline" 
+              onClick={() => router.push('/vip')}
+            >
               Saiba Mais
             </Button>
           </div>
