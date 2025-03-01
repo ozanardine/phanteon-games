@@ -508,5 +508,7 @@ const getCurrentMonth = (): string => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 };
 
-// Exportar as funções como substitutos do steamApi
-export { generateConnectUrl } from './steamApi'; // Essa função não muda, podemos reutilizar
+// Exportar função auxiliar do steamApi
+export const generateConnectUrl = (serverAddress: string): string => {
+  return `steam://connect/${serverAddress}`;
+};

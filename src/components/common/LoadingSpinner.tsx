@@ -1,7 +1,7 @@
 // src/components/common/LoadingSpinner.tsx
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
-  color?: 'white' | 'amber' | 'gray';
+  color?: 'white' | 'rust' | 'gray';
   text?: string;
 }
 
@@ -17,10 +17,10 @@ const LoadingSpinner = ({
     lg: 'h-12 w-12'
   };
   
-  // Mapear cores
+  // Mapear cores - Usando a nova cor rust-orange
   const colorMap = {
     white: 'text-white',
-    amber: 'text-amber-500',
+    rust: 'text-rust-orange',
     gray: 'text-zinc-500'
   };
   

@@ -1,34 +1,76 @@
 // src/types/server.ts
 
-// Importando os tipos da API do Steam para evitar duplicação
-import { 
-  ServerInfo, 
-  ServerEvent, 
-  ServerStatusResponse,
-  ServerPlayer
-} from '../lib/api/steamApi';
+// Tipos para informações do servidor
+export interface ServerInfo {
+  name: string;
+  address: string;
+  ip: string;
+  port: number;
+  players: number;
+  maxPlayers: number;
+  map: string;
+  secure: boolean;
+  ping: number;
+  isOnline: boolean;
+}
 
-// Re-exportando os tipos importados
-export type { ServerInfo, ServerEvent, ServerStatusResponse };
+// Tipo para jogador do servidor
+export interface ServerPlayer {
+  id: string;
+  name: string;
+  playTime: number; // em minutos
+  steamId?: string;
+}
 
-// Alias para ServerPlayer para manter compatibilidade com código existente
-export type Player = ServerPlayer;
+// Tipo para evento do servidor
+export interface ServerEvent {
+  id: string;
+  name: string;
+  type: 'cargo' | 'airdrop' | 'heli' | 'bradley' | 'custom';
+  location?: string;
+  timeRemaining?: number; // em segundos
+  active: boolean;
+  startedAt?: Date;
+  estimatedEndAt?: Date;
+}
 
-// Tipos para mapas
-export interface MapInfo {
+// Tipo para performance do servidor
+export interface ServerPerformance {
+  fps: number;
+  memory: number; // em MB
+  uptime: number; // em segundos
+  entityCount?: number;
+}
+
+// Tipo para informações do mapa
+export interface ServerMapInfo {
   name: string;
   size: string;
   seed: string;
   salt?: number;
-  monuments: string[];
-  biomes: {
+  biomes?: {
     desert: number;
     snow: number;
     forest: number;
     plains: number;
   };
+  monuments?: string[];
   imageUrl?: string;
-  hasCustomMap?: boolean;
+}
+
+// Tipo para resposta completa do status do servidor
+export interface ServerStatusResponse {
+  info: ServerInfo;
+  players: {
+    online: number;
+    max: number;
+    list?: ServerPlayer[];
+  };
+  map: ServerMapInfo;
+  events: ServerEvent[];
+  performance?: ServerPerformance;
+  lastWipe?: Date;
+  nextWipe?: Date;
 }
 
 // Tipos para histórico de wipes

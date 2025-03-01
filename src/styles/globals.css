@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 :root {
-  --rust-orange: #CD412B;
+  --rust-orange: #EC4D2D; /* Atualizado para a cor solicitada */
   --rust-brown: #A1856D;
   --rust-dark: #1c1c1c;
 }

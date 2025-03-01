@@ -6,6 +6,9 @@
  * Requer uma chave API obtida em https://rustmaps.com/api
  */
 
+// Importar tipos do módulo server.ts
+import { Monument } from '../../types/server';
+
 // Interface para detalhes do mapa
 export interface MapDetails {
   id: string;
@@ -23,18 +26,6 @@ export interface MapDetails {
   };
   createdAt: string;
   updatedAt?: string;
-}
-
-// Interface para monumento no mapa
-export interface Monument {
-  name: string;
-  position: {
-    x: number;
-    y: number;
-  };
-  type: string;
-  tier?: 'low' | 'medium' | 'high';
-  radiation?: boolean;
 }
 
 // URL base da API RustMaps
@@ -162,7 +153,6 @@ export const fetchMonuments = async (
       },
       type: getMonumentType(monument.name),
       tier: getMonumentTier(monument.name),
-      radiation: hasRadiation(monument.name)
     }));
   } catch (error) {
     console.error('Erro ao buscar monumentos:', error);
@@ -248,22 +238,6 @@ function getMonumentTier(name: string): 'low' | 'medium' | 'high' {
 }
 
 /**
- * Verifica se um monumento tem radiação com base no nome
- */
-function hasRadiation(name: string): boolean {
-  const radiationMonuments = [
-    'launch site', 
-    'power plant', 
-    'water treatment', 
-    'military tunnels', 
-    'dome', 
-    'nuclear missile silo'
-  ];
-  
-  return radiationMonuments.some(m => name.toLowerCase().includes(m));
-}
-
-/**
  * Fornece detalhes simulados do mapa quando a API não está disponível
  */
 function getFallbackMapDetails(seed: string, size: string): MapDetails {
@@ -307,85 +281,73 @@ function getFallbackMonuments(): Monument[] {
       name: 'Launch Site',
       position: { x: 1250, y: 1500 },
       type: 'military',
-      tier: 'high',
-      radiation: true
+      tier: 'high'
     },
     {
       name: 'Airfield',
       position: { x: 2300, y: 1800 },
       type: 'military',
-      tier: 'medium',
-      radiation: false
+      tier: 'medium'
     },
     {
       name: 'Military Tunnels',
       position: { x: 2800, y: 2200 },
       type: 'military',
-      tier: 'high',
-      radiation: true
+      tier: 'high'
     },
     {
       name: 'Power Plant',
       position: { x: 1800, y: 2600 },
       type: 'industrial',
-      tier: 'medium',
-      radiation: true
+      tier: 'medium'
     },
     {
       name: 'Water Treatment',
       position: { x: 900, y: 2100 },
       type: 'industrial',
-      tier: 'medium',
-      radiation: true
+      tier: 'medium'
     },
     {
       name: 'Dome',
       position: { x: 3200, y: 1200 },
       type: 'scientific',
-      tier: 'medium',
-      radiation: true
+      tier: 'medium'
     },
     {
       name: 'Harbor',
       position: { x: 500, y: 3000 },
       type: 'naval',
-      tier: 'low',
-      radiation: false
+      tier: 'low'
     },
     {
       name: 'Lighthouse',
       position: { x: 350, y: 350 },
       type: 'naval',
-      tier: 'low',
-      radiation: false
+      tier: 'low'
     },
     {
       name: 'Gas Station',
       position: { x: 2100, y: 1000 },
       type: 'civilian',
-      tier: 'low',
-      radiation: false
+      tier: 'low'
     },
     {
       name: 'Supermarket',
       position: { x: 1500, y: 3200 },
       type: 'civilian',
-      tier: 'low',
-      radiation: false
+      tier: 'low'
     },
     {
       name: 'Satellite Dish',
       position: { x: 2800, y: 900 },
       type: 'scientific',
-      tier: 'low',
-      radiation: false
+      tier: 'low'
     },
     {
       name: 'Junkyard',
       position: { x: 1100, y: 2800 },
       type: 'civilian',
-      tier: 'low',
-      radiation: false
+      tier: 'low'
     }
   ];
-};
+}
