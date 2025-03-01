@@ -10,7 +10,7 @@ import type {
   ServerMapInfo, 
   ServerPerformance, 
   ServerStatusResponse 
-} from '../types/server';
+} from '../../types/server';
 
 // ID do servidor fixo (conforme definido no plugin Oxide)
 const DEFAULT_SERVER_ID = 'game.phanteongames.com:28015';
