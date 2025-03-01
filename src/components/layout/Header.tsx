@@ -41,7 +41,8 @@ const Header = () => {
                 <Image 
                   src="/logo.png" 
                   alt="Phanteon Games Logo" 
-                  fill
+                  width={40}
+                  height={40}
                   className="object-contain"
                 />
               </div>

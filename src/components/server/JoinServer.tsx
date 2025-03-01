@@ -1,7 +1,6 @@
 // src/components/server/JoinServer.tsx
 import { useState } from 'react';
 import { FaSteam, FaCopy, FaCheckCircle } from 'react-icons/fa';
-import { generateConnectUrl } from '../../lib/api/steamApi';
 
 interface JoinServerProps {
   serverAddress: string;
@@ -19,7 +18,8 @@ const JoinServer = ({ serverAddress, showCopyOption = true }: JoinServerProps) =
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const connectUrl = generateConnectUrl(serverAddress);
+  // Generate connect URL
+  const connectUrl = `steam://connect/${serverAddress}`;
 
   return (
     <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
