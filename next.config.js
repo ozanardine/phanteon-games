@@ -7,4 +7,4 @@ const nextConfig = {
     },
   }
   
-  module.exports = nextConfi
+  module.exports = nextConfig
