@@ -1,40 +1,10 @@
+// next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  // Configuração para otimizar imagens
-  images: {
-    formats: ['image/avif', 'image/webp'],
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**.rustmaps.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'cdn.discordapp.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'steamuserimages-a.akamaihd.net',
-      },
-    ],
-  },
-  async redirects() {
-    return [
-      {
-        source: '/discord',
-        destination: process.env.DISCORD_INVITE_URL || 'https://discord.gg/your-invite-link',
-        permanent: false,
-      },
-      {
-        source: '/steam',
-        destination: 'steam://connect/game.phanteongames.com:28015',
-        permanent: false,
-      },
-    ];
-  },
-  // Modificação para Vercel
-  poweredByHeader: false,
-};
-
-module.exports = nextConfig;
+    reactStrictMode: true,
+    images: {
+      domains: ['cdn.discordapp.com', 'avatars.steamstatic.com', 'community.cloudflare.steamstatic.com'],
+    },
+  }
+  
+  module.exports = nextConfi

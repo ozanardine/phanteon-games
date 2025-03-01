@@ -1,193 +1,175 @@
 import React from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/router';
-import Layout from '../components/layout/Layout';
-import ServerStatus from '../components/server/ServerStatus';
-import Button from '../components/common/Button';
-import Card from '../components/common/Card';
-import JoinServer from '../components/server/JoinServer';
-import { useServerStatus } from '../hooks/useServerStatus';
-import { FaSteam, FaDiscord, FaCalendarAlt, FaUsers, FaMap } from 'react-icons/fa';
-import OnlinePlayersSection from '../components/server/OnlinePlayersSection';
-import ServerEventsSection from '../components/server/ServerEventsSection';
-import LeaderboardSection from '../components/server/LeaderboardSection';
+import Link from 'next/link';
+import { Layout } from '@/components/layout/Layout';
+import { Button } from '@/components/ui/Button';
+import { FaServer, FaGamepad, FaUsers, FaDiscord } from 'react-icons/fa';
 
-const HomePage = () => {
-  const router = useRouter();
-  const { playerCount, maxPlayers, mapSize, seed, isOnline } = useServerStatus();
-
+export default function HomePage() {
   return (
-    <Layout 
-      title="Phanteon Games - Comunidade Brasileira de Rust"
-      description="Entre na melhor comunidade de Rust do Brasil. Jogadores ativos, eventos exclusivos e sistema VIP."
-    >
-      {/* Seção Hero */}
-      <section className="relative h-screen flex items-center">
-        {/* Imagem de Fundo */}
-        <div className="absolute inset-0 bg-hero-pattern bg-cover bg-center bg-no-repeat opacity-50" />
+    <Layout>
+      <section className="relative bg-phanteon-dark">
+        <div className="absolute inset-0 z-0 bg-gradient-to-br from-phanteon-dark to-phanteon-gray opacity-50"></div>
         
-        {/* Overlay Gradiente */}
-        <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/80 via-zinc-900/60 to-zinc-900" />
-        
-        {/* Conteúdo */}
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white text-shadow-lg">
-              Bem-vindo à <span className="text-amber-500">Phanteon Games</span>
+        {/* Hero Section */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+          <div className="text-center max-w-3xl mx-auto">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
+              Bem-vindo à <span className="text-phanteon-orange">Phanteon Games</span>
             </h1>
-            <p className="text-xl md:text-2xl text-zinc-200 mb-8 text-shadow">
-              A melhor comunidade brasileira de Rust com servidores ativos, eventos exclusivos e recursos premium.
+            <p className="text-xl text-gray-300 mb-8">
+              Junte-se a nossa comunidade de jogos e desfrute de servidores de alta qualidade, 
+              eventos exclusivos e uma comunidade incrível.
             </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button 
-                size="lg" 
-                leftIcon={<FaSteam />}
-                onClick={() => window.location.href = 'steam://connect/game.phanteongames.com:28015'}
-              >
-                Conectar via Steam
-              </Button>
-              <Button 
-                size="lg" 
-                variant="outline"
-                leftIcon={<FaDiscord />}
-                onClick={() => window.location.href = '/discord'}
-              >
-                Entrar no Discord
-              </Button>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <Link href="/servers">
+                <Button size="lg" className="px-8">
+                  <FaServer className="mr-2" />
+                  Ver Servidores
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button variant="outline" size="lg" className="px-8">
+                  <FaUsers className="mr-2" />
+                  Criar Conta
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
       </section>
-
-      {/* Seção Status do Servidor */}
-      <section className="py-16 bg-zinc-900">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-            <div className="md:w-1/2">
-              <h2 className="text-3xl font-bold mb-6">Status do Servidor</h2>
-              <p className="text-zinc-300 mb-8">
-                Nossos servidores são hospedados em hardware de alta performance com proteção DDoS para garantir a melhor experiência de jogo. Junte-se agora e faça parte da nossa comunidade ativa!
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4">
-                <JoinServer 
-                  serverAddress="game.phanteongames.com:28015"
-                />
-              </div>
-            </div>
-            
-            <div className="md:w-1/2">
-              <ServerStatus 
-                isOnline={isOnline}
-                playerCount={playerCount}
-                maxPlayers={maxPlayers}
-                mapSize={mapSize}
-                seed={seed}
-              />
-            </div>
+      
+      {/* Features Section */}
+      <section className="py-16 bg-phanteon-gray">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-white">Por que escolher a Phanteon Games?</h2>
+            <p className="mt-4 text-lg text-gray-300">
+              Uma experiência de jogo de qualidade com recursos exclusivos.
+            </p>
           </div>
-        </div>
-      </section>
-
-      {/* Seção de Status em Tempo Real */}
-      <section className="py-16 bg-zinc-800">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold mb-12 text-center">Status em Tempo Real</h2>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Jogadores Online */}
-            <div className="lg:col-span-2">
-              <OnlinePlayersSection limit={8} />
-            </div>
-            
-            {/* Eventos Ativos */}
-            <div>
-              <ServerEventsSection />
-            </div>
-          </div>
-          
-          {/* Leaderboard */}
-          <div className="mt-12">
-            <h2 className="text-3xl font-bold mb-6">Melhores Jogadores</h2>
-            <LeaderboardSection limit={5} />
-          </div>
-        </div>
-      </section>
-
-      {/* Seção de Características */}
-      <section className="py-16 bg-zinc-900">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold mb-12 text-center">Por que escolher a Phanteon Games?</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="text-center" hoverEffect>
-              <div className="p-4">
-                <div className="bg-amber-500/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <FaUsers className="text-amber-500 text-2xl" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Comunidade Ativa</h3>
-                <p className="text-zinc-400">
-                  Junte-se a uma comunidade vibrante de jogadores. Faça amigos e encontre parceiros para sua próxima aventura.
-                </p>
+            <div className="bg-phanteon-dark p-6 rounded-lg border border-phanteon-light">
+              <div className="w-12 h-12 bg-phanteon-orange/20 rounded-lg flex items-center justify-center mb-4">
+                <FaServer className="w-6 h-6 text-phanteon-orange" />
               </div>
-            </Card>
+              <h3 className="text-xl font-medium text-white mb-2">Servidores de Alta Performance</h3>
+              <p className="text-gray-400">
+                Nossos servidores são otimizados para oferecer uma experiência de jogo suave e sem lag.
+              </p>
+            </div>
             
-            <Card className="text-center" hoverEffect>
-              <div className="p-4">
-                <div className="bg-amber-500/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <FaCalendarAlt className="text-amber-500 text-2xl" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Eventos Semanais</h3>
-                <p className="text-zinc-400">
-                  Participe de eventos emocionantes com ótimas recompensas. Torneios PvP, caças ao tesouro e muito mais!
-                </p>
+            <div className="bg-phanteon-dark p-6 rounded-lg border border-phanteon-light">
+              <div className="w-12 h-12 bg-phanteon-orange/20 rounded-lg flex items-center justify-center mb-4">
+                <FaGamepad className="w-6 h-6 text-phanteon-orange" />
               </div>
-            </Card>
+              <h3 className="text-xl font-medium text-white mb-2">Experiência VIP</h3>
+              <p className="text-gray-400">
+                Benefícios exclusivos para membros VIP, incluindo itens especiais e acesso antecipado a eventos.
+              </p>
+            </div>
             
-            <Card className="text-center" hoverEffect>
-              <div className="p-4">
-                <div className="bg-amber-500/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                  <FaMap className="text-amber-500 text-2xl" />
-                </div>
-                <h3 className="text-xl font-bold mb-2">Mapas Customizados</h3>
-                <p className="text-zinc-400">
-                  Desfrute de mapas únicos e cuidadosamente balanceados que proporcionam a melhor experiência de jogo para todos os jogadores.
-                </p>
+            <div className="bg-phanteon-dark p-6 rounded-lg border border-phanteon-light">
+              <div className="w-12 h-12 bg-phanteon-orange/20 rounded-lg flex items-center justify-center mb-4">
+                <FaUsers className="w-6 h-6 text-phanteon-orange" />
               </div>
-            </Card>
+              <h3 className="text-xl font-medium text-white mb-2">Comunidade Ativa</h3>
+              <p className="text-gray-400">
+                Faça parte de uma comunidade amigável e apaixonada por jogos.
+              </p>
+            </div>
           </div>
         </div>
       </section>
-
-      {/* Seção CTA */}
-      <section className="py-16 bg-gradient-rust text-center">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold mb-6">Pronto para se juntar a nós?</h2>
-          <p className="text-xl text-zinc-300 mb-8 max-w-2xl mx-auto">
-            Torne-se parte da nossa crescente comunidade hoje. Conecte-se com outros jogadores, participe de eventos e desfrute de recursos premium.
+      
+      {/* Community Section */}
+      <section className="py-16 bg-phanteon-dark">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center">
+            <div className="md:w-1/2 mb-8 md:mb-0">
+              <h2 className="text-3xl font-bold text-white mb-4">
+                Junte-se à nossa comunidade
+              </h2>
+              <p className="text-gray-300 mb-6">
+                Conecte-se com outros jogadores, participe de eventos e fique por dentro de todas as novidades.
+                Nossa comunidade é ativa e acolhedora, sempre pronta para receber novos membros.
+              </p>
+              <a 
+                href="https://discord.gg/phanteongames" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center bg-[#5865F2] text-white px-6 py-3 rounded-md hover:bg-[#5865F2]/90 transition"
+              >
+                <FaDiscord className="mr-2 w-5 h-5" />
+                Entrar no Discord
+              </a>
+            </div>
+            
+            <div className="md:w-1/2 md:pl-12">
+              <div className="bg-phanteon-gray rounded-lg p-6 border border-phanteon-light">
+                <h3 className="text-xl font-medium text-white mb-4">Próximos Eventos</h3>
+                
+                <div className="space-y-4">
+                  <div className="bg-phanteon-dark p-4 rounded-md">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium text-white">Torneio Semanal</h4>
+                        <p className="text-sm text-gray-400 mt-1">Competição com premiação especial para os vencedores</p>
+                      </div>
+                      <span className="text-sm text-phanteon-orange">Sábado, 20:00</span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-phanteon-dark p-4 rounded-md">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium text-white">Maratona de Jogos</h4>
+                        <p className="text-sm text-gray-400 mt-1">24 horas de gameplay com drop de itens raros</p>
+                      </div>
+                      <span className="text-sm text-phanteon-orange">Sexta, 18:00</span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-phanteon-dark p-4 rounded-md">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium text-white">Inauguração Novo Servidor</h4>
+                        <p className="text-sm text-gray-400 mt-1">Venha conhecer nosso novo servidor</p>
+                      </div>
+                      <span className="text-sm text-phanteon-orange">Domingo, 15:00</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      {/* CTA Section */}
+      <section className="py-16 bg-phanteon-gray">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold text-white mb-6">
+            Pronto para começar sua aventura?
+          </h2>
+          <p className="text-lg text-gray-300 mb-8">
+            Crie sua conta agora e junte-se a milhares de jogadores na Phanteon Games.
+            A diversão está apenas a um clique de distância!
           </p>
-          
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Button 
-              size="lg" 
-              variant="primary" 
-              onClick={() => window.location.href = 'steam://connect/game.phanteongames.com:28015'}
-            >
-              Entrar no Servidor Agora
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              onClick={() => router.push('/vip')}
-            >
-              Saiba Mais
-            </Button>
+            <Link href="/register">
+              <Button size="lg" className="px-8">
+                Criar Conta Grátis
+              </Button>
+            </Link>
+            <Link href="/vip">
+              <Button variant="outline" size="lg" className="px-8">
+                Ver Planos VIP
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
     </Layout>
   );
-};
-
-export default HomePage;
+}
