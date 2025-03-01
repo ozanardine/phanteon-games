@@ -157,7 +157,12 @@ const MapPage = () => {
                 {Object.entries(mapDetails.biomes).map(([biome, percentage]) => (
                   <div key={biome} className="mb-3">
                     <div className="flex justify-between mb-1">
-                      <span className="capitalize">{biome}</span>
+                      <span className="capitalize">
+                        {biome === 'desert' ? 'Deserto' : 
+                         biome === 'snow' ? 'Neve' :
+                         biome === 'forest' ? 'Floresta' :
+                         biome === 'plains' ? 'Planícies' : biome}
+                      </span>
                       <span>{percentage}%</span>
                     </div>
                     <div className="w-full bg-zinc-800 rounded-full h-2">
@@ -213,7 +218,9 @@ const MapPage = () => {
                             )}
                           >
                             <div className={`w-2 h-2 rounded-full mr-2 ${getMonumentColor(monument)}`}></div>
-                            <span>{monument}</span>
+                            <span>
+                              {translateMonumentName(monument)}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -251,6 +258,31 @@ const MapPage = () => {
     </Layout>
   );
 };
+
+// Função auxiliar para traduzir nome de monumentos
+function translateMonumentName(monument: string): string {
+  const translations: Record<string, string> = {
+    'Airfield': 'Campo de Aviação',
+    'Launch Site': 'Plataforma de Lançamento',
+    'Military Tunnels': 'Túneis Militares', 
+    'Dome': 'Domo',
+    'Lighthouse': 'Farol',
+    'Harbor': 'Porto',
+    'Power Plant': 'Usina Elétrica',
+    'Water Treatment': 'Estação de Tratamento',
+    'Satellite Dish': 'Antena Parabólica',
+    'Junkyard': 'Ferro-velho',
+    'Gas Station': 'Posto de Gasolina',
+    'Supermarket': 'Supermercado',
+    'Oxum\'s': 'Oxum',
+    'Outpost': 'Posto Avançado',
+    'Bandit Camp': 'Acampamento Bandido',
+    'Train Yard': 'Estação de Trem',
+    'Sewer Branch': 'Estação de Esgoto'
+  };
+
+  return translations[monument] || monument;
+}
 
 // Função auxiliar para determinar o tipo de monumento
 const getMonumentType = (monument: string): string => {

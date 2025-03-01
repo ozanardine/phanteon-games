@@ -48,8 +48,8 @@ const LoginPage = () => {
 
   return (
     <Layout
-      title={isLogin ? 'Login - Rust Brasil' : 'Criar Conta - Rust Brasil'}
-      description="Entre na sua conta ou crie uma nova para acessar os recursos exclusivos do servidor Rust Brasil."
+      title={isLogin ? 'Login - Phanteon Games' : 'Criar Conta - Phanteon Games'}
+      description="Entre na sua conta ou crie uma nova para acessar os recursos exclusivos do servidor Phanteon Games."
     >
       <div className="container mx-auto px-4 py-12 flex justify-center">
         <Card className="max-w-md w-full shadow-xl">
@@ -58,9 +58,10 @@ const LoginPage = () => {
               <div className="w-16 h-16 relative">
                 <Image
                   src="/logo.png"
-                  alt="Rust Brasil Logo"
-                  layout="fill"
-                  objectFit="contain"
+                  alt="Phanteon Games Logo"
+                  width={64}
+                  height={64}
+                  className="object-contain"
                 />
               </div>
             </div>

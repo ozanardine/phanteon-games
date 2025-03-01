@@ -52,6 +52,9 @@ const Button = ({
     className
   ].join(' ');
 
+  // Texto do loading
+  const loadingText = 'Carregando...';
+
   return (
     <button
       className={buttonClasses}
@@ -82,7 +85,7 @@ const Button = ({
       )}
       
       {!isLoading && leftIcon && <span className="mr-2">{leftIcon}</span>}
-      {children}
+      {isLoading ? loadingText : children}
       {!isLoading && rightIcon && <span className="ml-2">{rightIcon}</span>}
     </button>
   );

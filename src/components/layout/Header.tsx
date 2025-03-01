@@ -10,7 +10,7 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
 
-  // Detect scroll to change header style
+  // Detectar scroll para alterar o estilo do cabeçalho
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -21,10 +21,10 @@ const Header = () => {
   }, []);
 
   const navItems = [
-    { name: 'Home', path: '/' },
-    { name: 'Map', path: '/mapa' },
-    { name: 'Events', path: '/eventos' },
-    { name: 'Community', path: '/comunidade' },
+    { name: 'Início', path: '/' },
+    { name: 'Mapa', path: '/mapa' },
+    { name: 'Eventos', path: '/eventos' },
+    { name: 'Comunidade', path: '/comunidade' },
     { name: 'VIP', path: '/vip' },
   ];
 
@@ -50,7 +50,7 @@ const Header = () => {
             </Link>
           </div>
           
-          {/* Navigation - Desktop */}
+          {/* Navegação - Desktop */}
           <nav className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
               <Link 
@@ -85,11 +85,11 @@ const Header = () => {
               href="/auth/login"
               className="ml-3 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded transition-colors"
             >
-              Login
+              Entrar
             </Link>
           </div>
           
-          {/* Mobile Toggle */}
+          {/* Botão Mobile */}
           <div className="flex items-center md:hidden">
             <button
               type="button"
@@ -106,7 +106,7 @@ const Header = () => {
         </div>
       </div>
       
-      {/* Mobile Menu */}
+      {/* Menu Mobile */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800">
           <div className="px-4 pt-2 pb-4 space-y-1">
@@ -147,7 +147,7 @@ const Header = () => {
                 href="/auth/login"
                 className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded transition-colors"
               >
-                Login
+                Entrar
               </Link>
             </div>
           </div>

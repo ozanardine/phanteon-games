@@ -35,10 +35,10 @@ export const useMap = (
     seed,
     monuments: [] as string[],
     biomes: {
-      desert: 0,
-      snow: 0,
-      forest: 0,
-      plains: 0
+      desert: 25,  // Deserto
+      snow: 20,    // Neve
+      forest: 40,  // Floresta
+      plains: 15   // Planícies
     }
   });
   const [isLoading, setIsLoading] = useState(true);

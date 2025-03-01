@@ -8,10 +8,12 @@
 const STEAM_API_URL = 'https://api.steampowered.com';
 const STEAM_SERVER_API_URL = 'https://api.steampowered.com/IGameServersService/GetServerList/v1/';
 const STEAM_PLAYER_API_URL = 'https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/';
-const SERVER_QUERY_API_URL = 'https://rust-servers.net/api/';
 
 // ID do aplicativo Rust na Steam
 const RUST_APP_ID = '252490';
+
+// Endereço padrão do servidor
+const DEFAULT_SERVER_ADDRESS = 'game.phanteongames.com:28015';
 
 // Tipo para informações do servidor
 export interface ServerInfo {
@@ -29,7 +31,7 @@ export interface ServerInfo {
 
 // Tipo para jogador do servidor
 export interface ServerPlayer {
-  id: string; // Adicionado campo id para compatibilidade com o tipo Player
+  id: string;
   name: string;
   playTime: number; // em minutos
   steamId?: string;
@@ -92,173 +94,107 @@ export interface ServerStatusResponse {
  * @param apiKey Chave da API Steam
  */
 export const fetchServerInfoFromSteam = async (
-  serverAddress: string,
+  serverAddress: string = DEFAULT_SERVER_ADDRESS,
   apiKey: string = process.env.NEXT_PUBLIC_STEAM_API_KEY || ''
 ): Promise<ServerInfo | null> => {
-  if (!apiKey) {
-    console.error('Steam API Key não configurada');
-    return null;
-  }
-
   try {
+    // Se não tiver API key, usar dados de fallback
+    if (!apiKey) {
+      console.warn('Chave da API Steam não configurada, usando dados simulados');
+      return getOfflineServerInfo(serverAddress);
+    }
+
     // Separar IP e porta
     const [ip, portStr] = serverAddress.split(':');
-    const port = parseInt(portStr);
+    const port = parseInt(portStr || '28015');
 
-    if (!ip || isNaN(port)) {
+    if (!ip) {
       throw new Error('Endereço de servidor inválido');
     }
 
     // Filtro específico para buscar o servidor Rust
     const filter = `\\appid\\${RUST_APP_ID}\\addr\\${ip}:${port}`;
     
+    // Fazer requisição para a API da Steam
     const response = await fetch(`${STEAM_SERVER_API_URL}?key=${apiKey}&filter=${encodeURIComponent(filter)}`);
     
     if (!response.ok) {
-      throw new Error(`Erro ao buscar servidor: ${response.statusText}`);
+      console.warn(`Erro na requisição à API Steam: ${response.statusText}`);
+      return getOfflineServerInfo(serverAddress);
     }
     
     const data = await response.json();
     
     // Verificar se encontrou o servidor
     if (!data.response || !data.response.servers || data.response.servers.length === 0) {
-      return {
-        name: 'Servidor indisponível',
-        address: serverAddress,
-        ip,
-        port,
-        players: 0,
-        maxPlayers: 0,
-        map: 'Unknown',
-        secure: false,
-        ping: 999,
-        isOnline: false
-      };
+      console.warn('Servidor não encontrado na API Steam');
+      return getOfflineServerInfo(serverAddress);
     }
     
     const serverData = data.response.servers[0];
     
+    // Converter dados para o nosso formato
     return {
-      name: serverData.name,
+      name: serverData.name || 'Phanteon Games - Brasil',
       address: serverAddress,
       ip: serverData.addr.split(':')[0],
       port: parseInt(serverData.addr.split(':')[1]),
-      players: serverData.players,
-      maxPlayers: serverData.max_players,
-      map: serverData.map,
+      players: serverData.players || 0,
+      maxPlayers: serverData.max_players || 200,
+      map: serverData.map || 'Procedural Map',
       secure: serverData.secure === 1,
-      ping: serverData.ping,
+      ping: serverData.ping || 30,
       isOnline: true
     };
   } catch (error) {
     console.error('Erro ao buscar informações do servidor via Steam API:', error);
-    
-    // Retornar servidor offline em caso de erro
-    return {
-      name: 'Servidor indisponível',
-      address: serverAddress,
-      ip: serverAddress.split(':')[0],
-      port: parseInt(serverAddress.split(':')[1] || '28015'),
-      players: 0,
-      maxPlayers: 0, 
-      map: 'Unknown',
-      secure: false,
-      ping: 999,
-      isOnline: false
-    };
+    return getOfflineServerInfo(serverAddress);
   }
 };
 
 /**
- * Busca informações sobre um servidor Rust usando APIs alternativas
- * @param serverAddress Endereço do servidor
+ * Retorna informações básicas para um servidor offline (fallback)
  */
-export const fetchServerInfoAlternative = async (
-  serverAddress: string
-): Promise<ServerInfo | null> => {
-  try {
-    // Se o servidor tiver uma API na rust-servers.net
-    // (você precisaria registrar seu servidor lá e obter um servidor_id)
-    const serverId = process.env.NEXT_PUBLIC_RUST_SERVERS_ID;
-    
-    if (serverId) {
-      const response = await fetch(`${SERVER_QUERY_API_URL}?object=servers&element=detail&key=${serverId}`);
-      
-      if (!response.ok) {
-        throw new Error('Falha ao buscar via API alternativa');
-      }
-      
-      const data = await response.json();
-      
-      if (data && data.hostname) {
-        return {
-          name: data.hostname,
-          address: serverAddress,
-          ip: serverAddress.split(':')[0],
-          port: parseInt(serverAddress.split(':')[1] || '28015'),
-          players: parseInt(data.players) || 0,
-          maxPlayers: parseInt(data.maxplayers) || 0,
-          map: data.map || 'Unknown',
-          secure: true, // Assumindo que é seguro
-          ping: parseInt(data.ping) || 0,
-          isOnline: data.is_online === "1"
-        };
-      }
-    }
-    
-    throw new Error('Dados do servidor não disponíveis');
-  } catch (error) {
-    console.error('Erro ao buscar informações do servidor via API alternativa:', error);
-    return null;
-  }
+const getOfflineServerInfo = (serverAddress: string): ServerInfo => {
+  return {
+    name: 'Phanteon Games - Brasil',
+    address: serverAddress,
+    ip: serverAddress.split(':')[0],
+    port: parseInt(serverAddress.split(':')[1] || '28015'),
+    players: 0,
+    maxPlayers: 200,
+    map: 'Procedural Map',
+    secure: true,
+    ping: 999,
+    isOnline: false
+  };
 };
 
 /**
- * Função principal para buscar status completo do servidor Rust
- * Combina várias APIs para obter informações completas
+ * Busca status completo do servidor Rust
  * @param serverAddress Endereço do servidor (IP:Porta)
  */
 export const fetchServerStatus = async (
-  serverAddress: string = 'game.phanteongames.com:28015'
+  serverAddress: string = DEFAULT_SERVER_ADDRESS
 ): Promise<ServerStatusResponse> => {
   try {
-    // Tentar buscar via API Steam oficial
-    let serverInfo = await fetchServerInfoFromSteam(serverAddress);
+    // Tentar buscar informações do servidor via API Steam
+    const serverInfo = await fetchServerInfoFromSteam(serverAddress);
     
-    // Se falhar, tentar via API alternativa
+    // Se o servidor estiver offline, retornar dados offline
     if (!serverInfo || !serverInfo.isOnline) {
-      const altInfo = await fetchServerInfoAlternative(serverAddress);
-      if (altInfo) {
-        serverInfo = altInfo;
-      }
+      return getOfflineServerStatus(serverAddress);
     }
     
-    // Se ainda não tiver informações, usar dados de fallback (simulados)
-    if (!serverInfo) {
-      serverInfo = {
-        name: 'Phanteon Games - Comunidade',
-        address: serverAddress,
-        ip: serverAddress.split(':')[0],
-        port: parseInt(serverAddress.split(':')[1] || '28015'),
-        players: Math.floor(Math.random() * 150),
-        maxPlayers: 200,
-        map: 'Procedural Map',
-        secure: true,
-        ping: 35,
-        isOnline: true
-      };
-    }
-    
-    // Buscar eventos ativos (via API personalizada ou simular)
+    // Buscar eventos ativos
     const events = await fetchServerEvents(serverAddress);
     
-    // Usar seed do mapa real ou gerar um aleatório
-    const mapSeed = serverInfo.map.includes('Procedural Map') 
-      ? (Math.floor(Math.random() * 10000000)).toString() 
-      : '123456';
+    // Calcular datas de wipe
+    const lastWipe = calculateLastWipeDate();
+    const nextWipe = calculateNextWipeDate();
     
     // Montar resposta completa
-    const response: ServerStatusResponse = {
+    return {
       info: serverInfo,
       players: {
         online: serverInfo.players,
@@ -266,91 +202,145 @@ export const fetchServerStatus = async (
       },
       map: {
         name: serverInfo.map,
-        size: '4500', // Tamanho padrão, pode ser ajustado conforme necessário
-        seed: mapSeed,
+        size: '4500', // Tamanho padrão
+        seed: extractSeedFromMap(serverInfo.map),
       },
       events,
-      lastWipe: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Simulando wipe há 7 dias
-      nextWipe: new Date(Date.now() + 23 * 24 * 60 * 60 * 1000), // Próximo wipe em 23 dias
+      lastWipe,
+      nextWipe,
     };
-    
-    return response;
   } catch (error) {
     console.error('Erro ao buscar status completo do servidor:', error);
-    
-    // Retornar dados de fallback em caso de erro
-    return {
-      info: {
-        name: 'Phanteon Games - Comunidade',
-        address: serverAddress,
-        ip: serverAddress.split(':')[0],
-        port: parseInt(serverAddress.split(':')[1] || '28015'),
-        players: Math.floor(Math.random() * 150),
-        maxPlayers: 200,
-        map: 'Procedural Map',
-        secure: true,
-        ping: 35,
-        isOnline: true
-      },
-      players: {
-        online: Math.floor(Math.random() * 150),
-        max: 200,
-      },
-      map: {
-        name: 'Procedural Map',
-        size: '4500',
-        seed: '123456',
-      },
-      events: getFallbackEvents(),
-    };
+    return getOfflineServerStatus(serverAddress);
   }
 };
 
 /**
- * Busca contagem atual de jogadores no servidor via Steam API
- * @param appId ID do aplicativo (252490 para Rust)
- * @param serverIp IP do servidor (com porta)
+ * Extrai o número da seed a partir do nome do mapa
  */
-export const fetchPlayerCount = async (
-  serverIp: string,
-  appId: string = RUST_APP_ID
-): Promise<number> => {
-  try {
-    const response = await fetch(`${STEAM_PLAYER_API_URL}?appid=${appId}&addr=${serverIp}`);
-    
-    if (!response.ok) {
-      throw new Error(`Erro na requisição: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data && data.response && data.response.player_count !== undefined) {
-      return data.response.player_count;
-    }
-    
-    return 0;
-  } catch (error) {
-    console.error('Erro ao buscar contagem de jogadores:', error);
-    // Retornar número simulado em caso de erro
-    return Math.floor(Math.random() * 150);
+const extractSeedFromMap = (mapName: string): string => {
+  // Tenta extrair o número da seed do nome do mapa (formato comum: "Procedural Map_123456")
+  const seedMatch = mapName.match(/[\d]+/);
+  if (seedMatch) {
+    return seedMatch[0];
   }
+  
+  // Se não conseguir extrair, gera uma seed aleatória estável
+  const date = new Date();
+  const seedBase = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+  return seedBase.toString();
 };
 
 /**
- * Busca eventos atuais no servidor Rust
- * Na implementação real, isso seria obtido via um plugin RCON
- * ou uma API personalizada do seu servidor
+ * Calcula a data do último wipe (primeiro dia do mês atual)
  */
-export const fetchServerEvents = async (serverId: string): Promise<ServerEvent[]> => {
+const calculateLastWipeDate = (): Date => {
+  const today = new Date();
+  // Primeiro dia do mês atual
+  return new Date(today.getFullYear(), today.getMonth(), 1);
+};
+
+/**
+ * Calcula a data do próximo wipe (primeira quinta-feira do próximo mês)
+ */
+const calculateNextWipeDate = (): Date => {
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  // Mês seguinte, dia 1
+  const nextMonth = new Date(currentYear, currentMonth + 1, 1);
+  
+  // Encontrar a primeira quinta-feira (4) do próximo mês
+  const dayOfWeek = nextMonth.getDay(); // 0 (Dom) a 6 (Sáb)
+  const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
+  
+  nextMonth.setDate(1 + daysUntilThursday);
+  return nextMonth;
+};
+
+/**
+ * Retorna status offline para o servidor (fallback)
+ */
+const getOfflineServerStatus = (serverAddress: string): ServerStatusResponse => {
+  const serverInfo = getOfflineServerInfo(serverAddress);
+  
+  return {
+    info: serverInfo,
+    players: {
+      online: 0,
+      max: 200,
+    },
+    map: {
+      name: 'Procedural Map',
+      size: '4500',
+      seed: '123456',
+    },
+    events: [],
+    lastWipe: calculateLastWipeDate(),
+    nextWipe: calculateNextWipeDate(),
+  };
+};
+
+/**
+ * Busca eventos ativos no servidor Rust
+ */
+export const fetchServerEvents = async (serverAddress: string): Promise<ServerEvent[]> => {
   try {
-    // Aqui você implementaria a chamada real para sua API de eventos
-    // Por exemplo:
-    // const response = await fetch(`https://api.seuservidor.com/events`);
-    // const events = await response.json();
-    // return events;
+    // Em uma implementação real, você buscaria eventos ativos de uma API ou banco de dados
+    // Como é uma simulação, vamos gerar eventos aleatórios
+
+    const events: ServerEvent[] = [];
     
-    // Por enquanto, vamos retornar eventos simulados
-    return getFallbackEvents();
+    // Probabilidade de 30% de ter um Cargo Ship ativo
+    if (Math.random() < 0.3) {
+      events.push({
+        id: `cargo-${Date.now()}`,
+        name: 'Navio de Carga',
+        type: 'cargo',
+        location: 'Oceano (L24)',
+        timeRemaining: Math.floor(Math.random() * 900) + 300, // 5-20 minutos
+        active: true,
+        startedAt: new Date(Date.now() - 600000), // Começou há 10 minutos
+        estimatedEndAt: new Date(Date.now() + 1200000), // Termina em 20 minutos
+      });
+    }
+    
+    // Probabilidade de 20% de ter um Airdrop ativo
+    if (Math.random() < 0.2) {
+      events.push({
+        id: `airdrop-${Date.now()}`,
+        name: 'Airdrop',
+        type: 'airdrop',
+        location: 'Perto de Launch Site',
+        timeRemaining: Math.floor(Math.random() * 180) + 60, // 1-4 minutos
+        active: true,
+      });
+    }
+    
+    // Probabilidade de 15% de ter um Helicopter
+    if (Math.random() < 0.15) {
+      events.push({
+        id: `heli-${Date.now()}`,
+        name: 'Helicóptero de Ataque',
+        type: 'heli',
+        timeRemaining: Math.floor(Math.random() * 120) + 60, // 1-3 minutos
+        active: Math.random() < 0.5, // 50% de chance de estar ativo
+      });
+    }
+    
+    // Probabilidade de 10% de ter Bradley
+    if (Math.random() < 0.1) {
+      events.push({
+        id: `bradley-${Date.now()}`,
+        name: 'Bradley APC',
+        type: 'bradley',
+        location: 'Launch Site',
+        active: true,
+      });
+    }
+    
+    return events;
   } catch (error) {
     console.error('Erro ao buscar eventos do servidor:', error);
     return [];
@@ -358,101 +348,40 @@ export const fetchServerEvents = async (serverId: string): Promise<ServerEvent[]
 };
 
 /**
- * Retorna eventos simulados para fallback
- */
-function getFallbackEvents(): ServerEvent[] {
-  // Gerar alguns eventos aleatórios para demonstração
-  const events: ServerEvent[] = [];
-  
-  // Probabilidade de 70% de ter um Cargo Ship ativo
-  if (Math.random() < 0.7) {
-    events.push({
-      id: 'cargo-' + Date.now(),
-      name: 'Cargo Ship',
-      type: 'cargo',
-      location: 'Oceano (L24)',
-      timeRemaining: Math.floor(Math.random() * 900) + 300, // 5-20 minutos
-      active: true,
-      startedAt: new Date(Date.now() - 600000), // Começou há 10 minutos
-      estimatedEndAt: new Date(Date.now() + 1200000), // Termina em 20 minutos
-    });
-  }
-  
-  // Probabilidade de 50% de ter um Airdrop ativo
-  if (Math.random() < 0.5) {
-    events.push({
-      id: 'airdrop-' + Date.now(),
-      name: 'Airdrop',
-      type: 'airdrop',
-      location: 'Perto de Launch Site',
-      timeRemaining: Math.floor(Math.random() * 180) + 60, // 1-4 minutos
-      active: true,
-    });
-  }
-  
-  // Probabilidade de 30% de ter um Helicopter
-  if (Math.random() < 0.3) {
-    events.push({
-      id: 'heli-' + Date.now(),
-      name: 'Attack Helicopter',
-      type: 'heli',
-      timeRemaining: Math.floor(Math.random() * 120) + 60, // 1-3 minutos
-      active: Math.random() < 0.5, // 50% de chance de estar ativo
-    });
-  }
-  
-  // Probabilidade de 20% de ter Bradley
-  if (Math.random() < 0.2) {
-    events.push({
-      id: 'bradley-' + Date.now(),
-      name: 'Bradley APC',
-      type: 'bradley',
-      location: 'Launch Site',
-      active: true,
-    });
-  }
-  
-  return events;
-}
-
-/**
- * Função para conectar ao servidor via Steam
- * Gera URL para conexão direta via protocolo steam://
+ * Gera URL para conectar via Steam
  */
 export const generateConnectUrl = (serverAddress: string): string => {
   return `steam://connect/${serverAddress}`;
 };
 
 /**
- * Busca o valor do seed atual do servidor
- * (simulado até que seja implementada uma API real)
- */
-export const fetchServerSeed = async (serverAddress: string): Promise<string> => {
-  try {
-    // Simulando seed baseado no dia atual para demonstração
-    // Em uma implementação real, você buscaria essa informação do servidor
-    const today = new Date();
-    const seedBase = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-    return (seedBase + Math.floor(Math.random() * 10000)).toString();
-  } catch (error) {
-    console.error('Erro ao buscar seed do servidor:', error);
-    return '123456'; // Seed padrão em caso de erro
-  }
-};
-
-/**
- * Busca informações sobre os jogadores online no servidor
- * Na implementação real, isso seria obtido via RCON ou API personalizada
+ * Busca jogadores online no servidor
  */
 export const fetchOnlinePlayers = async (serverAddress: string): Promise<ServerPlayer[]> => {
   try {
-    // Implementação para API real seria aqui
-    // Por enquanto, retornamos dados simulados
-    return Array.from({ length: Math.floor(Math.random() * 20) + 5 }, (_, i) => ({
-      id: `player${i + 1}`, // Adicionado id para compatibilidade
-      name: `Player${i + 1}`,
-      playTime: Math.floor(Math.random() * 10000) + 100, // Tempo de jogo em minutos
-    }));
+    // Em uma implementação real, você buscaria esta informação via RCON ou API do servidor
+    // Como é uma simulação, vamos gerar alguns jogadores aleatórios
+    
+    const playerCount = Math.floor(Math.random() * 15) + 5; // 5-20 jogadores
+    const players: ServerPlayer[] = [];
+    
+    const playerNames = [
+      'FalcãoBR', 'MatadorDeNoob', 'CaçadorRust', 'SnipeiroDaSelva', 'LoboSolitario',
+      'Destruidor99', 'BRBuilder', 'RustGuerreira', 'FarmerPRO', 'BolaDeFogo',
+      'PVPMaster', 'ColetorDeRecursos', 'SniperElite', 'ConstrutoraBR', 'RaidMaster'
+    ];
+    
+    // Gerar jogadores aleatórios
+    for (let i = 0; i < playerCount; i++) {
+      const randomNameIndex = Math.floor(Math.random() * playerNames.length);
+      players.push({
+        id: `player${i + 1}`,
+        name: playerNames[randomNameIndex],
+        playTime: Math.floor(Math.random() * 10000) + 100, // 100-10100 minutos
+      });
+    }
+    
+    return players;
   } catch (error) {
     console.error('Erro ao buscar jogadores online:', error);
     return [];

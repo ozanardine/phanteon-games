@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatDateBR } from '../../lib/utils/dateUtils';
 
 interface ServerStatusProps {
   isOnline: boolean;
@@ -15,6 +16,18 @@ const ServerStatus = ({
   mapSize, 
   seed 
 }: ServerStatusProps) => {
+  // Calcular datas de wipe
+  const lastWipeDate = new Date();
+  lastWipeDate.setDate(1); // Primeiro dia do mês atual
+  
+  const nextWipeDate = new Date();
+  nextWipeDate.setMonth(nextWipeDate.getMonth() + 1, 1); // Primeiro dia do próximo mês
+  
+  // Encontrar a primeira quinta-feira do próximo mês (dia 4 da semana)
+  const dayOfWeek = nextWipeDate.getDay(); // 0 (Dom) a 6 (Sáb)
+  const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
+  nextWipeDate.setDate(nextWipeDate.getDate() + daysUntilThursday);
+
   return (
     <div className="bg-zinc-800/90 backdrop-blur-md border border-zinc-700 rounded-lg p-6 w-full max-w-xl shadow-2xl">
       <div className="flex items-center justify-between mb-6">
@@ -54,10 +67,15 @@ const ServerStatus = ({
           </div>
         </div>
         
-        {/* Últimos wipes */}
+        {/* Datas de Wipe */}
         <div>
           <div className="text-zinc-400 text-sm mb-1">Último Wipe</div>
-          <div className="font-semibold">28/02/2025 (Force Wipe)</div>
+          <div className="font-semibold">{formatDateBR(lastWipeDate)} (Force Wipe)</div>
+        </div>
+        
+        <div>
+          <div className="text-zinc-400 text-sm mb-1">Próximo Wipe</div>
+          <div className="font-semibold">{formatDateBR(nextWipeDate)} (Force Wipe)</div>
         </div>
         
         {/* Ping estimado */}

@@ -14,11 +14,11 @@ const JoinServer = ({ serverAddress, showCopyOption = true }: JoinServerProps) =
     navigator.clipboard.writeText(serverAddress);
     setCopied(true);
     
-    // Reset copied state after 2 seconds
+    // Resetar estado de cópia após 2 segundos
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Generate connect URL
+  // Gerar URL de conexão
   const connectUrl = `steam://connect/${serverAddress}`;
 
   return (

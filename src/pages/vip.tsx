@@ -33,10 +33,9 @@ const VipPage = () => {
   ];
 
   // Processar pagamento da assinatura
-  // Handle subscription checkout
   const handleSubscribe = async () => {
     if (!isAuthenticated) {
-      // Redirect to login page
+      // Redirecionar para página de login
       router.push('/auth/login?redirect=/vip');
       return;
     }
@@ -44,7 +43,7 @@ const VipPage = () => {
     setIsProcessingPayment(true);
 
     try {
-      // Make API call to create checkout session
+      // Fazer chamada à API para criar sessão de checkout
       const response = await fetch('/api/payment/create-checkout', {
         method: 'POST',
         headers: { 
@@ -62,14 +61,14 @@ const VipPage = () => {
       const data = await response.json();
 
       if (data.success && data.url) {
-        // Redirect to checkout page
+        // Redirecionar para página de checkout
         window.location.href = data.url;
       } else {
-        throw new Error(data.error || 'Failed to create checkout session');
+        throw new Error(data.error || 'Falha ao criar sessão de checkout');
       }
     } catch (error) {
-      console.error('Error creating checkout:', error);
-      alert('There was an error processing your request. Please try again later.');
+      console.error('Erro ao criar checkout:', error);
+      alert('Ocorreu um erro ao processar seu pedido. Por favor, tente novamente mais tarde.');
     } finally {
       setIsProcessingPayment(false);
     }
@@ -108,7 +107,7 @@ const VipPage = () => {
                 </div>
                 <h2 className="text-2xl font-bold mb-2">Você é um membro VIP!</h2>
                 <p className="text-zinc-300 mb-6">
-                  Sua assinatura VIP está ativa até {user?.subscription?.currentPeriodEnd.toLocaleDateString()}.
+                  Sua assinatura VIP está ativa até {user?.subscription?.currentPeriodEnd.toLocaleDateString('pt-BR')}.
                   Aproveite seus benefícios exclusivos e obrigado por nos apoiar!
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">

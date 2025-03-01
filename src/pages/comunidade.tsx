@@ -97,36 +97,36 @@ const CommunityPage = () => {
     {
       name: 'Discord',
       icon: <FaDiscord className="h-8 w-8 text-indigo-400" />,
-      members: '3,521 membros',
+      members: '3.521 membros',
       link: '/discord',
       color: 'bg-indigo-600'
     },
     {
       name: 'Twitter',
       icon: <FaTwitter className="h-8 w-8 text-blue-400" />,
-      members: '1,245 seguidores',
-      link: 'https://twitter.com/rustbrasil',
+      members: '1.245 seguidores',
+      link: 'https://twitter.com/phanteongames',
       color: 'bg-blue-500'
     },
     {
       name: 'Instagram',
       icon: <FaInstagram className="h-8 w-8 text-pink-400" />,
       members: '892 seguidores',
-      link: 'https://instagram.com/rustbrasil',
+      link: 'https://instagram.com/phanteongames',
       color: 'bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500'
     },
   ];
 
   return (
     <Layout 
-      title="Comunidade - Rust Brasil"
-      description="Conheça nossa comunidade, equipe e regras do servidor Rust Brasil."
+      title="Comunidade - Phanteon Games"
+      description="Conheça nossa comunidade, equipe e regras do servidor Phanteon Games."
     >
       <div className="container mx-auto px-4 py-8 mt-6">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Nossa Comunidade</h1>
           <p className="text-xl text-zinc-400 max-w-3xl mx-auto">
-            O Rust Brasil é mais que um servidor, é uma comunidade de jogadores apaixonados pelo jogo.
+            O Phanteon Games é mais que um servidor, é uma comunidade de jogadores apaixonados pelo jogo.
             Conheça nossa equipe, regras e como participar.
           </p>
         </div>

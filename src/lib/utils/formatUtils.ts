@@ -1,7 +1,7 @@
 // src/lib/utils/formatUtils.ts
 
 /**
- * Formats a monetary value to Brazilian format
+ * Formata um valor monetário para o formato brasileiro
  */
 export const formatCurrency = (value: number): string => {
   return value.toLocaleString('pt-BR', {
@@ -11,14 +11,14 @@ export const formatCurrency = (value: number): string => {
 };
 
 /**
- * Formats a number with thousands separator
+ * Formata um número com separador de milhares
  */
 export const formatNumber = (value: number): string => {
   return value.toLocaleString('pt-BR');
 };
 
 /**
- * Formats playtime for display
+ * Formata tempo de jogo para exibição
  */
 export const formatPlaytime = (minutes: number): string => {
   if (minutes < 60) {
@@ -39,7 +39,7 @@ export const formatPlaytime = (minutes: number): string => {
 };
 
 /**
- * Truncates a long text and adds ellipsis
+ * Trunca um texto longo e adiciona reticências
  */
 export const truncateText = (text: string, maxLength: number): string => {
   if (text.length <= maxLength) {
@@ -50,7 +50,7 @@ export const truncateText = (text: string, maxLength: number): string => {
 };
 
 /**
- * Converts map size to a readable format
+ * Converte tamanho do mapa para um formato legível
  */
 export const formatMapSize = (size: string | number): string => {
   const numSize = typeof size === 'string' ? parseInt(size, 10) : size;
@@ -63,7 +63,7 @@ export const formatMapSize = (size: string | number): string => {
 };
 
 /**
- * Returns CSS class for event color based on event type
+ * Retorna classe CSS para cor do evento baseado no tipo
  */
 export const getEventColor = (eventType: string): string => {
   switch (eventType) {

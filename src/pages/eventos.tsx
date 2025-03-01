@@ -4,7 +4,7 @@ import Layout from '../components/layout/Layout';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { useServerStatus } from '../hooks/useServerStatus';
-import { formatTimeRemaining } from '../lib/utils/dateUtils';
+import { formatTimeRemaining, formatDateBR } from '../lib/utils/dateUtils';
 import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaTrophy, FaUsers, FaBell, FaDiscord } from 'react-icons/fa';
 
 const EventsPage = () => {
@@ -64,21 +64,10 @@ const EventsPage = () => {
     ? upcomingEvents.filter(event => event.type === filter) 
     : upcomingEvents;
 
-  // Função para formatar data em PT-BR
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   return (
     <Layout 
-      title="Eventos do Servidor - Rust Brasil"
-      description="Confira os eventos ativos e futuros no servidor Rust Brasil. Participe e ganhe recompensas exclusivas!"
+      title="Eventos do Servidor - Phanteon Games"
+      description="Confira os eventos ativos e futuros no servidor Phanteon Games. Participe e ganhe recompensas exclusivas!"
     >
       <div className="container mx-auto px-4 py-8 mt-6">
         <div className="text-center mb-12">
@@ -102,7 +91,7 @@ const EventsPage = () => {
             size="sm"
             onClick={() => setFilter('cargo')}
           >
-            Cargo Ship
+            Navio de Carga
           </Button>
           <Button 
             variant={filter === 'airdrop' ? 'primary' : 'outline'} 
@@ -116,7 +105,7 @@ const EventsPage = () => {
             size="sm"
             onClick={() => setFilter('heli')}
           >
-            Helicopter
+            Helicóptero
           </Button>
           <Button 
             variant={filter === 'bradley' ? 'primary' : 'outline'} 
@@ -224,7 +213,7 @@ const EventsPage = () => {
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="flex items-center text-sm text-zinc-300">
                       <FaCalendarAlt className="mr-2 text-amber-500" />
-                      {formatDate(event.date)}
+                      {formatDateBR(event.date)}
                     </div>
                     <div className="flex items-center text-sm text-zinc-300">
                       <FaMapMarkerAlt className="mr-2 text-amber-500" />

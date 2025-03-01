@@ -7,13 +7,13 @@ const Footer = () => {
     <footer className="bg-zinc-900 border-t border-zinc-800">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Column 1 - Logo and Description */}
+          {/* Coluna 1 - Logo e Descrição */}
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center mb-4">
               <span className="font-bold text-xl text-amber-500">PHANTEON GAMES</span>
             </div>
             <p className="text-zinc-400 text-sm mb-4">
-              The best gaming community platform. Active members, exclusive events, and VIP perks.
+              A melhor comunidade brasileira de jogos. Membros ativos, eventos exclusivos e benefícios VIP.
             </p>
             <div className="flex space-x-4">
               <a 
@@ -57,28 +57,28 @@ const Footer = () => {
             </div>
           </div>
           
-          {/* Column 2 - Navigation Links */}
+          {/* Coluna 2 - Links de Navegação */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Navigation</h3>
+            <h3 className="text-lg font-semibold mb-4">Navegação</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/" className="text-zinc-400 hover:text-amber-500 transition-colors">
-                  Home
+                  Início
                 </Link>
               </li>
               <li>
                 <Link href="/mapa" className="text-zinc-400 hover:text-amber-500 transition-colors">
-                  Map
+                  Mapa
                 </Link>
               </li>
               <li>
                 <Link href="/eventos" className="text-zinc-400 hover:text-amber-500 transition-colors">
-                  Events
+                  Eventos
                 </Link>
               </li>
               <li>
                 <Link href="/comunidade" className="text-zinc-400 hover:text-amber-500 transition-colors">
-                  Community
+                  Comunidade
                 </Link>
               </li>
               <li>
@@ -89,23 +89,23 @@ const Footer = () => {
             </ul>
           </div>
           
-          {/* Column 3 - Server Links */}
+          {/* Coluna 3 - Links do Servidor */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Server</h3>
+            <h3 className="text-lg font-semibold mb-4">Servidor</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/regras" className="text-zinc-400 hover:text-amber-500 transition-colors">
-                  Rules
+                  Regras
                 </Link>
               </li>
               <li>
                 <Link href="/wipe" className="text-zinc-400 hover:text-amber-500 transition-colors">
-                  Wipe Calendar
+                  Calendário de Wipe
                 </Link>
               </li>
               <li>
                 <Link href="/staff" className="text-zinc-400 hover:text-amber-500 transition-colors">
-                  Staff
+                  Equipe
                 </Link>
               </li>
               <li>
@@ -121,17 +121,17 @@ const Footer = () => {
                   href="steam://connect/game.phanteongames.com:28015" 
                   className="text-zinc-400 hover:text-amber-500 transition-colors"
                 >
-                  Connect via Steam
+                  Conectar via Steam
                 </a>
               </li>
             </ul>
           </div>
           
-          {/* Column 4 - Connect */}
+          {/* Coluna 4 - Conectar */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Connect</h3>
+            <h3 className="text-lg font-semibold mb-4">Conectar</h3>
             <div className="bg-zinc-800 rounded-lg p-4 mb-4">
-              <p className="text-sm text-zinc-300 mb-2">Server Address:</p>
+              <p className="text-sm text-zinc-300 mb-2">Endereço do Servidor:</p>
               <div className="flex items-center space-x-2">
                 <input
                   type="text"
@@ -143,7 +143,7 @@ const Footer = () => {
                   onClick={() => navigator.clipboard.writeText('game.phanteongames.com:28015')}
                   className="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded px-3 py-2 text-sm"
                 >
-                  Copy
+                  Copiar
                 </button>
               </div>
             </div>
@@ -151,18 +151,18 @@ const Footer = () => {
               href="steam://connect/game.phanteongames.com:28015"
               className="block w-full text-center bg-amber-500 hover:bg-amber-600 text-black font-semibold py-2 px-4 rounded transition-colors"
             >
-              Connect Now
+              Conectar Agora
             </a>
           </div>
         </div>
         
-        {/* Copyright Footer */}
+        {/* Rodapé de Copyright */}
         <div className="mt-8 pt-8 border-t border-zinc-800 text-center">
           <p className="text-zinc-500 text-sm">
-            &copy; {new Date().getFullYear()} Phanteon Games. All rights reserved.
+            &copy; {new Date().getFullYear()} Phanteon Games. Todos os direitos reservados.
           </p>
           <p className="text-zinc-600 text-xs mt-1">
-            Game assets and trademarks are the property of their respective owners. This site is not affiliated with, endorsed by, or officially connected to any game developers.
+            Ativos e marcas registradas do jogo são propriedade de seus respectivos donos. Este site não é afiliado, endossado ou oficialmente conectado a nenhum desenvolvedor de jogos.
           </p>
         </div>
       </div>

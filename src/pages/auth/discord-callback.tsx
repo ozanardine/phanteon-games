@@ -64,7 +64,7 @@ const DiscordCallbackPage = () => {
 
   return (
     <Layout
-      title="Autenticação com Discord - Rust Brasil"
+      title="Autenticação com Discord - Phanteon Games"
       description="Processando autenticação com Discord"
     >
       <div className="container mx-auto px-4 py-16 flex justify-center">
