@@ -88,7 +88,7 @@ export const useAuth = (): UseAuthReturn => {
                   ? 'gold'
                   : profileData.subscriptions.plan_id.includes('elite')
                     ? 'elite'
-                    : null,
+                    : undefined, // Changed null to undefined to match the UserSubscription type
               status: profileData.subscriptions.status,
               currentPeriodEnd: new Date(profileData.subscriptions.current_period_end),
               cancelAtPeriodEnd: !!profileData.subscriptions.cancel_at,
