@@ -1,3 +1,4 @@
+// src/pages/profile.tsx
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { Layout } from '@/components/layout/Layout';
@@ -9,6 +10,8 @@ import { Loading } from '@/components/ui/Loading';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/components/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { FaDiscord, FaSteam } from 'react-icons/fa';
+import { signInWithDiscord, signInWithSteam } from '@/utils/authHelpers';
 
 export default function ProfilePage() {
   const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
