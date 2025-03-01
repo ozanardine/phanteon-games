@@ -1,7 +1,6 @@
 // src/hooks/useServerStatus.ts
 import { useState, useEffect, useCallback } from 'react';
-import { fetchServerStatus, fetchServerEvents } from '../lib/api/steamApi';
-import { fetchMapBySeed } from '../lib/api/rustMapsApi';
+import { fetchServerStatus, fetchServerEvents } from '../lib/api/supabaseApi';
 import { ServerInfo, ServerStatusResponse, ServerEvent } from '../types/server';
 import { getNextWipeDate } from '../lib/utils/dateUtils';
 
@@ -21,7 +20,7 @@ interface UseServerStatusResult {
 }
 
 export const useServerStatus = (
-  serverAddress: string = 'game.phanteongames.com:28015',
+  serverAddress: string = '82.29.62.21:28015',
   refreshInterval: number = 60000 // Atualizar a cada 1 minuto por padrão
 ): UseServerStatusResult => {
   const [serverData, setServerData] = useState<ServerStatusResponse | null>(null);
@@ -34,7 +33,7 @@ export const useServerStatus = (
     try {
       setLoading(true);
       
-      // Buscar dados do servidor
+      // Buscar dados do servidor diretamente do Supabase
       const status = await fetchServerStatus(serverAddress);
       
       // Verificar se o servidor está online
@@ -58,24 +57,6 @@ export const useServerStatus = (
         const lastWipe = new Date(status.nextWipe);
         lastWipe.setMonth(lastWipe.getMonth() - 1);
         status.lastWipe = lastWipe;
-      }
-      
-      // Buscar informações detalhadas do mapa se tivermos o seed
-      if (status.map.seed) {
-        try {
-          const mapDetails = await fetchMapBySeed(status.map.seed, status.map.size);
-          
-          // Atualizar com informações mais detalhadas sobre o mapa
-          status.map = {
-            ...status.map,
-            monuments: mapDetails.monuments,
-            biomes: mapDetails.biomes,
-            imageUrl: mapDetails.imageUrl
-          };
-        } catch (mapError) {
-          console.warn('Erro ao buscar detalhes do mapa:', mapError);
-          // Continuar mesmo se falhar a busca dos detalhes do mapa
-        }
       }
       
       setServerData(status);

@@ -1,5 +1,5 @@
 // src/pages/mapa.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import Layout from '../components/layout/Layout';
@@ -7,9 +7,19 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import Card from '../components/common/Card';
 import { useServerStatus } from '../hooks/useServerStatus';
 import { useMap } from '../hooks/useMap';
-import { FaDownload, FaSearch, FaExpand, FaCompress } from 'react-icons/fa';
+import { supabase } from '../lib/supabase/client';
+import { FaDownload, FaSearch, FaExpand, FaCompress, FaMapMarkerAlt } from 'react-icons/fa';
 import { formatMapSize } from '../lib/utils/formatUtils';
-import { getNextWipeDate, formatDateBR } from '../lib/utils/dateUtils';
+import { formatDateBR } from '../lib/utils/dateUtils';
+
+interface MapMonument {
+  name: string;
+  position: {
+    x: number;
+    y: number;
+  };
+  type: string;
+}
 
 const MapPage = () => {
   const { seed, mapSize, isOnline, lastWipe, nextWipe } = useServerStatus();
@@ -18,6 +28,36 @@ const MapPage = () => {
   const [isZoomed, setIsZoomed] = useState(false);
   const [selectedMonument, setSelectedMonument] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [serverEvents, setServerEvents] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+
+  // Buscar eventos ativos do servidor
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoadingEvents(true);
+      try {
+        const { data, error } = await supabase
+          .from('server_events')
+          .select('*')
+          .eq('server_id', 'game.phanteongames.com:28015')
+          .eq('is_active', true);
+        
+        if (error) throw error;
+        setServerEvents(data || []);
+      } catch (err) {
+        console.error('Erro ao buscar eventos do servidor:', err);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    fetchEvents();
+    
+    // Configurar atualização periódica
+    const interval = setInterval(fetchEvents, 60000); // Atualizar a cada 1 minuto
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Filtrar monumentos baseado na busca
   const filteredMonuments = mapDetails.monuments.filter(monument => 
@@ -44,6 +84,31 @@ const MapPage = () => {
     'generic': 'Genérico'
   };
 
+  // Converter eventos para marcadores no mapa
+  const getEventMarkers = () => {
+    if (!serverEvents.length) return null;
+    
+    return serverEvents.map(event => {
+      if (!event.position_x || !event.position_y) return null;
+      
+      // Converter coordenadas do mundo para a imagem do mapa
+      const worldSize = parseInt(mapSize, 10) || 4500;
+      const imageSize = 1000; // Tamanho da imagem do mapa em pixels
+      
+      // Normalizar coordenadas de -worldSize/2..worldSize/2 para 0..imageSize
+      const x = ((event.position_x + worldSize/2) / worldSize) * imageSize;
+      const y = ((event.position_z + worldSize/2) / worldSize) * imageSize;
+      
+      return {
+        id: event.event_id,
+        x,
+        y,
+        type: event.type,
+        name: getEventName(event.type)
+      };
+    }).filter(Boolean);
+  };
+
   return (
     <Layout 
       title="Mapa do Servidor - Phanteon Games"
@@ -57,7 +122,7 @@ const MapPage = () => {
         <h1 className="text-3xl md:text-4xl font-bold mb-2">Mapa do Servidor</h1>
         <p className="text-zinc-400 mb-8">
           Último Wipe: {lastWipe ? formatDateBR(lastWipe) : 'Desconhecido'} | 
-          Próximo Wipe: {nextWipe ? formatDateBR(nextWipe) : formatDateBR(getNextWipeDate())}
+          Próximo Wipe: {nextWipe ? formatDateBR(nextWipe) : 'Desconhecido'}
         </p>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -86,6 +151,22 @@ const MapPage = () => {
                           priority
                           className="bg-zinc-900"
                         />
+                        
+                        {/* Marcadores de eventos */}
+                        {getEventMarkers()?.map(marker => marker && (
+                          <div 
+                            key={marker.id}
+                            className="absolute w-6 h-6 transform -translate-x-1/2 -translate-y-1/2 z-10"
+                            style={{ 
+                              left: `${marker.x / 10}%`, 
+                              top: `${marker.y / 10}%` 
+                            }}
+                            title={marker.name}
+                          >
+                            <div className={`w-4 h-4 rounded-full animate-ping ${getEventColor(marker.type)}`}></div>
+                            <div className={`absolute inset-0 w-4 h-4 rounded-full ${getEventColor(marker.type)}`}></div>
+                          </div>
+                        ))}
                         
                         {selectedMonument && (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -229,6 +310,36 @@ const MapPage = () => {
                 )}
               </div>
               
+              {/* Eventos ativos no servidor */}
+              <div className="mt-6 pt-4 border-t border-zinc-700">
+                <h3 className="text-md font-semibold mb-2 text-zinc-300">Eventos Ativos</h3>
+                {loadingEvents ? (
+                  <div className="py-2 flex items-center justify-center">
+                    <LoadingSpinner size="sm" color="amber" />
+                  </div>
+                ) : serverEvents.length > 0 ? (
+                  <div className="space-y-2">
+                    {serverEvents.map(event => (
+                      <div 
+                        key={event.event_id}
+                        className="flex items-center py-2 px-3 rounded-md bg-zinc-800"
+                      >
+                        <div className={`w-2 h-2 rounded-full mr-2 ${getEventColor(event.type)}`}></div>
+                        <span>{getEventName(event.type)}</span>
+                        {event.position_x && event.position_y && (
+                          <span className="ml-auto flex items-center text-xs text-zinc-400">
+                            <FaMapMarkerAlt className="mr-1" />
+                            {getEventLocation(event)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-zinc-500 text-center py-2">Nenhum evento ativo</p>
+                )}
+              </div>
+              
               {/* Legenda */}
               <div className="mt-6 pt-4 border-t border-zinc-700">
                 <h3 className="text-sm font-semibold mb-2 text-zinc-400">Legenda</h3>
@@ -309,7 +420,7 @@ const getMonumentType = (monument: string): string => {
 
 // Função auxiliar para definir cores dos monumentos
 const getMonumentColor = (monument: string): string => {
-  const lowerName = monument.toLowerCase();
+  const lowerName = typeof monument === 'string' ? monument.toLowerCase() : '';
   
   if (lowerName.includes('launch') || lowerName.includes('military') || lowerName.includes('tunnels')) {
     return 'bg-red-500'; // Alta radiação
@@ -338,6 +449,68 @@ const getBiomeColor = (biome: string): string => {
     default:
       return 'bg-gray-500';
   }
+};
+
+// Função auxiliar para obter nome de evento com base no tipo
+const getEventName = (type: string): string => {
+  switch (type) {
+    case 'cargo_ship':
+      return 'Navio de Carga';
+    case 'patrol_helicopter':
+      return 'Helicóptero de Ataque';
+    case 'airdrop':
+      return 'Airdrop';
+    case 'bradley_apc':
+      return 'Bradley APC';
+    case 'chinook':
+      return 'Chinook';
+    default:
+      return 'Evento Desconhecido';
+  }
+};
+
+// Função auxiliar para obter cor do evento com base no tipo
+const getEventColor = (type: string): string => {
+  switch (type) {
+    case 'cargo_ship':
+      return 'bg-blue-500';
+    case 'patrol_helicopter':
+      return 'bg-red-500';
+    case 'airdrop':
+      return 'bg-green-500';
+    case 'bradley_apc':
+      return 'bg-amber-500';
+    case 'chinook':
+      return 'bg-purple-500';
+    default:
+      return 'bg-zinc-500';
+  }
+};
+
+// Função auxiliar para obter localização do evento
+const getEventLocation = (event: any): string => {
+  if (!event.position_x || !event.position_z) return "?";
+  
+  // Converter coordenadas em grid do mapa (ex: B10)
+  const gridSize = 146.3; // Tamanho aproximado de uma grid no Rust
+  const gridLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXY';
+  
+  const worldSize = 4500; // Tamanho padrão do mundo
+  const halfWorld = worldSize / 2;
+  
+  // Ajustar coordenadas para referencial do grid
+  const adjustedX = event.position_x + halfWorld;
+  const adjustedZ = event.position_z + halfWorld;
+  
+  // Calcular grid
+  const gridX = Math.floor(adjustedX / gridSize);
+  const gridZ = Math.floor(adjustedZ / gridSize);
+  
+  // Letra + Número
+  const gridLetter = gridLetters[gridX] || '?';
+  const gridNumber = gridZ + 1;
+  
+  return `${gridLetter}${gridNumber}`;
 };
 
 export default MapPage;

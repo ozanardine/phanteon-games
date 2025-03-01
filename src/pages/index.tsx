@@ -1,6 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/router'; // Adicionando importação do useRouter
+import { useRouter } from 'next/router';
 import Layout from '../components/layout/Layout';
 import ServerStatus from '../components/server/ServerStatus';
 import Button from '../components/common/Button';
@@ -8,9 +8,12 @@ import Card from '../components/common/Card';
 import JoinServer from '../components/server/JoinServer';
 import { useServerStatus } from '../hooks/useServerStatus';
 import { FaSteam, FaDiscord, FaCalendarAlt, FaUsers, FaMap } from 'react-icons/fa';
+import OnlinePlayersSection from '../components/server/OnlinePlayersSection';
+import ServerEventsSection from '../components/server/ServerEventsSection';
+import LeaderboardSection from '../components/server/LeaderboardSection';
 
 const HomePage = () => {
-  const router = useRouter(); // Inicializando o hook useRouter
+  const router = useRouter();
   const { playerCount, maxPlayers, mapSize, seed, isOnline } = useServerStatus();
 
   return (
@@ -87,8 +90,33 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Seção de Características */}
+      {/* Seção de Status em Tempo Real */}
       <section className="py-16 bg-zinc-800">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold mb-12 text-center">Status em Tempo Real</h2>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Jogadores Online */}
+            <div className="lg:col-span-2">
+              <OnlinePlayersSection limit={8} />
+            </div>
+            
+            {/* Eventos Ativos */}
+            <div>
+              <ServerEventsSection />
+            </div>
+          </div>
+          
+          {/* Leaderboard */}
+          <div className="mt-12">
+            <h2 className="text-3xl font-bold mb-6">Melhores Jogadores</h2>
+            <LeaderboardSection limit={5} />
+          </div>
+        </div>
+      </section>
+
+      {/* Seção de Características */}
+      <section className="py-16 bg-zinc-900">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-12 text-center">Por que escolher a Phanteon Games?</h2>
           

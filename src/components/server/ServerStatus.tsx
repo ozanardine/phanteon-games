@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatDateBR } from '../../lib/utils/dateUtils';
+import { supabase } from '../../lib/supabase/client';
 
 interface ServerStatusProps {
   isOnline: boolean;
@@ -16,17 +17,51 @@ const ServerStatus = ({
   mapSize, 
   seed 
 }: ServerStatusProps) => {
-  // Calcular datas de wipe
-  const lastWipeDate = new Date();
-  lastWipeDate.setDate(1); // Primeiro dia do mês atual
+  const [lastWipe, setLastWipe] = useState<Date | null>(null);
+  const [nextWipe, setNextWipe] = useState<Date | null>(null);
+  const [ping, setPing] = useState<number>(30);
   
-  const nextWipeDate = new Date();
-  nextWipeDate.setMonth(nextWipeDate.getMonth() + 1, 1); // Primeiro dia do próximo mês
+  // Buscar dados de wipe e ping diretamente do Supabase
+  useEffect(() => {
+    const fetchServerDetails = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('server_info')
+          .select('last_wipe, next_wipe, ping')
+          .eq('server_id', 'game.phanteongames.com:28015')
+          .single();
+          
+        if (!error && data) {
+          if (data.last_wipe) setLastWipe(new Date(data.last_wipe));
+          if (data.next_wipe) setNextWipe(new Date(data.next_wipe));
+          if (data.ping) setPing(data.ping);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar detalhes do servidor:', err);
+      }
+    };
+    
+    fetchServerDetails();
+  }, []);
   
-  // Encontrar a primeira quinta-feira do próximo mês (dia 4 da semana)
-  const dayOfWeek = nextWipeDate.getDay(); // 0 (Dom) a 6 (Sáb)
-  const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
-  nextWipeDate.setDate(nextWipeDate.getDate() + daysUntilThursday);
+  // Calcular datas de wipe se não disponíveis no banco
+  if (!lastWipe) {
+    const tempLastWipe = new Date();
+    tempLastWipe.setDate(1); // Primeiro dia do mês atual
+    setLastWipe(tempLastWipe);
+  }
+  
+  if (!nextWipe) {
+    const tempNextWipe = new Date();
+    tempNextWipe.setMonth(tempNextWipe.getMonth() + 1, 1); // Primeiro dia do próximo mês
+    
+    // Encontrar a primeira quinta-feira do próximo mês (dia 4 da semana)
+    const dayOfWeek = tempNextWipe.getDay(); // 0 (Dom) a 6 (Sáb)
+    const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
+    tempNextWipe.setDate(tempNextWipe.getDate() + daysUntilThursday);
+    
+    setNextWipe(tempNextWipe);
+  }
 
   return (
     <div className="bg-zinc-800/90 backdrop-blur-md border border-zinc-700 rounded-lg p-6 w-full max-w-xl shadow-2xl">
@@ -70,18 +105,18 @@ const ServerStatus = ({
         {/* Datas de Wipe */}
         <div>
           <div className="text-zinc-400 text-sm mb-1">Último Wipe</div>
-          <div className="font-semibold">{formatDateBR(lastWipeDate)} (Force Wipe)</div>
+          <div className="font-semibold">{lastWipe ? formatDateBR(lastWipe) : 'Carregando...'} (Force Wipe)</div>
         </div>
         
         <div>
           <div className="text-zinc-400 text-sm mb-1">Próximo Wipe</div>
-          <div className="font-semibold">{formatDateBR(nextWipeDate)} (Force Wipe)</div>
+          <div className="font-semibold">{nextWipe ? formatDateBR(nextWipe) : 'Carregando...'} (Force Wipe)</div>
         </div>
         
         {/* Ping estimado */}
         <div>
           <div className="text-zinc-400 text-sm mb-1">Localização do Servidor</div>
-          <div className="font-semibold">Brasil (São Paulo) - Ping ~15-60ms</div>
+          <div className="font-semibold">Brasil (São Paulo) - Ping ~{ping}ms</div>
         </div>
       </div>
     </div>

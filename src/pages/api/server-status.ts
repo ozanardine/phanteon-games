@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { fetchServerStatus, fetchServerEvents } from '../../lib/api/steamApi';
+import { fetchServerStatus, fetchServerEvents } from '../../lib/api/supabaseApi';
 import { getNextWipeDate } from '../../lib/utils/dateUtils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? server 
       : 'game.phanteongames.com:28015';
 
-    // Buscar status do servidor
+    // Buscar status do servidor do Supabase
     const serverStatus = await fetchServerStatus(serverAddress);
     
     // Se houver problema com os eventos, tentar buscar separadamente

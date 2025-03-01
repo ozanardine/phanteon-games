@@ -1,2 +1,7 @@
 .env.local
 .env
+
+database_roles.sql
+database_structure.sql
+
+supabase

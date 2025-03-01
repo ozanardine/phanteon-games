@@ -1,15 +1,46 @@
 // src/pages/eventos.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/layout/Layout';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useServerStatus } from '../hooks/useServerStatus';
+import { supabase } from '../lib/supabase/client';
 import { formatTimeRemaining, formatDateBR } from '../lib/utils/dateUtils';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaTrophy, FaUsers, FaBell, FaDiscord } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaTrophy, FaUsers, FaBell, FaDiscord, FaFilter } from 'react-icons/fa';
 
 const EventsPage = () => {
-  const { currentEvents, isOnline } = useServerStatus();
+  const { isOnline } = useServerStatus();
   const [filter, setFilter] = useState<string | null>(null);
+  const [currentEvents, setCurrentEvents] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  
+  // Buscar eventos ativos do servidor
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoadingEvents(true);
+      try {
+        const { data, error } = await supabase
+          .from('server_events')
+          .select('*')
+          .eq('server_id', 'game.phanteongames.com:28015')
+          .eq('is_active', true);
+        
+        if (error) throw error;
+        setCurrentEvents(data || []);
+      } catch (err) {
+        console.error('Erro ao buscar eventos do servidor:', err);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    fetchEvents();
+    
+    // Atualizar a cada 30 segundos
+    const interval = setInterval(fetchEvents, 30000);
+    return () => clearInterval(interval);
+  }, []);
   
   // Eventos futuros (simulados para demonstração)
   const upcomingEvents = [
@@ -55,11 +86,12 @@ const EventsPage = () => {
     }
   ];
 
-  // Filtrar eventos
+  // Filtrar eventos atuais
   const filteredCurrentEvents = filter 
-    ? currentEvents.filter(event => event.type === filter) 
+    ? currentEvents.filter(event => mapEventType(event.type) === filter) 
     : currentEvents;
 
+  // Filtrar eventos futuros
   const filteredUpcomingEvents = filter 
     ? upcomingEvents.filter(event => event.type === filter) 
     : upcomingEvents;
@@ -94,13 +126,6 @@ const EventsPage = () => {
             Navio de Carga
           </Button>
           <Button 
-            variant={filter === 'airdrop' ? 'primary' : 'outline'} 
-            size="sm"
-            onClick={() => setFilter('airdrop')}
-          >
-            Airdrop
-          </Button>
-          <Button 
             variant={filter === 'heli' ? 'primary' : 'outline'} 
             size="sm"
             onClick={() => setFilter('heli')}
@@ -113,6 +138,13 @@ const EventsPage = () => {
             onClick={() => setFilter('bradley')}
           >
             Bradley
+          </Button>
+          <Button 
+            variant={filter === 'airdrop' ? 'primary' : 'outline'} 
+            size="sm"
+            onClick={() => setFilter('airdrop')}
+          >
+            Airdrop
           </Button>
           <Button 
             variant={filter === 'treasure' || filter === 'build' || filter === 'pvp' || filter === 'raid' ? 'primary' : 'outline'} 
@@ -139,7 +171,11 @@ const EventsPage = () => {
             <FaBell className="mr-2" /> Eventos Ativos
           </h2>
           
-          {filteredCurrentEvents.length === 0 ? (
+          {loadingEvents ? (
+            <div className="flex justify-center py-12">
+              <LoadingSpinner color="amber" text="Carregando eventos..." />
+            </div>
+          ) : filteredCurrentEvents.length === 0 ? (
             <Card className="text-center py-12">
               <p className="text-zinc-400 mb-2">Nenhum evento ativo no momento.</p>
               <p className="text-sm text-zinc-500">Fique atento! Eventos podem começar a qualquer momento.</p>
@@ -147,32 +183,28 @@ const EventsPage = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredCurrentEvents.map(event => (
-                <Card key={event.id} className="overflow-hidden" hoverEffect>
+                <Card key={event.event_id} className="overflow-hidden" hoverEffect>
                   <div className="h-40 bg-cover bg-center" 
-                       style={{ backgroundImage: `url('/images/events/${event.type}.jpg')` }}>
+                       style={{ backgroundImage: `url('/images/events/${mapEventType(event.type)}.jpg')` }}>
                     <div className="bg-gradient-to-b from-transparent to-zinc-900 h-full flex flex-col justify-end p-4">
                       <div className="flex items-center justify-between">
                         <span className="bg-amber-500 text-black font-bold px-3 py-1 rounded-full text-sm">
                           Ativo Agora
                         </span>
-                        {event.timeRemaining && (
-                          <span className="bg-black/70 text-white px-3 py-1 rounded-full text-sm flex items-center">
-                            <FaClock className="mr-1" size={12} /> 
-                            {formatTimeRemaining(new Date(Date.now() + event.timeRemaining * 1000))}
-                          </span>
-                        )}
+                        <span className="bg-black/70 text-white px-3 py-1 rounded-full text-sm flex items-center">
+                          <FaClock className="mr-1" size={12} /> 
+                          {formatTimeRemaining(calculateEndTime(event))}
+                        </span>
                       </div>
                     </div>
                   </div>
                   
                   <div className="p-4">
-                    <h3 className="text-xl font-bold mb-2">{event.name}</h3>
+                    <h3 className="text-xl font-bold mb-2">{getEventName(event.type)}</h3>
                     
-                    {event.location && (
-                      <p className="text-zinc-400 text-sm flex items-center mb-3">
-                        <FaMapMarkerAlt className="mr-1" /> {event.location}
-                      </p>
-                    )}
+                    <p className="text-zinc-400 text-sm flex items-center mb-3">
+                      <FaMapMarkerAlt className="mr-1" /> {getEventLocation(event) || 'Local desconhecido'}
+                    </p>
                     
                     <div className="mt-4 flex justify-between">
                       <Button size="sm" variant="outline">Marcar no Mapa</Button>
@@ -263,6 +295,94 @@ const EventsPage = () => {
       </div>
     </Layout>
   );
+};
+
+// Funções auxiliares
+const getEventName = (type: string): string => {
+  switch (type) {
+    case 'cargo_ship':
+      return 'Navio de Carga';
+    case 'patrol_helicopter':
+      return 'Helicóptero de Ataque';
+    case 'airdrop':
+      return 'Airdrop';
+    case 'bradley_apc':
+      return 'Bradley APC';
+    case 'chinook':
+      return 'Chinook';
+    default:
+      return 'Evento Desconhecido';
+  }
+};
+
+const mapEventType = (type: string): string => {
+  switch (type) {
+    case 'cargo_ship':
+      return 'cargo';
+    case 'patrol_helicopter':
+      return 'heli';
+    case 'bradley_apc':
+      return 'bradley';
+    case 'airdrop':
+      return 'airdrop';
+    case 'chinook':
+      return 'cargo'; // Usar imagem do cargo
+    default:
+      return 'custom';
+  }
+};
+
+const getEventLocation = (event: any): string => {
+  if (!event.position_x || !event.position_z) return "Localização desconhecida";
+  
+  // Converter coordenadas em grid do mapa (ex: B10)
+  const gridSize = 146.3; // Tamanho aproximado de uma grid no Rust
+  const gridLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXY';
+  
+  const worldSize = 4500; // Tamanho padrão do mundo
+  const halfWorld = worldSize / 2;
+  
+  // Ajustar coordenadas para referencial do grid
+  const adjustedX = event.position_x + halfWorld;
+  const adjustedZ = event.position_z + halfWorld;
+  
+  // Calcular grid
+  const gridX = Math.floor(adjustedX / gridSize);
+  const gridZ = Math.floor(adjustedZ / gridSize);
+  
+  // Letra + Número
+  const gridLetter = gridLetters[gridX] || 'Z';
+  const gridNumber = gridZ + 1;
+  
+  const position = `${gridLetter}${gridNumber}`;
+  
+  // Adicionar nome do local se for um tipo específico
+  switch (event.type) {
+    case 'cargo_ship':
+      return `Oceano (${position})`;
+    case 'patrol_helicopter':
+      return `Céu (${position})`;
+    case 'bradley_apc':
+      return `Launch Site`;
+    default:
+      return position;
+  }
+};
+
+const calculateEndTime = (event: any): Date => {
+  // Duração estimada por tipo de evento em milissegundos
+  const durations: Record<string, number> = {
+    'cargo_ship': 15 * 60 * 1000, // 15 minutos
+    'patrol_helicopter': 10 * 60 * 1000, // 10 minutos
+    'airdrop': 5 * 60 * 1000, // 5 minutos
+    'bradley_apc': 20 * 60 * 1000, // 20 minutos
+    'chinook': 12 * 60 * 1000 // 12 minutos
+  };
+  
+  const duration = durations[event.type] || 10 * 60 * 1000; // Padrão 10 minutos
+  const updatedAt = new Date(event.updated_at);
+  
+  return new Date(updatedAt.getTime() + duration);
 };
 
 export default EventsPage;
