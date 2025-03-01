@@ -1,7 +1,7 @@
 // src/components/common/LoadingSpinner.tsx
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
-  color?: 'white' | 'rust' | 'gray';
+  color?: 'white' | 'rust' | 'gray' | 'amber';  // Adicionado 'amber' como opção válida
   text?: string;
 }
 
@@ -17,11 +17,12 @@ const LoadingSpinner = ({
     lg: 'h-12 w-12'
   };
   
-  // Mapear cores - Usando a nova cor rust-orange
+  // Mapear cores - Atualizado para incluir a cor amber
   const colorMap = {
     white: 'text-white',
     rust: 'text-rust-orange',
-    gray: 'text-zinc-500'
+    gray: 'text-zinc-500',
+    amber: 'text-amber-500'  // Adicionado mapeamento para amber
   };
   
   return (
