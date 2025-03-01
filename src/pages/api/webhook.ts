@@ -54,7 +54,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (externalRef.includes(':vip:')) {
               const parts = externalRef.split(':');
               userId = parts[0];
-              status = paymentData.status === 'approved' ? 'active' : paymentData.status;
+              // Garantir que status seja sempre uma string, mesmo que paymentData.status seja undefined
+              status = paymentData.status === 'approved' ? 'active' : (paymentData.status as string || 'pending');
               subscriptionId = paymentId; // Usar ID do pagamento como ID da assinatura
               
               isValidWebhook = true;
