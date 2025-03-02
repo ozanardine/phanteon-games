@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { Provider } from '@supabase/supabase-js';
 
 /**
  * Configuração para autenticação com Discord
@@ -14,7 +15,7 @@ import { supabase } from '@/lib/supabase';
 
 export async function signInWithDiscord() {
   return supabase.auth.signInWithOAuth({
-    provider: 'discord',
+    provider: 'discord' as Provider,
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
       scopes: 'identify email', // Permissões necessárias

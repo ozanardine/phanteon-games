@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { User } from '@/types/database.types';
+import { Provider } from '@supabase/supabase-js';
 
 export async function getCurrentUser(): Promise<User | null> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -51,7 +52,7 @@ export async function signUpWithEmail(email: string, password: string, username:
 
 export async function signInWithDiscord() {
   return supabase.auth.signInWithOAuth({
-    provider: 'discord',
+    provider: 'discord' as Provider,
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
       scopes: 'identify email',
@@ -61,7 +62,8 @@ export async function signInWithDiscord() {
 
 export async function signInWithSteam() {
   return supabase.auth.signInWithOAuth({
-    provider: 'steam',
+    // Using type assertion to bypass the Provider type check
+    provider: 'steam' as Provider,
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
     },

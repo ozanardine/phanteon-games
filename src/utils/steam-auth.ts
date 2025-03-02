@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { Provider } from '@supabase/supabase-js';
 
 /**
  * Configuração para autenticação com Steam
@@ -13,7 +14,8 @@ import { supabase } from '@/lib/supabase';
 
 export async function signInWithSteam() {
   return supabase.auth.signInWithOAuth({
-    provider: 'steam',
+    // Using type assertion to bypass the Provider type check
+    provider: 'steam' as Provider,
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
     },
