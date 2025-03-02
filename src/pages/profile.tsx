@@ -10,7 +10,7 @@ import { Loading } from '@/components/ui/Loading';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/components/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { FaDiscord, FaSteam } from 'react-icons/fa';
+import { FaDiscord } from 'react-icons/fa';
 import { signInWithDiscord } from '@/utils/authHelpers';
 
 export default function ProfilePage() {
@@ -108,13 +108,6 @@ export default function ProfilePage() {
                     className="mb-2"
                   >
                     Sincronizar com Discord
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    fullWidth
-                    disabled={!user.steam_id}
-                  >
-                    Sincronizar com Steam
                   </Button>
                 </div>
               </CardContent>
