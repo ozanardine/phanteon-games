@@ -38,7 +38,7 @@ export function RustPlayerMap({ players, mapName, worldSize = 4500 }: RustPlayer
   }, [players, worldSize]);
   
   // Determinar o URL do mapa com base no nome
-  const getMapImageUrl = (mapName: string) => {
+  const getMapImageUrl = (mapName: string): string => {
     // Em uma implementação real, você teria imagens reais dos mapas
     // Para este exemplo, usamos uma imagem genérica
     return '/images/maps/rust_default_map.jpg';

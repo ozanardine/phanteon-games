@@ -32,7 +32,7 @@ export function ServerTeam({ team, vipUsers = [] }: ServerTeamProps) {
   ];
   
   // Função para obter a cor de fundo com base na função
-  const getRoleBgColor = (role: string) => {
+  const getRoleBgColor = (role: string): string => {
     role = role.toLowerCase();
     if (role.includes('admin') || role.includes('fundador')) return 'bg-red-500/20 text-red-500';
     if (role.includes('mod')) return 'bg-yellow-500/20 text-yellow-500';

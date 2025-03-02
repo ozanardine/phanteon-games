@@ -19,7 +19,7 @@ export function ServerLeaderboard({
   isLoading = false 
 }: ServerLeaderboardProps) {
   // Formatação de valores com base no tipo
-  const formatValue = (entry: LeaderboardEntry) => {
+  const formatValue = (entry: LeaderboardEntry): string => {
     switch (type) {
       case 'kills':
         return entry.score.toFixed(0);
@@ -35,14 +35,14 @@ export function ServerLeaderboard({
   };
   
   // Formatação de tempo de jogo
-  const formatPlaytime = (minutes: number) => {
+  const formatPlaytime = (minutes: number): string => {
     const hours = Math.floor(minutes / 60);
     const mins = Math.floor(minutes % 60);
     return `${hours}h ${mins}m`;
   };
   
   // Obter o ícone para o tipo de leaderboard
-  const getLeaderboardIcon = () => {
+  const getLeaderboardIcon = (): React.ReactNode => {
     switch (type) {
       case 'kills':
         return <GiSwordman className="text-red-500" />;
@@ -58,7 +58,7 @@ export function ServerLeaderboard({
   };
   
   // Obter o título para o tipo de leaderboard
-  const getLeaderboardTitle = () => {
+  const getLeaderboardTitle = (): string => {
     switch (type) {
       case 'kills':
         return 'Mais Kills';

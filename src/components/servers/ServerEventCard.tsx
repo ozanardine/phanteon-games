@@ -20,7 +20,7 @@ type ServerEventCardProps = {
 
 export function ServerEventCard({ event }: ServerEventCardProps) {
   // Determinar ícone com base no tipo de evento
-  const getEventIcon = () => {
+  const getEventIcon = (): React.ReactNode => {
     const type = event.event_type_rust || event.type;
     const lowerType = type.toLowerCase();
     
@@ -46,7 +46,7 @@ export function ServerEventCard({ event }: ServerEventCardProps) {
   };
   
   // Formatar detalhes extras com base no tipo de evento
-  const getEventDetails = () => {
+  const getEventDetails = (): React.ReactNode => {
     if (!event.extra_data) return null;
     
     const type = event.event_type_rust || event.type;
@@ -60,12 +60,16 @@ export function ServerEventCard({ event }: ServerEventCardProps) {
             <span className="text-gray-400"> matou </span>
             <span className="font-medium text-white">{event.extra_data.victim}</span>
             {event.extra_data.weapon && (
-              <span className="text-gray-400"> com </span>
-              <span className="text-phanteon-orange">{event.extra_data.weapon}</span>
+              <>
+                <span className="text-gray-400"> com </span>
+                <span className="text-phanteon-orange">{event.extra_data.weapon}</span>
+              </>
             )}
             {event.extra_data.distance && (
-              <span className="text-gray-400"> a </span>
-              <span className="text-phanteon-orange">{event.extra_data.distance}m</span>
+              <>
+                <span className="text-gray-400"> a </span>
+                <span className="text-phanteon-orange">{event.extra_data.distance}m</span>
+              </>
             )}
             {event.extra_data.headshot && (
               <span className="text-red-500"> (headshot)</span>
@@ -100,13 +104,13 @@ export function ServerEventCard({ event }: ServerEventCardProps) {
   };
   
   // Formatar coordenadas quando disponíveis
-  const formatCoordinates = () => {
+  const formatCoordinates = (): string | null => {
     if (event.position_x !== null && event.position_y !== null && event.position_z !== null) {
       return `(${Math.round(event.position_x)}, ${Math.round(event.position_z)})`;
     }
     return null;
   };
-
+  
   return (
     <div className={`p-4 rounded-lg ${event.is_active 
       ? 'bg-phanteon-orange/10 border border-phanteon-orange' 

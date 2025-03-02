@@ -9,7 +9,7 @@ type ServerPluginCardProps = {
 export function ServerPluginCard({ plugin }: ServerPluginCardProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
 
-  const toggleExpanded = () => {
+  const toggleExpanded = (): void => {
     setIsExpanded(!isExpanded);
   };
 
