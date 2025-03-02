@@ -56,15 +56,18 @@ export default function ServersPage() {
     
     // Filtrar por jogo
     if (selectedGame !== 'all') {
-      result = result.filter(server => server.game.toLowerCase() === selectedGame);
+      result = result.filter(server => {
+        // Verificar se server.game existe e não é null/undefined
+        return server.game && server.game.toLowerCase() === selectedGame;
+      });
     }
     
     // Filtrar por termo de busca
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(server => 
-        server.name.toLowerCase().includes(term) || 
-        server.ip.toLowerCase().includes(term)
+        (server.name && server.name.toLowerCase().includes(term)) || 
+        (server.ip && server.ip.toLowerCase().includes(term))
       );
     }
     
@@ -85,7 +88,8 @@ export default function ServersPage() {
 
   // Agrupar servidores por jogo para exibição
   const groupedServers = filteredServers.reduce((acc, server) => {
-    const game = server.game.toLowerCase();
+    // Verificar se server.game existe e não é null/undefined
+    const game = server.game ? server.game.toLowerCase() : 'desconhecido';
     if (!acc[game]) {
       acc[game] = [];
     }
@@ -151,7 +155,8 @@ export default function ServersPage() {
                 <h2 className="text-2xl font-bold text-white capitalize border-b border-phanteon-light pb-2">
                   {game === 'rust' ? 'Rust' : 
                    game === 'minecraft' ? 'Minecraft' : 
-                   game === 'csgo' ? 'CS:GO' : game}
+                   game === 'csgo' ? 'CS:GO' : 
+                   game === 'desconhecido' ? 'Outros' : game}
                 </h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

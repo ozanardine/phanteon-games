@@ -13,14 +13,27 @@ type ServerCardProps = {
 };
 
 export function ServerCard({ server, onViewDetails }: ServerCardProps) {
+  // Garantir valores padrão seguros para todas as propriedades que podem ser undefined
+  const serverName = server.name || 'Sem nome';
+  const serverStatus = server.status || 'offline';
+  const serverGame = server.game || 'Desconhecido';
+  const serverIp = server.ip || 'localhost';
+  const serverPort = server.port || 0;
+  const serverMap = server.map || 'Desconhecido';
+  const serverLastOnline = server.last_online || new Date().toISOString();
+  
+  // Valores numéricos com fallback
+  const playersMax = server.players_max || 0;
+  const playersCurrent = server.players_current || 0;
+
   const handleCopyAddress = (e: React.MouseEvent): void => {
     e.stopPropagation();
-    navigator.clipboard.writeText(`${server.ip}:${server.port}`);
+    navigator.clipboard.writeText(`${serverIp}:${serverPort}`);
     alert('Endereço do servidor copiado para a área de transferência!');
   };
 
   // Determinar a taxa de ocupação e cor correspondente
-  const occupancyRate = server.players_max ? (server.players_current / server.players_max) * 100 : 0;
+  const occupancyRate = playersMax > 0 ? (playersCurrent / playersMax) * 100 : 0;
   const occupancyColor = 
     occupancyRate > 80 ? 'bg-red-500' :
     occupancyRate > 50 ? 'bg-yellow-500' :
@@ -37,10 +50,10 @@ export function ServerCard({ server, onViewDetails }: ServerCardProps) {
       <Card className="h-full">
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
-            <h2 className="text-xl font-bold text-white">{server.name}</h2>
-            <ServerStatus status={server.status} />
+            <h2 className="text-xl font-bold text-white">{serverName}</h2>
+            <ServerStatus status={serverStatus} />
           </div>
-          <p className="text-sm text-gray-400">{server.game}</p>
+          <p className="text-sm text-gray-400">{serverGame}</p>
         </CardHeader>
         
         <CardContent>
@@ -54,9 +67,9 @@ export function ServerCard({ server, onViewDetails }: ServerCardProps) {
                 </div>
                 <div className="flex items-center">
                   <p className="text-white font-medium">
-                    {server.players_current} / {server.players_max}
+                    {playersCurrent} / {playersMax}
                   </p>
-                  {server.players_max > 0 && (
+                  {playersMax > 0 && (
                     <div className="ml-auto h-2 w-16 bg-phanteon-light rounded-full overflow-hidden">
                       <div 
                         className={`h-full ${occupancyColor}`} 
@@ -73,7 +86,7 @@ export function ServerCard({ server, onViewDetails }: ServerCardProps) {
                   <span className="text-sm font-medium">Mapa</span>
                 </div>
                 <p className="text-white font-medium truncate">
-                  {server.map || 'Desconhecido'}
+                  {serverMap}
                 </p>
               </div>
             </div>
@@ -86,7 +99,7 @@ export function ServerCard({ server, onViewDetails }: ServerCardProps) {
                   <span className="text-sm font-medium">Endereço</span>
                 </div>
                 <p className="text-white font-medium overflow-hidden overflow-ellipsis">
-                  {server.ip}:{server.port}
+                  {serverIp}:{serverPort}
                 </p>
               </div>
               
@@ -96,7 +109,7 @@ export function ServerCard({ server, onViewDetails }: ServerCardProps) {
                   <span className="text-sm font-medium">Última atualização</span>
                 </div>
                 <p className="text-white text-sm">
-                  {formatDateTime(server.last_online)}
+                  {formatDateTime(serverLastOnline)}
                 </p>
               </div>
             </div>
