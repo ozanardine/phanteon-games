@@ -105,7 +105,7 @@ export function ServerEventCard({ event }: ServerEventCardProps) {
   
   // Formatar coordenadas quando disponíveis
   const formatCoordinates = (): string | null => {
-    if (event.position_x !== null && event.position_y !== null && event.position_z !== null) {
+    if (event.position_x != null && event.position_y != null && event.position_z != null) {
       return `(${Math.round(event.position_x)}, ${Math.round(event.position_z)})`;
     }
     return null;

@@ -43,6 +43,13 @@ export function RustServerStats({ server, extraData }: RustServerStatsProps) {
     </div>
   );
 
+  const formatUptimeFromSeconds = (seconds?: number): string => {
+    if (seconds == null) return 'N/A';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -63,23 +70,21 @@ export function RustServerStats({ server, extraData }: RustServerStatsProps) {
           <StatItem 
             icon={<GiSleepingBag className="text-indigo-400" />}
             label="Dormindo"
-            value={server.sleeping_players || battlemetricsData.sleepers || '0'}
+            value={server.sleeping_players ?? battlemetricsData.sleepers ?? '0'}
             bgColor="bg-indigo-900/20"
           />
           
           <StatItem 
             icon={<FiCpu className="text-green-400" />}
             label="FPS do Servidor"
-            value={battlemetricsData.fps || '60+'}
+            value={battlemetricsData.fps ?? '60+'}
             bgColor="bg-green-900/20"
           />
           
           <StatItem 
             icon={<FiClock className="text-yellow-400" />}
             label="Tempo Online"
-            value={server.uptime_seconds 
-              ? `${Math.floor(server.uptime_seconds / 3600)}h ${Math.floor((server.uptime_seconds % 3600) / 60)}m` 
-              : 'N/A'}
+            value={formatUptimeFromSeconds(server.uptime_seconds)}
             bgColor="bg-yellow-900/20"
           />
         </div>
@@ -138,17 +143,17 @@ export function RustServerStats({ server, extraData }: RustServerStatsProps) {
             
             <div className="flex justify-between">
               <span className="text-gray-400">Ping:</span>
-              <span className="text-white">{server.ping || 'N/A'} ms</span>
+              <span className="text-white">{server.ping ?? 'N/A'} ms</span>
             </div>
             
             <div className="flex justify-between">
               <span className="text-gray-400">Entidades:</span>
-              <span className="text-white">{battlemetricsData.entities || 'N/A'}</span>
+              <span className="text-white">{battlemetricsData.entities ?? 'N/A'}</span>
             </div>
             
             <div className="flex justify-between">
               <span className="text-gray-400">Fila:</span>
-              <span className="text-white">{battlemetricsData.queue || '0'}</span>
+              <span className="text-white">{battlemetricsData.queue ?? '0'}</span>
             </div>
             
             <div className="flex justify-between">

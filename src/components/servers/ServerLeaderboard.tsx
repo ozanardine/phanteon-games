@@ -181,7 +181,7 @@ export function ServerLeaderboard({
                     </td>
                     {type === 'kills' && (
                       <td className="py-3 px-4 text-white text-right">
-                        {entry.secondary_score ? entry.secondary_score.toFixed(2) : 'N/A'}
+                        {entry.secondary_score != null ? entry.secondary_score.toFixed(2) : 'N/A'}
                       </td>
                     )}
                   </tr>

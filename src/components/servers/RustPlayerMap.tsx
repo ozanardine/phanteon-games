@@ -24,7 +24,7 @@ export function RustPlayerMap({ players, mapName, worldSize = 4500 }: RustPlayer
     // Converter coordenadas dos jogadores para posições no mapa
     if (players && players.length > 0) {
       const processedPositions = players
-        .filter(player => player.position_x !== null && player.position_y !== null)
+        .filter(player => player.position_x != null && player.position_z != null)
         .map(player => ({
           x: ((player.position_x + worldSize / 2) / worldSize) * 100, // Converter para percentagem
           y: ((player.position_z + worldSize / 2) / worldSize) * 100, // Usar position_z como coordenada Y

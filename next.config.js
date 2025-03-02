@@ -21,19 +21,21 @@ const nextConfig = {
       exclude: ['error'],
     } : false,
   },
-  // Configurações para solucionar problemas de memória durante o build
+  // Limitar a quantidade de recursos para o build na Vercel
   experimental: {
+    // Resolver problemas de memória com a exclusão de pacotes grandes
+    outputFileTracingExcludes: {
+      '*': [
+        'node_modules/@swc/core-linux-x64-gnu',
+        'node_modules/@swc/core-linux-x64-musl',
+        'node_modules/@esbuild/linux-x64',
+        'node_modules/typescript',
+      ],
+    },
     // Configuração para builds incrementais (melhora performance)
-    incrementalCacheHandlerPath: require.resolve('./cache-handler.js'),
-    // Se encontrar problemas com o tamanho dos pacotes:
-    // outputFileTracingExcludes: {
-    //   '*': [
-    //     'node_modules/@swc/core-linux-x64-gnu',
-    //     'node_modules/@swc/core-linux-x64-musl',
-    //     'node_modules/@esbuild/linux-x64',
-    //   ],
-    // },
+    // Comentar se causar problemas
+    // incrementalCacheHandlerPath: require.resolve('./cache-handler.js'),
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
