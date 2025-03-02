@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/Card'
 import { Alert } from '@/components/ui/Alert';
 import { Loading } from '@/components/ui/Loading';
 import { signUpWithEmail, signInWithDiscord, signInWithSteam } from '@/utils/authHelpers';
-import { FaDiscord, FaSteam } from 'react-icons/fa';
+import { FaDiscord } from 'react-icons/fa';
 import { useAuth } from '@/components/contexts/AuthContext';
 
 export default function RegisterPage() {
@@ -199,16 +199,6 @@ export default function RegisterPage() {
                 >
                   <FaDiscord className="w-5 h-5 mr-2" />
                   Discord
-                </Button>
-                
-                <Button
-                  variant="secondary"
-                  onClick={handleSteamRegister}
-                  disabled={isLoading}
-                  className="flex items-center justify-center"
-                >
-                  <FaSteam className="w-5 h-5 mr-2" />
-                  Steam
                 </Button>
               </div>
             </div>

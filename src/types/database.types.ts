@@ -5,7 +5,6 @@ export type User = {
     username?: string;
     avatar_url?: string;
     discord_id?: string;
-    steam_id?: string;
     is_vip: boolean;
     vip_expires_at?: string;
     created_at: string;
