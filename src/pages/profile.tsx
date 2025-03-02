@@ -221,27 +221,6 @@ export default function ProfilePage() {
                         {user.discord_id ? 'Desconectar' : 'Conectar'}
                       </Button>
                     </div>
-                    
-                    <div className="flex items-center justify-between p-4 bg-phanteon-dark rounded-lg">
-                      <div className="flex items-center">
-                        <div className="mr-4">
-                          <FaSteam className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-white font-medium">Steam</p>
-                          <p className="text-sm text-gray-400">
-                            {user.steam_id ? 'Conectado' : 'Não conectado'}
-                          </p>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => user.steam_id ? null : signInWithSteam()}
-                      >
-                        {user.steam_id ? 'Desconectar' : 'Conectar'}
-                      </Button>
-                    </div>
                   </div>
                 </div>
               </CardContent>

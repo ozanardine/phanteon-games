@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { Loading } from '@/components/ui/Loading';
-import { signInWithEmail, signInWithDiscord, signInWithSteam } from '@/utils/authHelpers';
-import { FaDiscord, FaSteam } from 'react-icons/fa';
+import { signInWithEmail, signInWithDiscord } from '@/utils/authHelpers';
+import { FaDiscord } from 'react-icons/fa';
 import { useAuth } from '@/components/contexts/AuthContext';
 
 export default function LoginPage() {
@@ -62,19 +62,6 @@ export default function LoginPage() {
     } catch (err) {
       console.error('Discord login error:', err);
       setError('Erro ao fazer login com Discord. Por favor, tente novamente.');
-      setIsLoading(false);
-    }
-  };
-  
-  const handleSteamLogin = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      await signInWithSteam();
-    } catch (err) {
-      console.error('Steam login error:', err);
-      setError('Erro ao fazer login com Steam. Por favor, tente novamente.');
       setIsLoading(false);
     }
   };
@@ -150,16 +137,6 @@ export default function LoginPage() {
                 >
                   <FaDiscord className="w-5 h-5 mr-2" />
                   Discord
-                </Button>
-                
-                <Button
-                  variant="secondary"
-                  onClick={handleSteamLogin}
-                  disabled={isLoading}
-                  className="flex items-center justify-center"
-                >
-                  <FaSteam className="w-5 h-5 mr-2" />
-                  Steam
                 </Button>
               </div>
             </div>

@@ -60,16 +60,6 @@ export async function signInWithDiscord() {
   });
 }
 
-export async function signInWithSteam() {
-  return supabase.auth.signInWithOAuth({
-    // Using type assertion to bypass the Provider type check
-    provider: 'steam' as Provider,
-    options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
-    },
-  });
-}
-
 export async function signOut() {
   return supabase.auth.signOut();
 }
