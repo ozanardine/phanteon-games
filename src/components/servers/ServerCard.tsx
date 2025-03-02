@@ -126,18 +126,25 @@ export function ServerCard({ server, onViewDetails }: ServerCardProps) {
               </Button>
               
               {onViewDetails && (
-                <Button 
-                  variant="primary"
-                  fullWidth
-                  onClick={(e) => {
-                    e.stopPropagation();
+              <Button 
+                variant="primary"
+                fullWidth
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Validar se temos um ID válido antes de chamar onViewDetails
+                  if (server.id && server.id !== 'undefined' && server.id !== 'null') {
                     onViewDetails();
-                  }}
-                  className="flex-1"
-                >
-                  Detalhes
-                </Button>
-              )}
+                  } else {
+                    console.error('Tentativa de visualizar servidor com ID inválido:', server.id);
+                    // Opcional: mostrar mensagem ao usuário
+                    alert('Não foi possível visualizar detalhes deste servidor. ID inválido.');
+                  }
+                }}
+                className="flex-1"
+              >
+                Detalhes
+              </Button>
+            )}
             </div>
           </div>
         </CardContent>

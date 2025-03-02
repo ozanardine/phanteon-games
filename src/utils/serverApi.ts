@@ -75,6 +75,12 @@ export async function fetchServers(): Promise<Server[]> {
 
 // Função para buscar detalhes de um servidor específico
 export async function fetchServerDetails(serverId: string): Promise<Server | null> {
+  // Validar o serverId antes de fazer a requisição
+  if (!serverId || serverId === 'undefined' || serverId === 'null') {
+    console.error('ID de servidor inválido recebido:', serverId);
+    return null;
+  }
+  
   try {
     const { data, error } = await supabase
       .from('server_info')
@@ -82,7 +88,13 @@ export async function fetchServerDetails(serverId: string): Promise<Server | nul
       .eq('server_id', serverId)
       .single();
       
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.warn(`Servidor com ID ${serverId} não encontrado`);
+        return null;
+      }
+      throw error;
+    }
     
     return data;
   } catch (error) {
@@ -92,10 +104,13 @@ export async function fetchServerDetails(serverId: string): Promise<Server | nul
 }
 
 // Buscar dados do BattleMetrics para um servidor Rust
-export async function fetchBattleMetricsData(battlemetricsId: string): Promise<BattleMetricsServer | null> {
+export async function fetchBattleMetricsData(battlemetricsId: string): Promise<any | null> {
+  if (!battlemetricsId || battlemetricsId === 'undefined' || battlemetricsId === 'null') {
+    console.error('ID de BattleMetrics inválido:', battlemetricsId);
+    return null;
+  }
+
   try {
-    // Esta função seria chamada através de uma rota de API em Next.js
-    // para não expor a chave de API do BattleMetrics no cliente
     const response = await fetch(`/api/servers/battlemetrics/${battlemetricsId}`);
     
     if (!response.ok) {
@@ -111,17 +126,20 @@ export async function fetchBattleMetricsData(battlemetricsId: string): Promise<B
 }
 
 // Buscar plugins instalados em um servidor
-export async function fetchServerPlugins(serverId: string): Promise<ServerPlugin[]> {
+export async function fetchServerPlugins(serverId: string): Promise<any[]> {
+  if (!serverId || serverId === 'undefined' || serverId === 'null') {
+    console.error('ID de servidor inválido para plugins:', serverId);
+    return [];
+  }
+
   try {
-    const { data, error } = await supabase
-      .from('server_plugins')
-      .select('*')
-      .eq('server_id', serverId)
-      .order('name');
-      
-    if (error) throw error;
+    const response = await fetch(`/api/servers/${serverId}/plugins`);
     
-    return data || [];
+    if (!response.ok) {
+      throw new Error(`Error fetching server plugins: ${response.status}`);
+    }
+    
+    return await response.json();
   } catch (error) {
     console.error(`Error fetching plugins for server ${serverId}:`, error);
     return [];
@@ -150,6 +168,11 @@ export async function fetchServerLeaderboard(serverId: string, type: string = 'k
 
 // Buscar eventos do servidor
 export async function fetchServerEvents(serverId: string, limit: number = 50): Promise<any[]> {
+  if (!serverId || serverId === 'undefined' || serverId === 'null') {
+    console.error('ID de servidor inválido para eventos:', serverId);
+    return [];
+  }
+
   try {
     const response = await fetch(`/api/servers/${serverId}/events?limit=${limit}`);
     
@@ -166,15 +189,19 @@ export async function fetchServerEvents(serverId: string, limit: number = 50): P
 
 // Buscar jogadores online
 export async function fetchOnlinePlayers(serverId: string): Promise<any[]> {
+  if (!serverId || serverId === 'undefined' || serverId === 'null') {
+    console.error('ID de servidor inválido para jogadores online:', serverId);
+    return [];
+  }
+
   try {
-    const { data, error } = await supabase
-      .from('online_players')
-      .select('*')
-      .eq('server_id', serverId);
-      
-    if (error) throw error;
+    const response = await fetch(`/api/servers/${serverId}/players`);
     
-    return data || [];
+    if (!response.ok) {
+      throw new Error(`Error fetching online players: ${response.status}`);
+    }
+    
+    return await response.json();
   } catch (error) {
     console.error(`Error fetching online players for server ${serverId}:`, error);
     return [];
@@ -219,8 +246,17 @@ export async function fetchServerTeam(serverId: string): Promise<any[]> {
 
 // Sincronizar dados de um servidor com o BattleMetrics
 export async function syncServerWithBattleMetrics(serverId: string, battlemetricsId: string): Promise<boolean> {
+  if (!serverId || serverId === 'undefined' || serverId === 'null') {
+    console.error('ID de servidor inválido para sincronização:', serverId);
+    return false;
+  }
+
+  if (!battlemetricsId || battlemetricsId === 'undefined' || battlemetricsId === 'null') {
+    console.error('ID de BattleMetrics inválido para sincronização:', battlemetricsId);
+    return false;
+  }
+
   try {
-    // Esta função seria chamada através de uma rota de API em Next.js
     const response = await fetch(`/api/servers/${serverId}/sync`, {
       method: 'POST',
       headers: {

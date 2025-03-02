@@ -49,6 +49,14 @@ export default function ServerDetailPage({ initialServer }: ServerPageProps) {
   const { id } = router.query;
   const serverId = typeof id === 'string' ? id : '';
   
+  useEffect(() => {
+    // Redirecionar para a lista de servidores se o ID for inválido
+    if (router.isReady && (!id || id === 'undefined' || id === 'null')) {
+      console.error('ID de servidor inválido:', id);
+      router.push('/servers');
+    }
+  }, [router.isReady, id, router]);
+
   const [server, setServer] = useState<Server | null>(initialServer);
   const [battlemetricsData, setBattlemetricsData] = useState<BattleMetricsServer | null>(null);
   const [plugins, setPlugins] = useState<any[]>([]);
@@ -1057,13 +1065,20 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   const { id } = context.params || {};
   let server = null;
   
-  if (id && typeof id === 'string') {
+  if (id && typeof id === 'string' && id !== 'undefined' && id !== 'null') {
     try {
       server = await fetchServerDetails(id);
     } catch (error) {
       console.error('Error fetching server details:', error);
-      // Não retornamos erro para que a página possa lidar com isso no lado do cliente
     }
+  } else {
+    // Redirecionar para a lista de servidores se o ID for inválido
+    return {
+      redirect: {
+        destination: '/servers',
+        permanent: false,
+      },
+    };
   }
   
   return {

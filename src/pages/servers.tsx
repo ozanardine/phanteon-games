@@ -83,6 +83,13 @@ export default function ServersPage() {
   };
 
   const handleViewDetails = (serverId: string) => {
+    // Validar o ID antes de navegar
+    if (!serverId || serverId === 'undefined' || serverId === 'null') {
+      console.error('Tentativa de navegar para um servidor com ID inválido:', serverId);
+      alert('Não foi possível acessar os detalhes deste servidor. ID inválido.');
+      return;
+    }
+    
     router.push(`/servers/${serverId}`);
   };
 
@@ -162,9 +169,9 @@ export default function ServersPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {gameServers.map(server => (
                     <ServerCard 
-                      key={server.id} 
+                      key={server.id || `server-${Math.random()}`}  // Garantir uma key única mesmo sem ID
                       server={server} 
-                      onViewDetails={() => handleViewDetails(server.id)}
+                      onViewDetails={server.id ? () => handleViewDetails(server.id) : undefined}
                     />
                   ))}
                 </div>

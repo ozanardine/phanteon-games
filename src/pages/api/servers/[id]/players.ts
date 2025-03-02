@@ -10,8 +10,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { id } = req.query;
   
-  if (!id || typeof id !== 'string') {
-    return res.status(400).json({ error: 'Server ID is required' });
+  // Validação melhorada do ID
+  if (!id || typeof id !== 'string' || id === 'undefined' || id === 'null') {
+    return res.status(400).json({ 
+      error: 'Invalid Server ID', 
+      message: 'O ID do servidor é inválido ou não foi fornecido' 
+    });
   }
 
   try {

@@ -4,6 +4,12 @@ import { User, Server, VipPlan } from '@/types/database.types';
 // Funções para uso no lado do servidor (API routes, getServerSideProps, etc)
 
 export async function getUserById(userId: string): Promise<User | null> {
+  // Validar o userId
+  if (!userId || userId === 'undefined' || userId === 'null') {
+    console.error('ID de usuário inválido recebido:', userId);
+    return null;
+  }
+  
   const { data, error } = await supabaseAdmin
     .from('users')
     .select('*')
@@ -48,6 +54,17 @@ export async function getVipPlans(): Promise<VipPlan[]> {
 }
 
 export async function updateUserVipStatus(userId: string, planId: string): Promise<boolean> {
+  // Validar os parâmetros
+  if (!userId || userId === 'undefined' || userId === 'null') {
+    console.error('ID de usuário inválido:', userId);
+    return false;
+  }
+  
+  if (!planId || planId === 'undefined' || planId === 'null') {
+    console.error('ID de plano inválido:', planId);
+    return false;
+  }
+  
   try {
     // Obter detalhes do plano VIP
     const { data: planData, error: planError } = await supabaseAdmin
