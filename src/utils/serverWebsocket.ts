@@ -13,6 +13,9 @@ type ServerWebsocketOptions = {
   onServerStatusUpdate?: (status: { online: boolean, players: number }) => void;
 };
 
+// Definir os tipos de eventos permitidos
+type EventType = 'cargo_ship' | 'patrol_helicopter' | 'bradley_apc' | 'airdrop' | 'player_kill' | 'player_raid';
+
 export class ServerWebsocket {
   private socket: WebSocket | null = null;
   private options: ServerWebsocketOptions;
@@ -201,7 +204,7 @@ export class ServerWebsocket {
   }
 
   private generateSimulatedEvent(): ServerEvent {
-    const eventTypes = [
+    const eventTypes: EventType[] = [
       'cargo_ship',
       'patrol_helicopter',
       'bradley_apc',
@@ -211,7 +214,9 @@ export class ServerWebsocket {
     ];
     
     const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-    const eventNames = {
+    
+    // Usar tipo Record para definir explicitamente o mapeamento de nomes
+    const eventNames: Record<EventType, string> = {
       'cargo_ship': 'Navio de Carga',
       'patrol_helicopter': 'Helicóptero de Patrulha',
       'bradley_apc': 'Bradley APC',
