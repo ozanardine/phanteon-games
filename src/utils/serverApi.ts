@@ -151,16 +151,13 @@ export async function fetchServerLeaderboard(serverId: string, type: string = 'k
 // Buscar eventos do servidor
 export async function fetchServerEvents(serverId: string, limit: number = 50): Promise<any[]> {
   try {
-    const { data, error } = await supabase
-      .from('server_events')
-      .select('*')
-      .eq('server_id', serverId)
-      .order('updated_at', { ascending: false })
-      .limit(limit);
-      
-    if (error) throw error;
+    const response = await fetch(`/api/servers/${serverId}/events?limit=${limit}`);
     
-    return data || [];
+    if (!response.ok) {
+      throw new Error(`Error fetching server events: ${response.status}`);
+    }
+    
+    return await response.json();
   } catch (error) {
     console.error(`Error fetching events for server ${serverId}:`, error);
     return [];

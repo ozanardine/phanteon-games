@@ -1,3 +1,4 @@
+// src/pages/api/servers/[id]/events.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
@@ -126,8 +127,6 @@ function getRandomName() {
   const names = [
     'RustPlayer123', 'IronWarrior', 'SaltyRaider', 'MetalHead', 
     'BaseBuilder', 'RaidMaster', 'LootLord', 'RadiationKing',
-    'BoltAction', 'HeadShotter', 'RockThrower', 'BluePrints',
-    'RustDevil', 'MetalFarmer', 'SulfurMiner', 'NightWolf',
     'BowMaster', 'ShotgunSally', 'PumpkinPete', 'WoodChopper'
   ];
   return names[Math.floor(Math.random() * names.length)];
@@ -137,9 +136,7 @@ function getRandomName() {
 function getRandomWeapon() {
   const weapons = [
     'AK-47', 'Bolt Action Rifle', 'Custom SMG', 'Thompson', 
-    'MP5A4', 'LR-300', 'M249', 'L96 Rifle', 'Semi-Automatic Rifle', 
-    'Python Revolver', 'Revolver', 'Eoka Pistol', 'Crossbow', 
-    'Compound Bow', 'Double Barrel Shotgun', 'Pump Shotgun', 'M39 Rifle'
+    'MP5A4', 'LR-300', 'M249', 'L96 Rifle'
   ];
   return weapons[Math.floor(Math.random() * weapons.length)];
 }

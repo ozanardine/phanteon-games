@@ -1,3 +1,4 @@
+// src/pages/api/servers/[id]/players.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 

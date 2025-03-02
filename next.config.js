@@ -32,9 +32,29 @@ const nextConfig = {
         'node_modules/typescript',
       ],
     },
-    // Configuração para builds incrementais (melhora performance)
-    // Comentar se causar problemas
-    // incrementalCacheHandlerPath: require.resolve('./cache-handler.js'),
+  },
+  
+  // Excluir API routes da geração estática
+  exportPathMap: async function (
+    defaultPathMap,
+    { dev, dir, outDir, distDir, buildId }
+  ) {
+    // Filtrar as páginas para remover rotas de API da exportação estática
+    const filteredPaths = {};
+    
+    for (const [path, config] of Object.entries(defaultPathMap)) {
+      // Excluir rotas de API e rotas dinâmicas específicas que estão causando problemas
+      if (!path.includes('/api/') && 
+          !path.includes('/servers/[id]/events') &&
+          !path.includes('/servers/[id]/players') &&
+          !path.includes('/servers/[id]/plugins') &&
+          !path.includes('/servers/[id]/sync') &&
+          !path.includes('/servers/battlemetrics/[id]')) {
+        filteredPaths[path] = config;
+      }
+    }
+    
+    return filteredPaths;
   },
 };
 
