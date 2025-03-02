@@ -5,7 +5,7 @@ import { ServerStatus } from '@/components/ui/ServerStatus';
 import { Server } from '@/types/database.types';
 import { formatDateTime } from '@/utils/dateUtils';
 import { FiUsers, FiServer, FiClock, FiMap, FiExternalLink } from 'react-icons/fi';
-import { GiMapBowl } from 'react-icons/gi';
+import { GiEarthAmerica } from 'react-icons/gi';
 
 type ServerCardProps = {
   server: Server;
@@ -13,7 +13,7 @@ type ServerCardProps = {
 };
 
 export function ServerCard({ server, onViewDetails }: ServerCardProps) {
-  const handleCopyAddress = (e: React.MouseEvent) => {
+  const handleCopyAddress = (e: React.MouseEvent): void => {
     e.stopPropagation();
     navigator.clipboard.writeText(`${server.ip}:${server.port}`);
     alert('Endereço do servidor copiado para a área de transferência!');
@@ -70,7 +70,7 @@ export function ServerCard({ server, onViewDetails }: ServerCardProps) {
             
             <div className="bg-phanteon-dark rounded-md p-3">
               <div className="flex items-center text-gray-300 mb-1">
-                <GiMapBowl className="mr-2" />
+                <GiEarthAmerica className="mr-2" />
                 <span className="text-sm font-medium">Mapa</span>
               </div>
               <p className="text-white font-medium truncate">

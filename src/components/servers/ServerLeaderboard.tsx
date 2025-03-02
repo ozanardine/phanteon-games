@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { LeaderboardEntry } from '@/types/database.types';
 import { Button } from '@/components/ui/Button';
-import { GiTrophy, GiSwordman, GiSkullCrossedBones, GiClockwork } from 'react-icons/gi';
+import { GiTrophy, GiSwordWound, GiDeathSkull, GiHourglass } from 'react-icons/gi';
 import { FiUsers, FiAward } from 'react-icons/fi';
 
 type ServerLeaderboardProps = {
@@ -45,11 +45,11 @@ export function ServerLeaderboard({
   const getLeaderboardIcon = (): React.ReactNode => {
     switch (type) {
       case 'kills':
-        return <GiSwordman className="text-red-500" />;
+        return <GiSwordWound className="text-red-500" />;
       case 'deaths':
-        return <GiSkullCrossedBones className="text-gray-500" />;
+        return <GiDeathSkull className="text-gray-500" />;
       case 'playtime':
-        return <GiClockwork className="text-blue-500" />;
+        return <GiHourglass className="text-blue-500" />;
       case 'kd_ratio':
         return <FiAward className="text-yellow-500" />;
       default:
@@ -96,7 +96,7 @@ export function ServerLeaderboard({
             size="sm"
             onClick={() => onTypeChange('kills')}
           >
-            <GiSwordman className="mr-2" />
+            <GiSwordWound className="mr-2" />
             Kills
           </Button>
           
@@ -105,7 +105,7 @@ export function ServerLeaderboard({
             size="sm"
             onClick={() => onTypeChange('deaths')}
           >
-            <GiSkullCrossedBones className="mr-2" />
+            <GiDeathSkull className="mr-2" />
             Mortes
           </Button>
           
@@ -114,7 +114,7 @@ export function ServerLeaderboard({
             size="sm"
             onClick={() => onTypeChange('playtime')}
           >
-            <GiClockwork className="mr-2" />
+            <GiHourglass className="mr-2" />
             Tempo de Jogo
           </Button>
           

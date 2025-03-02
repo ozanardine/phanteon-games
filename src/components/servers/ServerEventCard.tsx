@@ -12,7 +12,7 @@ import {
   FiUsers,
   FiTarget
 } from 'react-icons/fi';
-import { GiHelicopter, GiTank, GiCargoShip, GiParachute, GiSwordman } from 'react-icons/gi';
+import { GiHelicopter, GiTank, GiBattleship, GiParachute, GiSwordWound } from 'react-icons/gi';
 
 type ServerEventCardProps = {
   event: ServerEvent;
@@ -29,11 +29,11 @@ export function ServerEventCard({ event }: ServerEventCardProps) {
     } else if (lowerType.includes('bradley') || lowerType.includes('apc')) {
       return <GiTank className="text-yellow-500" />;
     } else if (lowerType.includes('cargo') || lowerType.includes('ship')) {
-      return <GiCargoShip className="text-blue-500" />;
+      return <GiBattleship className="text-blue-500" />;
     } else if (lowerType.includes('airdrop')) {
       return <GiParachute className="text-green-500" />;
     } else if (lowerType.includes('kill') || lowerType.includes('death')) {
-      return <GiSwordman className="text-red-500" />;
+      return <GiSwordWound className="text-red-500" />;
     } else if (lowerType.includes('player') || lowerType.includes('user')) {
       return <FiUsers className="text-blue-500" />;
     } else if (lowerType.includes('event') || lowerType.includes('torneio')) {
@@ -110,7 +110,7 @@ export function ServerEventCard({ event }: ServerEventCardProps) {
     }
     return null;
   };
-  
+
   return (
     <div className={`p-4 rounded-lg ${event.is_active 
       ? 'bg-phanteon-orange/10 border border-phanteon-orange' 

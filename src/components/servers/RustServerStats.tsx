@@ -13,14 +13,7 @@ import {
   FiBell
 } from 'react-icons/fi';
 import { SiRust } from 'react-icons/si';
-import { GiSleepy } from 'react-icons/gi';
-
-interface StatItemProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  bgColor?: string;
-}
+import { GiSleep } from 'react-icons/gi';
 
 type RustServerStatsProps = {
   server: Server;
@@ -31,6 +24,14 @@ export function RustServerStats({ server, extraData }: RustServerStatsProps) {
   // Dados extras que podem vir da API BattleMetrics
   const battlemetricsData = extraData || {};
   
+  // Interface para as props do StatItem
+  interface StatItemProps {
+    icon: React.ReactNode;
+    label: string;
+    value: string | number;
+    bgColor?: string;
+  }
+
   // Componente para exibir uma estatística individual
   const StatItem: React.FC<StatItemProps> = ({ icon, label, value, bgColor = 'bg-phanteon-light' }) => (
     <div className={`rounded-lg p-3 ${bgColor}`}>
@@ -60,7 +61,7 @@ export function RustServerStats({ server, extraData }: RustServerStatsProps) {
           />
           
           <StatItem 
-            icon={<GiSleepy className="text-indigo-400" />}
+            icon={<GiSleep className="text-indigo-400" />}
             label="Dormindo"
             value={server.sleeping_players || battlemetricsData.sleepers || '0'}
             bgColor="bg-indigo-900/20"

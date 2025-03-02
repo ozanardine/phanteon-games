@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
-import { GiPerson } from 'react-icons/gi';
+import { FiUser } from 'react-icons/fi';
 
 type Position = {
   x: number;
@@ -44,11 +44,11 @@ export function RustPlayerMap({ players, mapName, worldSize = 4500 }: RustPlayer
     return '/images/maps/rust_default_map.jpg';
   };
   
-  const handlePlayerHover = (steamId: string) => {
+  const handlePlayerHover = (steamId: string): void => {
     setHoveredPlayer(steamId);
   };
   
-  const handlePlayerLeave = () => {
+  const handlePlayerLeave = (): void => {
     setHoveredPlayer(null);
   };
   
