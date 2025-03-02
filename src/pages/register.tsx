@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { Loading } from '@/components/ui/Loading';
-import { signUpWithEmail, signInWithDiscord, signInWithSteam } from '@/utils/authHelpers';
+import { signUpWithEmail, signInWithDiscord } from '@/utils/authHelpers';
 import { FaDiscord } from 'react-icons/fa';
 import { useAuth } from '@/components/contexts/AuthContext';
 
@@ -92,19 +92,6 @@ export default function RegisterPage() {
     } catch (err) {
       console.error('Discord register error:', err);
       setError('Erro ao criar conta com Discord. Por favor, tente novamente.');
-      setIsLoading(false);
-    }
-  };
-  
-  const handleSteamRegister = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      await signInWithSteam();
-    } catch (err) {
-      console.error('Steam register error:', err);
-      setError('Erro ao criar conta com Steam. Por favor, tente novamente.');
       setIsLoading(false);
     }
   };
