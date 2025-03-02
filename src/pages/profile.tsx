@@ -11,7 +11,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { useAuth } from '@/components/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { FaDiscord, FaSteam } from 'react-icons/fa';
-import { signInWithDiscord, signInWithSteam } from '@/utils/authHelpers';
+import { signInWithDiscord } from '@/utils/authHelpers';
 
 export default function ProfilePage() {
   const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
