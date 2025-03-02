@@ -13,7 +13,7 @@ import {
   FiBell
 } from 'react-icons/fi';
 import { SiRust } from 'react-icons/si';
-import { GiSleep } from 'react-icons/gi';
+import { GiSleepingBag } from "react-icons/gi";
 
 type RustServerStatsProps = {
   server: Server;
@@ -61,7 +61,7 @@ export function RustServerStats({ server, extraData }: RustServerStatsProps) {
           />
           
           <StatItem 
-            icon={<GiSleep className="text-indigo-400" />}
+            icon={<GiSleepingBag className="text-indigo-400" />}
             label="Dormindo"
             value={server.sleeping_players || battlemetricsData.sleepers || '0'}
             bgColor="bg-indigo-900/20"
