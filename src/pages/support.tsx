@@ -2,7 +2,8 @@ import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { FaDiscord, FaPaypal, FaPix, FaCreditCard } from 'react-icons/fa';
+import { FaDiscord, FaPaypal, FaCreditCard } from 'react-icons/fa';
+import { FaPix } from "react-icons/fa6";
 
 export default function SupportPage() {
   return (
