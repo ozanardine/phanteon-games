@@ -14,7 +14,7 @@ export default function ComingSoonPage() {
   });
   
   // Data alvo para lançamento - ajuste conforme necessário
-  const targetDate = new Date('2025-04-15T00:00:00');
+  const targetDate = new Date('2025-03-31T00:00:00');
 
   useEffect(() => {
     const interval = setInterval(() => {
