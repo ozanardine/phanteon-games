@@ -3,9 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { FaCheck, FaTimes, FaArrowRight, FaDiscord, FaCrown } from 'react-icons/fa';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Button, Card, Alert } from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Alert } from '@/components/ui/Alert';
 import { useAuth } from '@/contexts/AuthContext';
-import { ProtectedRoute } from '@/components/layout/MainLayout';
+import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { SubscriptionPlan, getSubscriptionPlans, createSubscription, getCurrentSubscription } from '@/lib/supabase';
 import { createPaymentPreference } from '@/lib/mercadopago';
 import { checkDiscordConnection, initiateDiscordAuth } from '@/lib/discord';
@@ -19,6 +21,9 @@ export default function VIPPage() {
   const [error, setError] = useState<string | null>(null);
   const [discordConnected, setDiscordConnected] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
+  const [paymentOptions, setPaymentOptions] = useState(false);
+  const [currentSubscriptionId, setCurrentSubscriptionId] = useState<number | null>(null);
+  const [checkoutData, setCheckoutData] = useState<any>(null);
   
   const router = useRouter();
   const { plan: planIdFromUrl, success, canceled } = router.query;
@@ -233,6 +238,13 @@ export default function VIPPage() {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
+  };
+
+  // Função temporária criada para fazer o código compilar
+  const createRecurringSubscription = async (plan: any, user: any, subscriptionId: number) => {
+    // Esta é uma implementação fictícia usada para resolver temporariamente 
+    // o erro de compilação. A função real deverá ser implementada em mercadopago.ts
+    return { subscription: null, error: new Error('Não implementado ainda') };
   };
 
   return (

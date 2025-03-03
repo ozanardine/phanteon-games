@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { FaCheckCircle, FaSpinner } from 'react-icons/fa';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Button, Card, Alert } from '@/components/ui/Button';
-import { ProtectedRoute } from '@/components/layout/MainLayout';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Alert } from '@/components/ui/Alert';
+import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { checkPaymentStatus } from '@/lib/mercadopago';
 import Link from 'next/link';
 

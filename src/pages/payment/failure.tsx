@@ -2,8 +2,9 @@ import React from 'react';
 import { useRouter } from 'next/router';
 import { FaTimesCircle } from 'react-icons/fa';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Button, Card } from '@/components/ui/Button';
-import { ProtectedRoute } from '@/components/layout/MainLayout';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import Link from 'next/link';
 
 export default function PaymentFailurePage() {

@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { FaGamepad, FaUsers, FaServer, FaStar, FaDiscord } from 'react-icons/fa';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Button, Card } from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { ServerStatusBox } from '@/components/ServerStatus';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';

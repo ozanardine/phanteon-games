@@ -1,5 +1,5 @@
 // src/components/layout/ProtectedRoute.tsx
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
   adminOnly?: boolean;
 }
 
-export function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
   const { user, isLoading, isAdmin } = useAuth();
   const router = useRouter();
 
