@@ -1,0 +1,44 @@
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { useAuth } from '@/contexts/AuthContext';
+import { Spinner } from '../ui/Button';
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  adminOnly?: boolean;
+}
+
+export function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
+  const { user, isLoading, isAdmin } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user) {
+        router.push(`/auth/login?redirect=${encodeURIComponent(router.pathname)}`);
+      } else if (adminOnly && !isAdmin) {
+        router.push('/home');
+      }
+    }
+  }, [user, isLoading, isAdmin, router, adminOnly]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-phanteon-dark">
+        <div className="text-center">
+          <Spinner size="lg" color="orange" className="mx-auto mb-4" />
+          <p className="text-white">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || (adminOnly && !isAdmin)) {
+    return null;
+  }
+
+  return <>{children}</>;
+}
+
+// Exportar todos os componentes
+export { Header, Footer, AuthLayout, MainLayout, ProtectedRoute };
