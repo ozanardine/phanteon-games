@@ -7,6 +7,7 @@ interface AlertProps {
   title?: string;
   children: React.ReactNode;
   onClose?: () => void;
+  className?: string; // Adicionando suporte para className
 }
 
 export const Alert: React.FC<AlertProps> = ({
@@ -14,6 +15,7 @@ export const Alert: React.FC<AlertProps> = ({
   title,
   children,
   onClose,
+  className = '', // Valor padrão para className
 }) => {
   const variantStyles = {
     info: 'bg-blue-900/20 border-blue-800 text-blue-100',
@@ -46,7 +48,7 @@ export const Alert: React.FC<AlertProps> = ({
   };
 
   return (
-    <div className={`p-4 mb-4 border rounded-lg ${variantStyles[variant]}`} role="alert">
+    <div className={`p-4 mb-4 border rounded-lg ${variantStyles[variant]} ${className}`} role="alert">
       <div className="flex items-center">
         <div className="mr-2">{iconVariants[variant]}</div>
         <div className="flex-1">

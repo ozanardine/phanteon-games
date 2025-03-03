@@ -235,7 +235,7 @@ export default function ProfilePage() {
   const ProfileTab = () => (
     <div>
       {profileUpdated && (
-        <Alert variant="success" className="mb-6">
+        <Alert variant="success">
           Perfil atualizado com sucesso!
         </Alert>
       )}
@@ -409,7 +409,7 @@ export default function ProfilePage() {
   const SecurityTab = () => (
     <div>
       {passwordUpdated && (
-        <Alert variant="success" className="mb-6">
+        <Alert variant="success">
           Senha alterada com sucesso!
         </Alert>
       )}
@@ -637,13 +637,13 @@ export default function ProfilePage() {
             </h1>
             
             {error && (
-              <Alert variant="error" className="mb-6" onClose={() => setError(null)}>
+              <Alert variant="error" onClose={() => setError(null)}>
                 {error}
               </Alert>
             )}
             
             {discord === 'success' && !error && (
-              <Alert variant="success" className="mb-6">
+              <Alert variant="success">
                 Conta Discord conectada com sucesso!
               </Alert>
             )}

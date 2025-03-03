@@ -271,13 +271,13 @@ export default function VIPPage() {
             </p>
             
             {error && (
-              <Alert variant="error" className="max-w-3xl mx-auto mb-8" onClose={() => setError(null)}>
+              <Alert variant="error" onClose={() => setError(null)}>
                 {error}
               </Alert>
             )}
             
             {success && currentSubscription && (
-              <Alert variant="success" className="max-w-3xl mx-auto mb-8">
+              <Alert variant="success">
                 <h3 className="font-medium">Assinatura ativada com sucesso!</h3>
                 <p>
                   Agradecemos por apoiar a Phanteon Games. Suas vantagens VIP já estão disponíveis.

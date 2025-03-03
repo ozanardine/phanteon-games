@@ -198,13 +198,13 @@ export default function SubscriptionsPage() {
             </h1>
 
             {error && (
-              <Alert variant="error" className="mb-6" onClose={() => setError(null)}>
+              <Alert variant="error" onClose={() => setError(null)}>
                 {error}
               </Alert>
             )}
 
             {success && (
-              <Alert variant="success" className="mb-6" onClose={() => setSuccess(null)}>
+              <Alert variant="success" onClose={() => setSuccess(null)}>
                 {success}
               </Alert>
             )}
