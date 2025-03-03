@@ -116,24 +116,23 @@ export function ServerStatusBox() {
       </div>
       
       <div className="grid grid-cols-2 gap-3">
-        {serverData.seed && (
-          <div className="bg-phanteon-dark rounded-lg p-3">
-            <div className="flex items-center text-gray-300 mb-1">
-              <FiHash className="mr-2 text-phanteon-orange" />
-              <span className="text-sm">Seed</span>
-            </div>
-            <p className="text-white font-medium">
-              <a 
-                href="https://rustmaps.com/map/4500_1708110947" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-phanteon-orange hover:underline"
-              >
-                {serverData.seed}
-              </a>
-            </p>
+        {/* Exibir o Seed independentemente do retorno da API */}
+        <div className="bg-phanteon-dark rounded-lg p-3">
+          <div className="flex items-center text-gray-300 mb-1">
+            <FiHash className="mr-2 text-phanteon-orange" />
+            <span className="text-sm">Seed</span>
           </div>
-        )}
+          <p className="text-white font-medium">
+            <a 
+              href="https://rustmaps.com/map/4500_1708110947" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-phanteon-orange hover:underline"
+            >
+              {serverData.seed || "1708110947"}
+            </a>
+          </p>
+        </div>
         
         {serverData.worldSize && (
           <div className="bg-phanteon-dark rounded-lg p-3">

@@ -48,8 +48,8 @@ export default async function handler(
       maxPlayers: attributes.maxPlayers || 100,
       address: `${attributes.ip}:${attributes.port}` || 'Unknown',
       map: details.map || 'Unknown',
-      seed: details.rust_seed,
-      worldSize: details.rust_world_size,
+      seed: details.rust_seed || '1708110947', // Adicionando valor padrão
+      worldSize: details.rust_world_size || '4500',
       lastWipe: details.rust_last_wipe
     };
     
