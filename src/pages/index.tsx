@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { FaDiscord } from 'react-icons/fa';
+import { ServerStatusBox } from '../components/ServerStatus';
 
 export default function ComingSoonPage() {
   const [countdown, setCountdown] = useState({
@@ -91,20 +92,32 @@ export default function ComingSoonPage() {
             </div>
           </div>
 
-          {/* CTA */}
+          {/* Server Status Box */}
           <div className="mb-12">
-            <p className="text-lg text-gray-300 mb-4">
-              Enquanto trabalhamos, junte-se à nossa comunidade no Discord para ficar por dentro de todas as novidades!
-            </p>
-            <a 
-              href="https://discord.gg/CFc9VrF2Xh" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold py-3 px-6 rounded-lg transition-colors"
-            >
-              <FaDiscord className="mr-2 text-2xl" />
-              Entrar no Discord
-            </a>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                {/* CTA */}
+                <div className="mb-6">
+                  <p className="text-lg text-gray-300 mb-4">
+                    Enquanto trabalhamos, junte-se à nossa comunidade no Discord para ficar por dentro de todas as novidades!
+                  </p>
+                  <a 
+                    href="https://discord.gg/CFc9VrF2Xh" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                  >
+                    <FaDiscord className="mr-2 text-2xl" />
+                    Entrar no Discord
+                  </a>
+                </div>
+              </div>
+              
+              <div>
+                {/* Status do Servidor */}
+                <ServerStatusBox />
+              </div>
+            </div>
           </div>
 
 
