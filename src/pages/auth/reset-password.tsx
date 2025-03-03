@@ -88,16 +88,20 @@ export default function ResetPasswordPage() {
             </div>
             
             {error && (
-              <Alert variant="error" className="mb-4" onClose={() => setError(null)}>
-                {error}
-              </Alert>
+              <div className="mb-4">
+                <Alert variant="error" onClose={() => setError(null)}>
+                  {error}
+                </Alert>
+              </div>
             )}
             
             {successMessage ? (
               <div className="text-center">
-                <Alert variant="success" className="mb-6">
-                  {successMessage}
-                </Alert>
+                <div className="mb-6">
+                  <Alert variant="success">
+                    {successMessage}
+                  </Alert>
+                </div>
                 
                 <p className="text-gray-400 mb-4">
                   Redirecionando para a página de login...

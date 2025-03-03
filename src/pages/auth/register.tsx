@@ -117,15 +117,19 @@ export default function RegisterPage() {
             </div>
             
             {serverError && (
-              <Alert variant="error" className="mb-4" onClose={() => setServerError(null)}>
-                {serverError}
-              </Alert>
+              <div className="mb-4">
+                <Alert variant="error" onClose={() => setServerError(null)}>
+                  {serverError}
+                </Alert>
+              </div>
             )}
             
             {successMessage && (
-              <Alert variant="success" className="mb-4">
-                {successMessage}
-              </Alert>
+              <div className="mb-4">
+                <Alert variant="success">
+                  {successMessage}
+                </Alert>
+              </div>
             )}
             
             <form onSubmit={handleSubmit}>

@@ -61,16 +61,20 @@ export default function ForgotPasswordPage() {
             </div>
             
             {serverError && (
-              <Alert variant="error" className="mb-4" onClose={() => setServerError(null)}>
-                {serverError}
-              </Alert>
+              <div className="mb-4">
+                <Alert variant="error" onClose={() => setServerError(null)}>
+                  {serverError}
+                </Alert>
+              </div>
             )}
             
             {successMessage ? (
               <div className="text-center">
-                <Alert variant="success" className="mb-6">
-                  {successMessage}
-                </Alert>
+                <div className="mb-6">
+                  <Alert variant="success">
+                    {successMessage}
+                  </Alert>
+                </div>
                 
                 <p className="text-gray-400 mb-4">
                   Não recebeu o e-mail? Verifique sua pasta de spam ou tente novamente.
