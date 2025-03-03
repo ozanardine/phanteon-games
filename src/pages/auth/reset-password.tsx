@@ -3,7 +3,10 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { FiLock, FiEye, FiEyeOff, FiArrowLeft } from 'react-icons/fi';
 import { AuthLayout } from '@/components/layout/AuthLayout';
-import { Button, Input, Alert, FormControl } from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Alert } from '@/components/ui/Alert';
+import { FormControl } from '@/components/ui/FormControl';
 import { updatePassword } from '@/lib/supabase';
 
 export default function ResetPasswordPage() {

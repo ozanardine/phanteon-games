@@ -4,7 +4,10 @@ import Link from 'next/link';
 import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FaDiscord } from 'react-icons/fa';
 import { AuthLayout } from '@/components/layout/AuthLayout';
-import { Button, Input, Alert, FormControl } from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Alert } from '@/components/ui/Alert';
+import { FormControl } from '@/components/ui/FormControl';
 import { signIn } from '@/lib/supabase';
 import { initiateDiscordAuth } from '@/lib/discord';
 
