@@ -123,7 +123,14 @@ export function ServerStatusBox() {
               <span className="text-sm">Seed</span>
             </div>
             <p className="text-white font-medium">
-              {serverData.seed}
+              <a 
+                href="https://rustmaps.com/map/4500_1708110947" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-phanteon-orange hover:underline"
+              >
+                {serverData.seed}
+              </a>
             </p>
           </div>
         )}
