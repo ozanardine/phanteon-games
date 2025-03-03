@@ -1,7 +1,7 @@
+// src/components/layout/ProtectedRoute.tsx
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
-import { Spinner } from '../ui/Button';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -26,7 +26,7 @@ export function ProtectedRoute({ children, adminOnly = false }: ProtectedRoutePr
     return (
       <div className="flex items-center justify-center h-screen bg-phanteon-dark">
         <div className="text-center">
-          <Spinner size="lg" color="orange" className="mx-auto mb-4" />
+          <div className="animate-spin h-12 w-12 border-4 border-phanteon-orange border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-white">Carregando...</p>
         </div>
       </div>
@@ -39,6 +39,3 @@ export function ProtectedRoute({ children, adminOnly = false }: ProtectedRoutePr
 
   return <>{children}</>;
 }
-
-// Exportar todos os componentes
-export { Header, Footer, AuthLayout, MainLayout, ProtectedRoute };
