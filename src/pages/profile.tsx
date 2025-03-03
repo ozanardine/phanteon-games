@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { FiUser, FiMail, FiEdit2, FiKey, FiSave, FiCheck, FiX, FiLink, FiUnlink } from 'react-icons/fi';
 import { FaDiscord, FaSteam } from 'react-icons/fa';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';

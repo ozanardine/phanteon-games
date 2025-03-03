@@ -33,5 +33,3 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
     </div>
   );
 }
-
-export { default as ProtectedRoute } from './ProtectedRoute';

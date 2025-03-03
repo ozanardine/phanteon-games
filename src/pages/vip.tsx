@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { useAuth } from '@/contexts/AuthContext';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import { SubscriptionPlan, getSubscriptionPlans, createSubscription, getCurrentSubscription } from '@/lib/supabase';
 import { createPaymentPreference } from '@/lib/mercadopago';
 import { checkDiscordConnection, initiateDiscordAuth } from '@/lib/discord';

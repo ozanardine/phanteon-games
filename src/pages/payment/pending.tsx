@@ -4,7 +4,7 @@ import { FaClock } from 'react-icons/fa';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import Link from 'next/link';
 
 export default function PaymentPendingPage() {
