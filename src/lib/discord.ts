@@ -7,7 +7,7 @@
 export function initiateDiscordAuth() {
   // Substitua estas constantes pelos seus valores reais
   const DISCORD_CLIENT_ID = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
-  const REDIRECT_URI = `${window.location.origin}/api/auth/discord/callback`;
+  const REDIRECT_URI = `https://phanteongames.com/api/auth/discord/callback`;
   
   // Permissões que vamos solicitar
   const scope = 'identify guilds.join';
