@@ -1,12 +1,11 @@
 // src/lib/supabase.ts
 import { createClient } from '@supabase/supabase-js';
-import { Database } from '@/types/supabase';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Criar o cliente do Supabase
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Tipos para usuários e perfis
 export type UserProfile = {
