@@ -136,17 +136,44 @@ export default function VIPPage() {
         throw new Error('Erro ao criar assinatura.');
       }
       
-      // Criar preferência de pagamento
+      // Obter objeto do plano selecionado
       const selectedPlanObj = plans.find(p => p.id === selectedPlan);
       
       if (!selectedPlanObj || !profile) {
         throw new Error('Dados incompletos para checkout.');
       }
       
+      // Mostrar opções de pagamento ao usuário
+      setPaymentOptions(true);
+      setCurrentSubscriptionId(subscription.id);
+      
+      // Armazenar dados no estado
+      setCheckoutData({
+        planObj: selectedPlanObj,
+        subscriptionId: subscription.id,
+        profile: profile
+      });
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      setError(error.message || 'Erro ao processar pagamento. Tente novamente.');
+      setCheckoutLoading(false);
+    }
+  };
+  
+  // Adicionar nova função para processar pagamento único
+  const processPayment = async () => {
+    setCheckoutLoading(true);
+    try {
+      // Verificar se temos os dados necessários
+      if (!checkoutData?.planObj || !checkoutData?.subscriptionId) {
+        throw new Error('Dados de checkout incompletos');
+      }
+      
+      // Criar preferência de pagamento
       const { preference, error: prefError } = await createPaymentPreference(
-        selectedPlanObj,
-        profile,
-        subscription.id
+        checkoutData.planObj,
+        profile!,
+        checkoutData.subscriptionId
       );
       
       if (prefError || !preference) {
@@ -154,11 +181,45 @@ export default function VIPPage() {
       }
       
       // Redirecionar para a página de pagamento
-      window.location.href = preference.init_point;
+      const paymentUrl = process.env.NODE_ENV === 'production' 
+        ? preference.init_point 
+        : preference.sandbox_init_point;
+        
+      window.location.href = paymentUrl;
       
     } catch (error: any) {
-      console.error('Checkout error:', error);
+      console.error('Payment error:', error);
       setError(error.message || 'Erro ao processar pagamento. Tente novamente.');
+      setCheckoutLoading(false);
+    }
+  };
+  
+  // Adicionar função para processar assinatura recorrente
+  const processRecurringSubscription = async () => {
+    setCheckoutLoading(true);
+    try {
+      // Verificar se temos os dados necessários
+      if (!checkoutData?.planObj || !checkoutData?.subscriptionId) {
+        throw new Error('Dados de checkout incompletos');
+      }
+      
+      // Criar assinatura recorrente
+      const { subscription, error } = await createRecurringSubscription(
+        checkoutData.planObj,
+        profile!,
+        checkoutData.subscriptionId
+      );
+      
+      if (error || !subscription) {
+        throw error || new Error('Erro ao criar assinatura recorrente.');
+      }
+      
+      // Redirecionar para a página de pagamento
+      window.location.href = subscription.init_point;
+      
+    } catch (error: any) {
+      console.error('Recurring subscription error:', error);
+      setError(error.message || 'Erro ao criar assinatura recorrente. Tente novamente.');
       setCheckoutLoading(false);
     }
   };

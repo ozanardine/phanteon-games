@@ -61,87 +61,61 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: 'Perfil não encontrado' });
     }
 
-    // Preparar descrição do item
-    const itemDescription = `Phanteon Games - ${plan.name} (${plan.interval === 'month' ? 'Mensal' : 'Anual'})`;
-
-    // Preparar URL de retorno
+    // Preparar URLs de retorno
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || '';
     const successUrl = `${baseUrl}/payment/success?subscription_id=${subscriptionId}`;
     const failureUrl = `${baseUrl}/payment/failure?subscription_id=${subscriptionId}`;
-    const pendingUrl = `${baseUrl}/payment/pending?subscription_id=${subscriptionId}`;
 
-    // Criar preferência de pagamento
-    const preference = {
-      items: [
-        {
-          id: `plan_${plan.id}`,
-          title: itemDescription,
-          description: plan.description || itemDescription,
-          unit_price: Number(plan.price),
-          quantity: 1,
-          currency_id: 'BRL',
-          category_id: 'gaming_subscriptions',
-        },
-      ],
-      payer: {
-        name: profile.display_name || profile.username || '',
-        email: session.user.email || profile.email || '',
-      },
+    // Criar uma assinatura recorrente no Mercado Pago
+    const preapproval_data = {
+      payer_email: session.user.email || profile.email,
+      back_url: successUrl,
+      reason: `Phanteon Games - ${plan.name} (Assinatura)`,
       external_reference: subscriptionId.toString(),
-      back_urls: {
-        success: successUrl,
-        failure: failureUrl,
-        pending: pendingUrl,
-      },
-      auto_return: 'approved',
       notification_url: `${baseUrl}/api/payments/webhook`,
-      payment_methods: {
-        excluded_payment_types: [
-          // Excluir métodos de pagamento não desejados
-          // { id: 'ticket' }, // Boleto
-        ],
-        installments: 1, // Número de parcelas
+      auto_recurring: {
+        frequency: 1,
+        frequency_type: "months",
+        transaction_amount: Number(plan.price),
+        currency_id: "BRL"
       },
-      statement_descriptor: 'PHANTEONGAMES',
-      metadata: {
-        user_id: session.user.id,
-        subscription_id: subscriptionId,
-        plan_id: plan.id,
-        environment: environment
-      },
-      // Configurações específicas para produção
+      status: environment === 'production' ? "authorized" : "pending",
       ...(environment === 'production' && {
-        binary_mode: true, // Em produção, não permitir pagamentos pendentes
+        card_token_id: null, // Este parâmetro só é usado para produção
       })
     };
 
-    // Criar preferência no Mercado Pago
-    const response = await mercadopago.preferences.create(preference);
-    console.log('Preference created:', response.body.id);
+    const response = await mercadopago.preapproval.create(preapproval_data);
 
-    // Registrar os detalhes da preferência
+    if (!response.body || !response.body.id) {
+      throw new Error('Erro ao criar assinatura recorrente no Mercado Pago');
+    }
+
+    console.log('Recurring subscription created:', response.body.id);
+
+    // Registrar os detalhes da assinatura recorrente
     const { error: logError } = await supabase
       .from('payment_logs')
       .insert({
         user_id: session.user.id,
         subscription_id: subscriptionId,
-        type: 'preference_created',
+        type: 'recurring_created',
         details: {
-          preference_id: response.body.id,
+          mercadopago_id: response.body.id,
           environment: environment,
           timestamp: new Date().toISOString()
         }
       });
 
     if (logError) {
-      console.error('Error logging preference creation:', logError);
+      console.error('Error logging recurring creation:', logError);
     }
 
-    // Atualizar assinatura com o ID da preferência
+    // Atualizar registro da assinatura com ID da assinatura do Mercado Pago
     const { error: updateError } = await supabase
       .from('subscriptions')
       .update({
-        mercadopago_preference_id: response.body.id,
+        mercadopago_subscription_id: response.body.id,
         updated_at: new Date().toISOString(),
       })
       .eq('id', subscriptionId)
@@ -151,15 +125,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error('Error updating subscription:', updateError);
     }
 
-    // Retornar URLs de pagamento
+    // Retornar URL de iniciação do pagamento
     return res.status(200).json({
       id: response.body.id,
-      init_point: response.body.init_point,
+      init_point: response.body.init_point || response.body.sandbox_init_point,
       sandbox_init_point: response.body.sandbox_init_point,
     });
 
   } catch (error) {
-    console.error('Error creating payment preference:', error);
-    return res.status(500).json({ error: 'Erro ao criar preferência de pagamento' });
+    console.error('Error creating recurring subscription:', error);
+    return res.status(500).json({ error: 'Erro ao criar assinatura recorrente' });
   }
 }
