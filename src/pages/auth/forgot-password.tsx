@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { FiMail, FiArrowLeft } from 'react-icons/fi';
-import { AuthLayout } from '@/components/layout/MainLayout';
+import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button, Input, Alert, FormControl } from '@/components/ui/Button';
 import { resetPassword } from '@/lib/supabase';
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { FiLock, FiEye, FiEyeOff, FiArrowLeft } from 'react-icons/fi';
-import { AuthLayout } from '@/components/layout/MainLayout';
+import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button, Input, Alert, FormControl } from '@/components/ui/Button';
 import { updatePassword } from '@/lib/supabase';
 
