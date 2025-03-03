@@ -14,7 +14,7 @@ export default function ComingSoonPage() {
   });
   
   // Data alvo para lançamento - ajuste conforme necessário
-  const targetDate = new Date('2025-03-31T00:00:00');
+  const targetDate = new Date('2025-03-06T22:00:00');
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -42,7 +42,18 @@ export default function ComingSoonPage() {
       <Head>
         <title>Phanteon Games | Em Breve</title>
         <meta name="description" content="Phanteon Games - Em construção. Junte-se à nossa comunidade no Discord!" />
-        <link rel="icon" href="/favicon.ico" />
+        
+        {/* Favicons */}
+        <link rel="icon" href="https://i.imgur.com/PFUYbUz.png" />
+        <link rel="apple-touch-icon" href="https://i.imgur.com/PFUYbUz.png" />
+        <link rel="shortcut icon" type="image/png" href="https://i.imgur.com/PFUYbUz.png" />
+        
+        {/* Open Graph / Social Media */}
+        <meta property="og:title" content="Phanteon Games | Em Breve" />
+        <meta property="og:description" content="Phanteon Games - Em construção. Junte-se à nossa comunidade no Discord!" />
+        <meta property="og:image" content="https://i.imgur.com/PFUYbUz.png" />
+        <meta property="og:url" content="https://phanteongames.com" />
+        <meta property="og:type" content="website" />
       </Head>
 
       {/* Elementos de fundo */}
