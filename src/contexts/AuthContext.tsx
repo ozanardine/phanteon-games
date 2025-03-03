@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, UserProfile, getCurrentProfile } from '@/lib/supabase';
 
-type AuthContextType = {
+export type AuthContextType = {
   session: Session | null;
   user: User | null;
   profile: UserProfile | null;
@@ -23,7 +23,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-type AuthProviderProps = {
+export type AuthProviderProps = {
   children: ReactNode;
 };
 

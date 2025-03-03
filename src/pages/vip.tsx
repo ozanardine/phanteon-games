@@ -19,6 +19,7 @@ export default function VIPPage() {
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<boolean>(false);
   const [discordConnected, setDiscordConnected] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
   const [paymentOptions, setPaymentOptions] = useState(false);
@@ -26,7 +27,7 @@ export default function VIPPage() {
   const [checkoutData, setCheckoutData] = useState<any>(null);
   
   const router = useRouter();
-  const { plan: planIdFromUrl, success, canceled } = router.query;
+  const { plan: planIdFromUrl, success: successParam, canceled } = router.query;
 
   // Carregar planos disponíveis
   useEffect(() => {
@@ -95,14 +96,15 @@ export default function VIPPage() {
 
   // Mostrar resposta após o pagamento
   useEffect(() => {
-    if (success && currentSubscription) {
+    if (successParam === 'true' && currentSubscription) {
       setError(null);
+      setSuccess(true);
       window.scrollTo(0, 0);
-    } else if (canceled) {
+    } else if (canceled === 'true') {
       setError('O pagamento foi cancelado ou não foi concluído. Tente novamente quando desejar.');
       window.scrollTo(0, 0);
     }
-  }, [success, canceled, currentSubscription]);
+  }, [successParam, canceled, currentSubscription]);
 
   const handleSubscribe = async (planId: number) => {
     if (!user) {
@@ -158,6 +160,10 @@ export default function VIPPage() {
         subscriptionId: subscription.id,
         profile: profile
       });
+
+      // Processar pagamento diretamente
+      await processPayment();
+      
     } catch (error: any) {
       console.error('Checkout error:', error);
       setError(error.message || 'Erro ao processar pagamento. Tente novamente.');
@@ -199,33 +205,36 @@ export default function VIPPage() {
     }
   };
   
-  // Adicionar função para processar assinatura recorrente
-  const processRecurringSubscription = async () => {
-    setCheckoutLoading(true);
+  // Função temporária para criar assinatura recorrente
+  const createRecurringSubscription = async (plan: SubscriptionPlan, userProfile: any, subscriptionId: number) => {
     try {
-      // Verificar se temos os dados necessários
-      if (!checkoutData?.planObj || !checkoutData?.subscriptionId) {
-        throw new Error('Dados de checkout incompletos');
+      console.log(`Criando assinatura recorrente em ambiente ${process.env.NODE_ENV === 'production' ? 'PRODUÇÃO' : 'SANDBOX'}`);
+      
+      const response = await fetch('/api/payments/create-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          planId: plan.id,
+          subscriptionId: subscriptionId,
+          environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox'
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao criar assinatura recorrente');
       }
-      
-      // Criar assinatura recorrente
-      const { subscription, error } = await createRecurringSubscription(
-        checkoutData.planObj,
-        profile!,
-        checkoutData.subscriptionId
-      );
-      
-      if (error || !subscription) {
-        throw error || new Error('Erro ao criar assinatura recorrente.');
-      }
-      
-      // Redirecionar para a página de pagamento
-      window.location.href = subscription.init_point;
-      
-    } catch (error: any) {
-      console.error('Recurring subscription error:', error);
-      setError(error.message || 'Erro ao criar assinatura recorrente. Tente novamente.');
-      setCheckoutLoading(false);
+
+      const subscription = await response.json();
+      return { subscription, error: null };
+    } catch (error) {
+      console.error('Error creating recurring subscription:', error);
+      return {
+        subscription: null,
+        error: error instanceof Error ? error : new Error('Erro desconhecido'),
+      };
     }
   };
 
@@ -238,13 +247,6 @@ export default function VIPPage() {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
-  };
-
-  // Função temporária criada para fazer o código compilar
-  const createRecurringSubscription = async (plan: any, user: any, subscriptionId: number) => {
-    // Esta é uma implementação fictícia usada para resolver temporariamente 
-    // o erro de compilação. A função real deverá ser implementada em mercadopago.ts
-    return { subscription: null, error: new Error('Não implementado ainda') };
   };
 
   return (
@@ -466,10 +468,10 @@ export default function VIPPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
                 {plans.map((plan) => (
                   <Card key={plan.id} className={`border-phanteon-light overflow-hidden ${
-                    plan.name.includes('Gold') ? 'border-yellow-600/30 bg-gradient-to-br from-phanteon-gray to-yellow-900/10' : ''
+                    plan.name?.includes('Gold') ? 'border-yellow-600/30 bg-gradient-to-br from-phanteon-gray to-yellow-900/10' : ''
                   }`}>
                     <div className="p-6">
-                      {plan.name.includes('Gold') && (
+                      {plan.name?.includes('Gold') && (
                         <div className="bg-yellow-600 text-white text-xs font-bold uppercase px-3 py-1 rounded-full mb-4 inline-block">
                           Mais Popular
                         </div>
@@ -486,7 +488,7 @@ export default function VIPPage() {
                       </div>
                       
                       <div className="space-y-3 mb-8">
-                        {(plan.features as string[]).map((feature, index) => (
+                        {(plan.features as string[])?.map((feature, index) => (
                           <div key={index} className="flex items-start">
                             <div className="flex-shrink-0">
                               <FaCheck className="text-green-500 mt-1" />
@@ -497,10 +499,10 @@ export default function VIPPage() {
                       </div>
                       
                       <Button 
-                        variant={plan.name.includes('Gold') ? "primary" : "outline"}
+                        variant={plan.name?.includes('Gold') ? "primary" : "outline"}
                         fullWidth
                         onClick={() => handleSubscribe(plan.id)}
-                        className={plan.name.includes('Gold') ? "" : "hover:bg-phanteon-orange/10"}
+                        className={plan.name?.includes('Gold') ? "" : "hover:bg-phanteon-orange/10"}
                       >
                         {currentSubscription?.status === 'active' && currentSubscription?.plan?.id === plan.id
                           ? 'Assinatura Ativa'
