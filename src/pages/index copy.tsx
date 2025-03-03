@@ -56,12 +56,11 @@ export default function ComingSoonPage() {
           {/* Logo Area */}
           <div className="mb-8 flex flex-col items-center">
             <div className="w-48 h-48 bg-phanteon-light rounded-full mb-6 flex items-center justify-center overflow-hidden border-4 border-phanteon-orange/30">
-              {/* Logo da comunidade */}
-              <img 
-                src="https://i.imgur.com/PFUYbUz.png" 
-                alt="Phanteon Games Logo" 
-                className="w-32 h-32 object-contain"
-              />
+              {/* Aqui vai o logo ou um placeholder */}
+              <h1 className="text-5xl font-bold">
+                <span className="text-phanteon-orange">P</span>
+                <span className="text-white">G</span>
+              </h1>
             </div>
             <h1 className="text-4xl md:text-6xl font-bold mb-2">
               <span className="text-phanteon-orange">Phanteon</span> Games
@@ -107,7 +106,28 @@ export default function ComingSoonPage() {
             </a>
           </div>
 
-
+          {/* Subscribe */}
+          <div className="max-w-md mx-auto">
+            <div className="bg-phanteon-gray rounded-lg p-6 border border-phanteon-light">
+              <h3 className="text-xl font-bold mb-3">Fique por dentro</h3>
+              <p className="text-gray-300 mb-4">
+                Seja notificado quando o site estiver no ar!
+              </p>
+              <form className="flex flex-col sm:flex-row gap-2">
+                <input 
+                  type="email" 
+                  placeholder="Seu email" 
+                  className="bg-phanteon-light border border-phanteon-gray rounded-md px-4 py-2 flex-grow focus:outline-none focus:ring-2 focus:ring-phanteon-orange"
+                />
+                <button 
+                  type="submit" 
+                  className="bg-phanteon-orange hover:bg-phanteon-orange/90 text-white px-4 py-2 rounded-md font-medium transition-colors"
+                >
+                  Notifique-me
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
       </main>
 
