@@ -136,7 +136,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         results.push({
           subscription_id: subscription.id,
           status: 'error',
-          error: subError.message
+          error: subError instanceof Error ? subError.message : String(subError)
         });
       }
     }
@@ -181,7 +181,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           results.push({
             subscription_id: subscription.id,
             status: 'error_expiring',
-            error: expError.message
+            error: expError instanceof Error ? expError.message : String(expError)
           });
         }
       }
@@ -194,7 +194,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Error checking renewals:', error);
-    return res.status(500).json({ error: 'Erro ao verificar renovações' });
+    return res.status(500).json({ 
+      error: error instanceof Error ? error.message : 'Erro ao verificar renovações' 
+    });
   }
 }
 
