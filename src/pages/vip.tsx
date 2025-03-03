@@ -382,7 +382,7 @@ export default function VIPPage() {
           </div>
         )}
         
-        {/* Pricing Cards */}
+        {/* Pricing Card */}
         {(!selectedPlan || !user) && (
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             {loading ? (
