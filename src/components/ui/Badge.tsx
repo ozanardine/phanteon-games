@@ -30,6 +30,3 @@ export const Badge: React.FC<BadgeProps> = ({
     </span>
   );
 };
-
-// Exporte todos os componentes de UI
-export { Button, Input, Card, Alert, FormControl, Spinner, Tabs, Badge };
