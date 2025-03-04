@@ -551,73 +551,18 @@ export default function ProfilePage() {
           </div>
         </div>
       </Card>
-    
-      {/* Discord Connection */}
-      <Card>
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center">
-              <FaDiscord className="text-[#5865F2] text-2xl mr-3" />
-              <h2 className="text-xl font-bold">Discord</h2>
-            </div>
-            
-            {discordConnected ? (
-              <Badge variant="success">Conectado</Badge>
-            ) : (
-              <Badge variant="secondary">Desconectado</Badge>
-            )}
-          </div>
-          
-          {discordConnected ? (
-            <div>
-              <div className="bg-phanteon-light/20 rounded-lg p-4 mb-6">
-                <div className="flex items-center">
-                  <div className="flex-1">
-                    <p className="font-medium">{discordUsername}</p>
-                    <p className="text-sm text-gray-400">
-                      Conta conectada com sucesso
-                    </p>
-                  </div>
-                  {currentSubscription && (
-                    <Badge 
-                      variant="primary" 
-                      className={currentSubscription.plan?.name?.includes('Gold') ? 'bg-yellow-600' : ''}
-                    >
-                      {currentSubscription.plan?.name || 'VIP'}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  onClick={disconnectDiscordAccount}
-                  isLoading={loading}
-                  className="text-red-400 hover:text-red-300"
-                >
-                  <FiUnlink className="mr-2" /> Desvincular
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <p className="text-gray-300 mb-6">
-                Conecte sua conta do Discord para receber automaticamente seu cargo VIP e acessar canais exclusivos.
-              </p>
-              
-              <Button
-                variant="outline"
-                onClick={connectDiscordAccount}
-                isLoading={loading}
-                className="bg-[#5865F2]/10 hover:bg-[#5865F2]/20 border-[#5865F2]/30"
-              >
-                <FiLink className="mr-2" /> Conectar Discord
-              </Button>
-            </div>
-          )}
-        </div>
-      </Card>
+      
+      {/* Discord Connection - Usando o novo componente */}
+      <DiscordConnection 
+        onConnect={() => {
+          // Ações após conectar
+          checkDiscordStatus();
+        }}
+        onDisconnect={() => {
+          // Ações após desconectar
+          checkDiscordStatus();
+        }}
+      />
     </div>
   );
 
