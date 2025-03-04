@@ -23,13 +23,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: 'Dados incompletos para criar assinatura' });
     }
 
-    console.log(`[API:create] Processando assinatura para discord_id: ${userId}, plano: ${planId}`);
+    // Garantir que o Discord ID seja uma string
+    const discordIdString = userId.toString();
+    
+    console.log(`[API:create] Processando assinatura para discord_id: ${discordIdString}, plano: ${planId}`);
 
     // Verificar se o usuário existe
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('discord_id', userId)
+      .eq('discord_id', discordIdString)
       .maybeSingle();
 
     if (userError) {
@@ -38,7 +41,19 @@ export default async function handler(req, res) {
     }
 
     if (!userData) {
-      console.error('[API:create] Usuário não encontrado para discord_id:', userId);
+      console.error('[API:create] Usuário não encontrado para discord_id:', discordIdString);
+      
+      // Log para depuração
+      const { data: allUsers, error: listError } = await supabase
+        .from('users')
+        .select('id, discord_id')
+        .limit(5);
+        
+      if (!listError && allUsers) {
+        console.log('[API:create] Amostra de usuários disponíveis:', 
+          allUsers.map(u => `ID: ${u.id}, Discord: ${u.discord_id}`).join(', '));
+      }
+      
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
@@ -52,7 +67,7 @@ export default async function handler(req, res) {
       title,
       price,
       quantity,
-      userId,
+      userId: discordIdString,
       planId,
       successUrl,
       failureUrl

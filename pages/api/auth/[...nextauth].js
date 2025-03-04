@@ -52,60 +52,46 @@ async function syncUserWithDatabase(userData) {
         throw updateError;
       }
       
-      return { id: existingUser.id, discord_id: discordIdString };
-    }
-    
-    // Se não existe, precisamos criar um novo
-    console.log('[Auth] Usuário não encontrado, criando novo registro');
-    
-    // Gera um novo UUID para o usuário
-    const newUserId = uuidv4();
-    
-    // Insere o usuário na tabela
-    const { data: insertedUser, error: insertError } = await supabaseAdmin
-      .from('users')
-      .insert([{
-        id: newUserId,
-        discord_id: discordIdString,
+      return {
+        ...existingUser,
         name: userData.name,
         email: userData.email,
         discord_avatar: userData.image,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }])
+      };
+    }
+    
+    // Se não existe, criamos um novo
+    console.log('[Auth] Usuário não encontrado, criando novo registro');
+    
+    // Criar dado do usuário
+    const newUser = {
+      id: uuidv4(),
+      discord_id: discordIdString,  // Garante que é salvo como string
+      name: userData.name,
+      email: userData.email,
+      discord_avatar: userData.image,
+      role: 'user',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    // Inserir no Supabase
+    const { data: insertedUser, error: insertError } = await supabaseAdmin
+      .from('users')
+      .insert([newUser])
       .select()
       .single();
     
     if (insertError) {
       console.error('[Auth] Erro ao inserir usuário:', insertError);
-      
-      // Se o erro for de chave duplicada, tenta recuperar o usuário existente
-      if (insertError.code === '23505') {
-        console.log('[Auth] Conflito de chave única, tentando recuperar usuário existente');
-        
-        const { data: recoveredUser, error: recoveryError } = await supabaseAdmin
-          .from('users')
-          .select('*')
-          .eq('discord_id', discordIdString)
-          .maybeSingle();
-          
-        if (recoveryError || !recoveredUser) {
-          console.error('[Auth] Falha na recuperação:', recoveryError);
-          throw insertError;
-        }
-        
-        return { id: recoveredUser.id, discord_id: discordIdString };
-      }
-      
       throw insertError;
     }
     
-    console.log('[Auth] Usuário criado com sucesso:', insertedUser.id);
-    return { id: insertedUser.id, discord_id: discordIdString };
-    
+    console.log('[Auth] Novo usuário criado com sucesso:', insertedUser.id);
+    return insertedUser;
   } catch (error) {
-    console.error('[Auth] Erro ao sincronizar usuário:', error);
-    return null;
+    console.error('[Auth] Exceção ao sincronizar usuário:', error);
+    throw error;
   }
 }
 

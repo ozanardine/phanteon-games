@@ -173,13 +173,18 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
     setLoading(true);
     try {
       console.log(`[Checkout] Iniciando checkout para plano: ${selectedPlan.id}`);
+      
+      // Garantir que o Discord ID seja uma string
+      const discordId = session.user.discord_id.toString();
+      
+      console.log(`[Checkout] ID do usuário: ${discordId}`);
 
       // Criar preferência de pagamento no Mercado Pago
       const paymentData = {
         title: `Plano ${selectedPlan.name} - Phanteon Games`,
         price: selectedPlan.price,
         quantity: 1,
-        userId: session.user.discord_id,
+        userId: discordId,
         planId: selectedPlan.id,
         successUrl: `${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/perfil?success=true`,
         failureUrl: `${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/checkout/${selectedPlan.id}?error=true`,
@@ -477,7 +482,7 @@ export async function getServerSideProps(context) {
   const { req, res } = context;
   
   // Importa as funções necessárias
-  const { getServerSession } = await import('next-auth/next');
+  const { getServerSession } = await import('next-auth');
   const { authOptions } = await import('../api/auth/[...nextauth]');
   const { getUserByDiscordId, getUserSubscription } = await import('../../lib/supabase');
   
