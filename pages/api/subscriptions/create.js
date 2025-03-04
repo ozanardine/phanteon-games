@@ -61,25 +61,54 @@ export default async function handler(req, res) {
         if (session && session.user) {
           console.log('[API:create] Tentando criar usuário para discord_id:', discordIdString);
           
+          // Buscar estrutura correta da tabela users dinamicamente
+          const { data: tableInfo, error: tableError } = await supabase
+            .from('users')
+            .select('*')
+            .limit(1);
+            
+          let columnsAvailable = [];
+          
+          if (!tableError && tableInfo && tableInfo.length > 0) {
+            columnsAvailable = Object.keys(tableInfo[0]);
+            console.log('[API:create] Colunas disponíveis na tabela users:', columnsAvailable.join(', '));
+          } else {
+            console.log('[API:create] Não foi possível obter colunas da tabela users, usando conjunto mínimo');
+            // Conjunto mínimo esperado
+            columnsAvailable = ['id', 'discord_id', 'name', 'email', 'discord_avatar', 'created_at', 'updated_at'];
+          }
+          
+          // Criar dado do usuário apenas com colunas que existem na tabela
           const newUser = {
             id: uuidv4(),
-            discord_id: discordIdString,
-            name: session.user.name || 'Usuário Phanteon',
-            email: session.user.email || null,
-            discord_avatar: session.user.image || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            role: 'user'
+            discord_id: discordIdString
           };
+          
+          // Adicionar campos opcionais apenas se existirem na tabela
+          if (columnsAvailable.includes('name')) newUser.name = session.user.name || 'Usuário Phanteon';
+          if (columnsAvailable.includes('email')) newUser.email = session.user.email || null;
+          if (columnsAvailable.includes('discord_avatar')) newUser.discord_avatar = session.user.image || null;
+          if (columnsAvailable.includes('role')) newUser.role = 'user'; 
+          if (columnsAvailable.includes('created_at')) newUser.created_at = new Date().toISOString();
+          if (columnsAvailable.includes('updated_at')) newUser.updated_at = new Date().toISOString();
+          
+          console.log('[API:create] Criando novo usuário com campos:', Object.keys(newUser).join(', '));
           
           const { data: createdUser, error: createError } = await supabase
             .from('users')
-            .insert([newUser])
+            .insert(newUser)
             .select()
             .single();
             
           if (createError) {
             console.error('[API:create] Erro ao criar usuário:', createError);
+            console.error('[API:create] Objeto do usuário tentado:', JSON.stringify(newUser, null, 2));
+            
+            return res.status(500).json({ 
+              success: false, 
+              message: `Erro ao criar usuário: ${createError.message}`,
+              details: createError 
+            });
           } else if (createdUser) {
             console.log('[API:create] Usuário criado com sucesso:', createdUser.id);
             userData = createdUser;
@@ -144,6 +173,35 @@ export default async function handler(req, res) {
     }
 
     console.log(`[API:create] Assinatura criada com sucesso, ID: ${subscription.id}`);
+    
+    // Atualizar a role do usuário com base no plano contratado
+    if (title.toLowerCase().includes('vip-plus') || title.toLowerCase().includes('vip plus')) {
+      console.log(`[API:create] Atualizando role do usuário para 'vip-plus'`);
+      
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ role: 'vip-plus' })
+        .eq('id', userData.id);
+        
+      if (updateError) {
+        console.error('[API:create] Erro ao atualizar role do usuário:', updateError);
+      } else {
+        console.log(`[API:create] Role do usuário atualizada com sucesso para 'vip-plus'`);
+      }
+    } else if (title.toLowerCase().includes('vip')) {
+      console.log(`[API:create] Atualizando role do usuário para 'vip'`);
+      
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ role: 'vip' })
+        .eq('id', userData.id);
+        
+      if (updateError) {
+        console.error('[API:create] Erro ao atualizar role do usuário:', updateError);
+      } else {
+        console.log(`[API:create] Role do usuário atualizada com sucesso para 'vip'`);
+      }
+    }
     
     // Retorna a URL de pagamento do Mercado Pago
     return res.status(200).json({

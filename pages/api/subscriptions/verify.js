@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     // Buscar usuário no Supabase pelo discord_id
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('id')
+      .select('id, role')
       .or(`discord_id.eq.${discordIdString},discord_id.eq.${parseInt(discordIdString, 10)}`)
       .maybeSingle();
 
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     // Buscar assinaturas ativas do usuário
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('subscriptions')
-      .select('*')
+      .select('*, plans:plan_id(name)')
       .eq('user_id', userData.id)
       .eq('status', 'active')
       .order('expires_at', { ascending: false });
@@ -67,12 +67,63 @@ export default async function handler(req, res) {
     const currentSubscription = hasActiveSubscription ? subscriptions[0] : null;
 
     console.log(`[API:verify] Usuário ${discordIdString} tem assinatura ativa: ${hasActiveSubscription}`);
+    
+    // Atualiza a role do usuário se necessário
+    if (hasActiveSubscription && userData.role !== 'admin') {
+      // Determinar a nova role com base no plano
+      let newRole = 'user';
+      const planName = currentSubscription.plans?.name?.toLowerCase() || '';
+      
+      if (planName.includes('vip-plus')) {
+        newRole = 'vip-plus';
+      } else if (planName.includes('vip')) {
+        newRole = 'vip';
+      }
+      
+      // Atualizar a role do usuário apenas se for diferente da atual
+      if (userData.role !== newRole) {
+        console.log(`[API:verify] Atualizando role do usuário de '${userData.role}' para '${newRole}'`);
+        
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ role: newRole })
+          .eq('id', userData.id);
+          
+        if (updateError) {
+          console.error('[API:verify] Erro ao atualizar role do usuário:', updateError);
+        } else {
+          console.log(`[API:verify] Role do usuário atualizada com sucesso para '${newRole}'`);
+          // Atualiza o objeto userData para a resposta
+          userData.role = newRole;
+        }
+      }
+    } else if (!hasActiveSubscription && (userData.role === 'vip' || userData.role === 'vip-plus')) {
+      // Se não tiver assinatura ativa e a role for VIP, volta para usuário normal
+      console.log(`[API:verify] Usuário não tem assinatura ativa, revertendo role de '${userData.role}' para 'user'`);
+      
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ role: 'user' })
+        .eq('id', userData.id);
+        
+      if (updateError) {
+        console.error('[API:verify] Erro ao reverter role do usuário:', updateError);
+      } else {
+        console.log(`[API:verify] Role do usuário revertida para 'user'`);
+        // Atualiza o objeto userData para a resposta
+        userData.role = 'user';
+      }
+    }
 
     // Retorna o status da assinatura e dados da assinatura ativa (se houver)
     return res.status(200).json({
       active: hasActiveSubscription,
       subscription: currentSubscription,
-      subscriptions: subscriptions || []
+      subscriptions: subscriptions || [],
+      user: {
+        id: userData.id,
+        role: userData.role
+      }
     });
   } catch (error) {
     console.error('[API:verify] Erro no servidor:', error);

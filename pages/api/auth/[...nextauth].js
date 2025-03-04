@@ -63,27 +63,52 @@ async function syncUserWithDatabase(userData) {
     // Se não existe, criamos um novo
     console.log('[Auth] Usuário não encontrado, criando novo registro');
     
-    // Criar dado do usuário
+    // Buscar estrutura correta da tabela users dinamicamente
+    console.log('[Auth] Buscando estrutura da tabela users');
+    
+    const { data: tableInfo, error: tableError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .limit(1);
+      
+    let columnsAvailable = [];
+    
+    if (!tableError && tableInfo && tableInfo.length > 0) {
+      columnsAvailable = Object.keys(tableInfo[0]);
+      console.log('[Auth] Colunas disponíveis na tabela users:', columnsAvailable.join(', '));
+    } else {
+      console.log('[Auth] Não foi possível obter colunas da tabela users, usando conjunto mínimo');
+      // Conjunto mínimo esperado
+      columnsAvailable = ['id', 'discord_id', 'name', 'email', 'discord_avatar', 'created_at', 'updated_at'];
+    }
+    
+    // Criar dado do usuário apenas com colunas que existem na tabela
     const newUser = {
       id: uuidv4(),
-      discord_id: discordIdString,  // Garante que é salvo como string
-      name: userData.name,
-      email: userData.email,
-      discord_avatar: userData.image,
-      role: 'user',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      discord_id: discordIdString  // Garante que é salvo como string
     };
+    
+    // Adicionar campos opcionais apenas se existirem na tabela
+    if (columnsAvailable.includes('name')) newUser.name = userData.name;
+    if (columnsAvailable.includes('email')) newUser.email = userData.email;
+    if (columnsAvailable.includes('discord_avatar')) newUser.discord_avatar = userData.image;
+    if (columnsAvailable.includes('role')) newUser.role = 'user'; 
+    if (columnsAvailable.includes('created_at')) newUser.created_at = new Date().toISOString();
+    if (columnsAvailable.includes('updated_at')) newUser.updated_at = new Date().toISOString();
+    
+    console.log('[Auth] Criando novo usuário com campos:', Object.keys(newUser).join(', '));
     
     // Inserir no Supabase
     const { data: insertedUser, error: insertError } = await supabaseAdmin
       .from('users')
-      .insert([newUser])
+      .insert(newUser)
       .select()
       .single();
     
     if (insertError) {
       console.error('[Auth] Erro ao inserir usuário:', insertError);
+      console.error('[Auth] Objeto do usuário tentado:', JSON.stringify(newUser, null, 2));
+      
       throw insertError;
     }
     

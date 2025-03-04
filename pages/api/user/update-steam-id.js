@@ -57,38 +57,67 @@ export default async function handler(req, res) {
           allUsers.map(u => `ID: ${u.id}, Discord: ${u.discord_id} (tipo: ${typeof u.discord_id})`).join(', '));
       }
       
-      // Tenta criar o usuário
-      try {
-        console.log('[API:update-steam-id] Tentando criar usuário para discord_id:', discordIdString);
+      // Tentativa de criar o usuário
+      console.log(`[API:update-steam-id] Tentando criar usuário para discord_id: ${discordIdString}`);
+      
+      // Buscar estrutura correta da tabela users dinamicamente
+      const { data: tableInfo, error: tableError } = await supabase
+        .from('users')
+        .select('*')
+        .limit(1);
         
-        const newUser = {
-          id: uuidv4(),
-          discord_id: discordIdString,
-          name: session.user.name || 'Usuário Phanteon',
-          email: session.user.email || null,
-          discord_avatar: session.user.image || null,
-          steam_id: steamId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          role: 'user'
-        };
+      let columnsAvailable = [];
+      
+      if (!tableError && tableInfo && tableInfo.length > 0) {
+        columnsAvailable = Object.keys(tableInfo[0]);
+        console.log('[API:update-steam-id] Colunas disponíveis na tabela users:', columnsAvailable.join(', '));
+      } else {
+        console.log('[API:update-steam-id] Não foi possível obter colunas da tabela users, usando conjunto mínimo');
+        // Conjunto mínimo esperado
+        columnsAvailable = ['id', 'discord_id', 'name', 'email', 'discord_avatar', 'steam_id', 'created_at', 'updated_at'];
+      }
+      
+      // Criar dado do usuário apenas com colunas que existem na tabela
+      const newUser = {
+        id: uuidv4(),
+        discord_id: discordIdString
+      };
+      
+      // Adicionar campos opcionais apenas se existirem na tabela
+      if (columnsAvailable.includes('name')) newUser.name = session.user.name || 'Usuário Phanteon';
+      if (columnsAvailable.includes('email')) newUser.email = session.user.email || null;
+      if (columnsAvailable.includes('discord_avatar')) newUser.discord_avatar = session.user.image || null;
+      if (columnsAvailable.includes('steam_id')) newUser.steam_id = steamId;
+      if (columnsAvailable.includes('role')) newUser.role = 'user';
+      if (columnsAvailable.includes('created_at')) newUser.created_at = new Date().toISOString();
+      if (columnsAvailable.includes('updated_at')) newUser.updated_at = new Date().toISOString();
+      
+      console.log('[API:update-steam-id] Criando novo usuário com campos:', Object.keys(newUser).join(', '));
         
-        const { data: createdUser, error: createError } = await supabase
-          .from('users')
-          .insert([newUser])
-          .select()
-          .single();
-          
-        if (createError) {
-          console.error('[API:update-steam-id] Erro ao criar usuário:', createError);
-          return res.status(500).json({ success: false, message: 'Erro ao criar usuário' });
-        }
+      const { data: createdUser, error: createError } = await supabase
+        .from('users')
+        .insert(newUser)
+        .select()
+        .single();
         
-        console.log('[API:update-steam-id] Usuário criado com sucesso:', createdUser.id);
-        return res.status(200).json({ success: true });
-      } catch (createErr) {
-        console.error('[API:update-steam-id] Exceção ao criar usuário:', createErr);
-        return res.status(500).json({ success: false, message: 'Erro ao criar usuário' });
+      if (createError) {
+        console.error(`[API:update-steam-id] Erro ao criar usuário:`, createError);
+        console.error('[API:update-steam-id] Objeto do usuário tentado:', JSON.stringify(newUser, null, 2));
+        
+        return res.status(500).json({ 
+          success: false, 
+          message: `Erro ao criar usuário: ${createError.message}`
+        });
+      } else if (createdUser) {
+        console.log(`[API:update-steam-id] Usuário criado com sucesso: ${createdUser.id}`);
+        userData = createdUser;
+      } else {
+        // Se não conseguiu criar usuário e também não houve erro
+        console.error(`[API:update-steam-id] Situação inesperada: nem erro nem usuário criado`);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Erro desconhecido ao criar usuário'
+        });
       }
     }
 
