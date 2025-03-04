@@ -2,7 +2,6 @@ import NextAuth from 'next-auth';
 import DiscordProvider from 'next-auth/providers/discord';
 import { syncUserData } from '../../../lib/auth';
 
-// Improved NextAuth configuration with better session handling
 export default NextAuth({
   providers: [
     DiscordProvider({
@@ -32,11 +31,23 @@ export default NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60, // 30 dias
+    updateAge: 24 * 60 * 60, // 1 dia
   },
-  pages: {
-    signIn: '/',
-    error: '/', // Error code passed in query string as ?error=
+  jwt: {
+    secret: process.env.JWT_SECRET,
+    maxAge: 60 * 60 * 24 * 30, // 30 dias
+  },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    }
   },
   callbacks: {
     async jwt({ token, account, profile, user }) {
@@ -44,8 +55,7 @@ export default NextAuth({
       if (account && user) {
         console.log('[NextAuth] JWT Callback - Initial sign in:', { 
           id: user.id,
-          name: user.name,
-          account_type: account.type
+          name: user.name
         });
         
         return {
@@ -66,12 +76,10 @@ export default NextAuth({
         session.user.discord_id = token.discord_id;
         session.user.access_token = token.access_token;
         session.user.token_type = token.token_type;
-        session.error = token.error;
         
         console.log('[NextAuth] Session Callback:', { 
           user: session.user.name,
-          discord_id: session.user.discord_id,
-          has_token: !!session.user.access_token
+          discord_id: session.user.discord_id
         });
       }
       
@@ -82,7 +90,8 @@ export default NextAuth({
         console.log('[NextAuth] SignIn callback - user data:', { 
           id: user.id, 
           email: user.email, 
-          name: user.name
+          name: user.name,
+          image: user.image
         });
         
         // Sincroniza dados do usuário com o Supabase
@@ -107,31 +116,6 @@ export default NextAuth({
         return false;
       }
     },
-  },
-  events: {
-    async signIn(message) {
-      console.log('[NextAuth] Successful sign in event', { user: message.user.name });
-    },
-    async signOut(message) {
-      console.log('[NextAuth] Sign out event', { session: message.session });
-    },
-    async session(message) {
-      console.log('[NextAuth] Session accessed', { user: message.session?.user?.name });
-    },
-    async error(message) {
-      console.error('[NextAuth] Error event', message);
-    }
-  },
-  logger: {
-    error(code, metadata) {
-      console.error(`[NextAuth][Error][${code}]`, metadata);
-    },
-    warn(code, metadata) {
-      console.warn(`[NextAuth][Warning][${code}]`, metadata);
-    },
-    debug(code, metadata) {
-      console.log(`[NextAuth][Debug][${code}]`, metadata);
-    }
   },
   debug: process.env.NODE_ENV === 'development',
 });

@@ -9,11 +9,10 @@ import Button from '../components/ui/Button';
 import SubscriptionStatus from '../components/subscriptions/SubscriptionStatus';
 import Modal from '../components/ui/Modal';
 import { FaDiscord, FaSteam, FaUser, FaHistory } from 'react-icons/fa';
-import { supabase } from '../lib/supabase';
-import { updateSteamId } from '../lib/auth';
-import { requireAuth } from '../lib/auth';
+import { getUserByDiscordId, getUserSubscription, supabase } from '../lib/supabase';
+import { requireAuth, syncUserData } from '../lib/auth';
 
-export default function PerfilPage({ userData, subscriptionData }) {
+export default function PerfilPage({ userData, subscriptionData, errorMessage }) {
   const { data: session } = useSession();
   const router = useRouter();
   const [steamId, setSteamId] = useState(userData?.steam_id || '');
@@ -23,30 +22,19 @@ export default function PerfilPage({ userData, subscriptionData }) {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   useEffect(() => {
+    if (errorMessage) {
+      toast.error(errorMessage);
+    }
+    
     if (userData?.steam_id) {
       setSteamId(userData.steam_id);
     }
 
     // Carregar histórico de assinaturas
     const loadSubscriptionHistory = async () => {
-      if (!session?.user?.discord_id) return;
+      if (!session?.user?.discord_id || !userData?.id) return;
     
       try {
-        // Primeiro, obtenha o UUID do usuário a partir do discord_id
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('discord_id', session.user.discord_id)
-          .single();
-    
-        if (userError) throw userError;
-        
-        if (!userData || !userData.id) {
-          console.error('Usuário não encontrado');
-          return;
-        }
-    
-        // Agora use o UUID correto para consultar as assinaturas
         const { data, error } = await supabase
           .from('subscriptions')
           .select('*')
@@ -63,7 +51,7 @@ export default function PerfilPage({ userData, subscriptionData }) {
     };
 
     loadSubscriptionHistory();
-  }, [session, userData]);
+  }, [session, userData, errorMessage]);
 
   const handleSaveSteamId = async () => {
     if (!steamId) {
