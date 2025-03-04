@@ -4,8 +4,14 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// Criar o cliente do Supabase
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Criar o cliente do Supabase com configurações melhoradas
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true, // Habilita persistência de sessão
+    autoRefreshToken: true, // Habilita renovação automática de token
+    detectSessionInUrl: true, // Verifica tokens de acesso na URL
+  },
+});
 
 // Tipos para usuários e perfis
 export type UserProfile = {
@@ -119,19 +125,35 @@ export async function updatePassword(password: string) {
   return { data, error };
 }
 
-// Função para obter o perfil do usuário atual
+// Função para obter o perfil do usuário atual - melhorada para lidar com erros
 export async function getCurrentProfile() {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) return { profile: null, error: new Error('Usuário não autenticado') };
-  
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-  
-  return { profile, error };
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      console.error('Error getting user:', userError);
+      return { profile: null, error: userError };
+    }
+    
+    if (!user) {
+      return { profile: null, error: new Error('Usuário não autenticado') };
+    }
+    
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching profile:', error);
+    }
+    
+    return { profile, error };
+  } catch (error) {
+    console.error('Unexpected error in getCurrentProfile:', error);
+    return { profile: null, error: error instanceof Error ? error : new Error('Unknown error') };
+  }
 }
 
 // Função para atualizar o perfil do usuário

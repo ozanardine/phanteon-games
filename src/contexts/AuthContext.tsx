@@ -36,7 +36,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     // Carregar sessão atual
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Error getting session:', error);
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -50,6 +54,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Configurar listener para mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
+        
         setSession(session);
         setUser(session?.user ?? null);
 
@@ -78,6 +84,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setProfile(null);
         setIsAdmin(false);
       } else {
+        console.log('Profile loaded:', profile);
         setProfile(profile);
         setIsAdmin(profile?.is_admin || false);
       }

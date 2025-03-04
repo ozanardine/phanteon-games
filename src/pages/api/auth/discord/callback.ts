@@ -1,6 +1,6 @@
 // src/pages/api/auth/discord/callback.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '@/lib/supabase';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verificar se é uma requisição GET
@@ -23,6 +23,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Criar cliente Supabase específico para o servidor
+    const supabase = createServerSupabaseClient({ req, res });
+    
     // Verificar se o usuário está autenticado
     const { data: { session } } = await supabase.auth.getSession();
 

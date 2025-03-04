@@ -1,5 +1,7 @@
+// src/pages/api/auth/discord/status.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '@/lib/supabase';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -7,15 +9,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    // Criar cliente Supabase específico para o servidor
+    const supabaseServerClient = createServerSupabaseClient({ req, res });
+    
     // Verificar se o usuário está autenticado
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabaseServerClient.auth.getSession();
 
-    if (!session) {
-      return res.status(401).json({ error: 'Não autenticado' });
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      return res.status(401).json({ error: 'Não autenticado - Erro na sessão' });
     }
 
+    if (!session) {
+      return res.status(401).json({ error: 'Não autenticado - Sessão ausente' });
+    }
+
+    // Registrar ID do usuário para depuração
+    console.log('Session user ID:', session.user.id);
+
     // Buscar conexão do Discord
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServerClient
       .from('discord_connections')
       .select('*')
       .eq('user_id', session.user.id)
@@ -55,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (tokenData.error || !tokenData.access_token) {
           // Token de atualização inválido, desconectar
-          await supabase
+          await supabaseServerClient
             .from('discord_connections')
             .delete()
             .eq('user_id', session.user.id);
@@ -67,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const expiryDate = new Date();
         expiryDate.setSeconds(expiryDate.getSeconds() + tokenData.expires_in);
 
-        await supabase
+        await supabaseServerClient
           .from('discord_connections')
           .update({
             discord_access_token: tokenData.access_token,
