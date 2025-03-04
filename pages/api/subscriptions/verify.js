@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('id')
-      .eq('discord_id', discordIdString)
+      .or(`discord_id.eq.${discordIdString},discord_id.eq.${parseInt(discordIdString, 10)}`)
       .maybeSingle();
 
     if (userError) {
@@ -34,6 +34,18 @@ export default async function handler(req, res) {
 
     if (!userData) {
       console.error('[API:verify] Usuário não encontrado, discord_id:', discordIdString);
+      
+      // Log para depuração
+      const { data: allUsers, error: listError } = await supabase
+        .from('users')
+        .select('id, discord_id')
+        .limit(10);
+        
+      if (!listError && allUsers) {
+        console.log('[API:verify] Amostra de usuários disponíveis:', 
+          allUsers.map(u => `ID: ${u.id}, Discord: ${u.discord_id} (tipo: ${typeof u.discord_id})`).join(', '));
+      }
+      
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 

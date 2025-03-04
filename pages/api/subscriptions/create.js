@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]';
 import { createPaymentPreference } from '../../../lib/mercadopago';
 import { supabase } from '../../../lib/supabase';
+import { v4 as uuidv4 } from 'uuid';
 
 export default async function handler(req, res) {
   // Apenas método POST é permitido
@@ -29,10 +30,11 @@ export default async function handler(req, res) {
     console.log(`[API:create] Processando assinatura para discord_id: ${discordIdString}, plano: ${planId}`);
 
     // Verificar se o usuário existe
+    // Fazemos uma consulta OR para aceitar discord_id tanto como string quanto como número
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('discord_id', discordIdString)
+      .or(`discord_id.eq.${discordIdString},discord_id.eq.${parseInt(discordIdString, 10)}`)
       .maybeSingle();
 
     if (userError) {
@@ -47,14 +49,50 @@ export default async function handler(req, res) {
       const { data: allUsers, error: listError } = await supabase
         .from('users')
         .select('id, discord_id')
-        .limit(5);
+        .limit(10);
         
       if (!listError && allUsers) {
         console.log('[API:create] Amostra de usuários disponíveis:', 
-          allUsers.map(u => `ID: ${u.id}, Discord: ${u.discord_id}`).join(', '));
+          allUsers.map(u => `ID: ${u.id}, Discord: ${u.discord_id} (tipo: ${typeof u.discord_id})`).join(', '));
       }
       
-      return res.status(404).json({ message: 'Usuário não encontrado' });
+      // Tentativa de criar o usuário caso não exista
+      try {
+        if (session && session.user) {
+          console.log('[API:create] Tentando criar usuário para discord_id:', discordIdString);
+          
+          const newUser = {
+            id: uuidv4(),
+            discord_id: discordIdString,
+            name: session.user.name || 'Usuário Phanteon',
+            email: session.user.email || null,
+            discord_avatar: session.user.image || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            role: 'user'
+          };
+          
+          const { data: createdUser, error: createError } = await supabase
+            .from('users')
+            .insert([newUser])
+            .select()
+            .single();
+            
+          if (createError) {
+            console.error('[API:create] Erro ao criar usuário:', createError);
+          } else if (createdUser) {
+            console.log('[API:create] Usuário criado com sucesso:', createdUser.id);
+            userData = createdUser;
+          }
+        }
+      } catch (createErr) {
+        console.error('[API:create] Exceção ao criar usuário:', createErr);
+      }
+      
+      // Se mesmo assim não tiver o usuário, retorna erro
+      if (!userData) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
     }
 
     // Verificar se o SteamID está configurado

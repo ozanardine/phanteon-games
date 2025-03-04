@@ -6,8 +6,9 @@ import Image from 'next/image';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import { FaCheck, FaExclamationTriangle, FaCreditCard, FaBarcode, FaQrcode } from 'react-icons/fa';
+import { fetchWithBaseUrl } from '../../lib/api';
 
 // Dados dos planos VIP (os mesmos da página de planos)
 const vipPlans = [
@@ -192,7 +193,8 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
 
       console.log('[Checkout] Enviando solicitação para criar assinatura');
 
-      const response = await fetch('/api/subscriptions/create', {
+      // Usando a função auxiliar para suportar produção e desenvolvimento
+      const response = await fetchWithBaseUrl('/api/subscriptions/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
