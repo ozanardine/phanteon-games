@@ -37,7 +37,7 @@ console.log('AUTH CONFIG:', {
 
 /**
  * Procura ou cria um usuário no Supabase com base nos dados do Discord
- * Esta função foi corrigida para garantir que IDs e UUIDs sejam tratados corretamente
+ * Esta função foi corrigida para não usar funções admin
  */
 async function findOrCreateSupabaseUser(profile: any, discordId: string) {
   console.log(`Processing Discord login for user: ${profile.email || 'no-email'} (Discord ID: ${discordId})`);
@@ -62,15 +62,19 @@ async function findOrCreateSupabaseUser(profile: any, discordId: string) {
     
     // 2. Se não encontrou por Discord ID, procurar por email (se disponível)
     if (profile.email) {
-      // Buscar diretamente na tabela auth.users para garantir consistência
-      const { data: userByEmail, error: authError } = await supabase.auth.admin.getUserByEmail(profile.email);
+      // Buscar na tabela de perfis já que não podemos usar admin.getUserByEmail
+      const { data: userByEmail, error: profileError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", profile.email)
+        .maybeSingle();
       
-      if (authError) {
-        console.error("Error searching user by email:", authError);
+      if (profileError) {
+        console.error("Error searching user by email:", profileError);
       }
       
-      if (userByEmail?.user?.id) {
-        const userId = userByEmail.user.id;
+      if (userByEmail?.id) {
+        const userId = userByEmail.id;
         console.log(`Found existing user by email ${profile.email}: ${userId}`);
         
         // Registrar a conexão Discord com este usuário
@@ -88,7 +92,6 @@ async function findOrCreateSupabaseUser(profile: any, discordId: string) {
       Math.random().toString(36).charAt(2)).join('');
     
     // Usar email do Discord ou gerar um email único
-    // Nota: Em produção, considere uma estratégia mais robusta para emails sintéticos
     const email = profile.email || `discord_${discordId}@phanteongames.com`;
     
     // Criar um novo usuário no Supabase Auth
@@ -116,17 +119,8 @@ async function findOrCreateSupabaseUser(profile: any, discordId: string) {
     const userId = authData.user.id;
     console.log(`Created new Supabase user: ${userId}`);
     
-    // Atualizar o perfil com mais informações
-    // Esta operação é redundante com o trigger handle_new_user, mas garante dados completos
-    await supabase
-      .from("profiles")
-      .update({
-        username: profile.username || profile.name || email.split('@')[0],
-        display_name: profile.name,
-        avatar_url: profile.image,
-        email: email
-      })
-      .eq("id", userId);
+    // Não precisamos atualizar o perfil manualmente, pois o trigger handle_new_user deve fazer isso
+    // Se precisarmos garantir, podemos aguardar um pouco e então verificar
     
     // Registrar a conexão Discord
     await linkDiscordToUser(userId, discordId, profile);

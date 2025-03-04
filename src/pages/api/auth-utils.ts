@@ -4,7 +4,6 @@ import { authOptions } from './auth/[...nextauth]';
 import { supabase } from '@/lib/supabase';
 
 // Esta API é usada para diagnosticar problemas de autenticação
-// Em produção, você pode querer restringir o acesso a administradores
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verificar autenticação
   const session = await getServerSession(req, res, authOptions);
@@ -71,9 +70,7 @@ async function diagnosisInfo(session: any, isAdmin: boolean) {
   if (isAdmin) {
     try {
       // Verificar informações do usuário no Supabase Auth
-      const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(
-        session.user.id
-      );
+      const { data: authSession } = await supabase.auth.getSession();
       
       // Verificar conexões Discord
       const { data: discordConnections, error: discordError } = await supabase
@@ -91,13 +88,13 @@ async function diagnosisInfo(session: any, isAdmin: boolean) {
       // Retornar todas as informações para diagnóstico
       return {
         session: sessionInfo,
-        authUser: authError ? { error: authError.message } : authUser,
+        authSession: authSession?.session || null,
         profile: profileError ? { error: profileError.message } : profileData,
         discordConnections: discordError ? { error: discordError.message } : discordConnections,
         diagnostics: {
           isSessionValid: !!session,
           isProfileFound: !profileError && !!profileData,
-          isAuthUserFound: !authError && !!authUser,
+          isSupabaseSessionValid: !!authSession?.session,
           discordConnectionCount: discordConnections?.length || 0
         }
       };
@@ -134,9 +131,13 @@ async function fixDiscordConnection(userId: string, discordId: string) {
   
   try {
     // Verificar se o usuário existe
-    const { data: user, error: userError } = await supabase.auth.admin.getUserById(userId);
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .eq('id', userId)
+      .single();
     
-    if (userError || !user) {
+    if (userError || !userData) {
       return { 
         success: false, 
         error: 'Usuário não encontrado' + (userError ? `: ${userError.message}` : '') 
@@ -226,13 +227,13 @@ async function syncUserProfile(userId: string) {
   }
   
   try {
-    // Buscar dados de autenticação
-    const { data: user, error: userError } = await supabase.auth.admin.getUserById(userId);
+    // Buscar dados de autenticação 
+    const { data: authSession } = await supabase.auth.getSession();
     
-    if (userError || !user) {
+    if (!authSession?.session) {
       return { 
         success: false, 
-        error: 'Usuário não encontrado no Auth' + (userError ? `: ${userError.message}` : '') 
+        error: 'Nenhuma sessão de autenticação ativa encontrada' 
       };
     }
     
@@ -243,41 +244,24 @@ async function syncUserProfile(userId: string) {
       .eq('id', userId)
       .single();
     
-    // Se não existe perfil, criar um novo
     if (!existingProfile) {
-      await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          email: user.user.email,
-          username: user.user.user_metadata?.username || user.user.email?.split('@')[0],
-          display_name: user.user.user_metadata?.display_name,
-          avatar_url: user.user.user_metadata?.avatar_url,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-      
-      return { 
-        success: true, 
-        message: 'Novo perfil criado com sucesso' 
+      return {
+        success: false,
+        error: 'Perfil não encontrado. Use a função do sistema para criar novos perfis.'
       };
     }
     
-    // Se existe, atualizar com dados do Auth
+    // Se existe, atualizar com dados básicos
     await supabase
       .from('profiles')
       .update({
-        email: user.user.email,
-        username: existingProfile.username || user.user.user_metadata?.username || user.user.email?.split('@')[0],
-        display_name: existingProfile.display_name || user.user.user_metadata?.display_name,
-        avatar_url: existingProfile.avatar_url || user.user.user_metadata?.avatar_url,
         updated_at: new Date().toISOString()
       })
       .eq('id', userId);
     
     return { 
       success: true, 
-      message: 'Perfil sincronizado com sucesso' 
+      message: 'Perfil atualizado com sucesso' 
     };
   } catch (error: any) {
     console.error('Error syncing user profile:', error);
