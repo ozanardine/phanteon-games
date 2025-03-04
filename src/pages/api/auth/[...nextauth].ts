@@ -11,16 +11,6 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         params: { scope: "identify guilds.join email" },
       },
-      profile(profile) {
-        return {
-          id: profile.id,
-          name: profile.username,
-          email: profile.email,
-          image: profile.avatar 
-            ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png` 
-            : null,
-        };
-      },
     }),
     CredentialsProvider({
       name: "Supabase",
@@ -96,6 +86,27 @@ export const authOptions: NextAuthOptions = {
 
             if (!error) {
               token.discord_connected = true;
+              
+              // Tentar atribuir cargo no Discord se tiver uma assinatura ativa
+              try {
+                const { data: subscription } = await supabase
+                  .from("subscriptions")
+                  .select("*, plan:subscription_plans(*)")
+                  .eq("user_id", user.id)
+                  .eq("status", "active")
+                  .single();
+                
+                if (subscription?.plan?.discord_role_id) {
+                  // Aqui você pode implementar a lógica para adicionar o cargo
+                  console.log("Would assign Discord role:", {
+                    userId: user.id,
+                    discordId: profile?.id,
+                    roleId: subscription.plan.discord_role_id
+                  });
+                }
+              } catch (error) {
+                console.error("Error checking subscription:", error);
+              }
             }
           } catch (error) {
             console.error("Error linking Discord account:", error);

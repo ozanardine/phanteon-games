@@ -67,8 +67,10 @@ export const config = {
     '/vip/:path*',
     '/subscriptions/:path*',
     '/payment/:path*',
-    '/auth/:path*',
+    '/auth/login',
+    '/auth/register',
+    '/auth/forgot-password',
+    '/auth/reset-password',
     '/admin/:path*',
-    '/api/auth/:path*'
   ],
 };
