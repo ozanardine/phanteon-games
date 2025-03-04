@@ -1,7 +1,6 @@
 // src/pages/api/auth/discord/status.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '@/lib/supabase';
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -10,25 +9,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Criar cliente Supabase específico para o servidor
-    const supabaseServerClient = createServerSupabaseClient({ req, res });
+    const supabase = createPagesServerClient({ req, res });
     
     // Verificar se o usuário está autenticado
-    const { data: { session }, error: sessionError } = await supabaseServerClient.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
     if (sessionError) {
       console.error('Session error:', sessionError);
-      return res.status(401).json({ error: 'Não autenticado - Erro na sessão' });
+      return res.status(401).json({ error: 'Nao autenticado - Erro na sessao' });
     }
 
     if (!session) {
-      return res.status(401).json({ error: 'Não autenticado - Sessão ausente' });
+      return res.status(401).json({ error: 'Nao autenticado - Sessao ausente' });
     }
 
     // Registrar ID do usuário para depuração
     console.log('Session user ID:', session.user.id);
 
     // Buscar conexão do Discord
-    const { data, error } = await supabaseServerClient
+    const { data, error } = await supabase
       .from('discord_connections')
       .select('*')
       .eq('user_id', session.user.id)
@@ -36,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = not found
       console.error('Database error fetching Discord connection:', error);
-      return res.status(500).json({ error: 'Erro ao verificar conexão com Discord' });
+      return res.status(500).json({ error: 'Erro ao verificar conexao com Discord' });
     }
 
     // Se não houver conexão
@@ -68,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (tokenData.error || !tokenData.access_token) {
           // Token de atualização inválido, desconectar
-          await supabaseServerClient
+          await supabase
             .from('discord_connections')
             .delete()
             .eq('user_id', session.user.id);
@@ -80,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const expiryDate = new Date();
         expiryDate.setSeconds(expiryDate.getSeconds() + tokenData.expires_in);
 
-        await supabaseServerClient
+        await supabase
           .from('discord_connections')
           .update({
             discord_access_token: tokenData.access_token,

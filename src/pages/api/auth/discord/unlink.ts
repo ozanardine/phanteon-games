@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -8,13 +8,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Criar cliente Supabase específico para o servidor
-    const supabase = createServerSupabaseClient({ req, res });
+    const supabase = createPagesServerClient({ req, res });
     
     // Verificar se o usuário está autenticado
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
-      return res.status(401).json({ error: 'Não autenticado' });
+      return res.status(401).json({ error: 'Nao autenticado' });
     }
 
     console.log('Unlinking Discord for user:', session.user.id);

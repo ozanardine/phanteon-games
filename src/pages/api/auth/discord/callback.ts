@@ -1,6 +1,6 @@
 // src/pages/api/auth/discord/callback.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Verificar se é uma requisição GET
@@ -14,23 +14,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Se houver erro no retorno do Discord
   if (discordError) {
     console.error('Discord auth error:', discordError);
-    return res.redirect(`/auth/login?error=${encodeURIComponent('Erro na autenticação do Discord: ' + discordError)}`);
+    return res.redirect(`/auth/login?error=${encodeURIComponent('Erro na autenticacao do Discord: ' + discordError)}`);
   }
 
   // Se não houver código
   if (!code) {
-    return res.redirect('/auth/login?error=Código de autorização ausente');
+    return res.redirect('/auth/login?error=Codigo%20de%20autorizacao%20ausente');
   }
 
   try {
     // Criar cliente Supabase específico para o servidor
-    const supabase = createServerSupabaseClient({ req, res });
+    const supabase = createPagesServerClient({ req, res });
     
     // Verificar se o usuário está autenticado
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
-      return res.redirect('/auth/login?error=Você precisa estar logado para conectar sua conta do Discord');
+      return res.redirect('/auth/login?error=Voce%20precisa%20estar%20logado%20para%20conectar%20sua%20conta%20do%20Discord');
     }
 
     // Verificar CSRF state se presente
@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
       if (!storedState || storedState.state !== state) {
         console.error('Invalid state parameter (CSRF protection)');
-        return res.redirect('/profile?error=Falha de validação de segurança');
+        return res.redirect('/profile?error=Falha%20de%20validacao%20de%20seguranca');
       }
       
       // Limpar o state após uso
@@ -73,14 +73,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.json().catch(() => ({}));
       console.error('Discord token error:', tokenResponse.status, errorData);
-      return res.redirect('/auth/login?error=Erro ao obter token do Discord');
+      return res.redirect('/auth/login?error=Erro%20ao%20obter%20token%20do%20Discord');
     }
 
     const tokenData = await tokenResponse.json();
 
     if (!tokenData.access_token) {
       console.error('Missing access token in Discord response');
-      return res.redirect('/auth/login?error=Erro ao obter token do Discord');
+      return res.redirect('/auth/login?error=Erro%20ao%20obter%20token%20do%20Discord');
     }
 
     // Registrar tentativa de obtenção de token
@@ -104,7 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!userResponse.ok) {
       const errorData = await userResponse.json().catch(() => ({}));
       console.error('Discord user data error:', userResponse.status, errorData);
-      return res.redirect('/auth/login?error=Erro ao obter dados do usuário do Discord');
+      return res.redirect('/auth/login?error=Erro%20ao%20obter%20dados%20do%20usuario%20do%20Discord');
     }
 
     const userData = await userResponse.json();
@@ -204,7 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (dbError) {
       console.error('Database error saving Discord connection:', dbError);
-      return res.redirect('/profile?error=Erro ao salvar conexão com Discord');
+      return res.redirect('/profile?error=Erro%20ao%20salvar%20conexao%20com%20Discord');
     }
 
     // Verificar assinatura atual e atribuir cargo no Discord, se necessário
@@ -265,6 +265,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Discord callback error:', error);
-    return res.redirect('/profile?error=Erro na integração com Discord');
+    return res.redirect('/profile?error=Erro%20na%20integracao%20com%20Discord');
   }
 }
