@@ -145,19 +145,51 @@ export default async function handler(req, res) {
     // Criar preferência de pagamento no Mercado Pago
     const preference = await createPaymentPreference(paymentData);
 
+    // Verificar as colunas disponíveis na tabela subscriptions
+    const { data: subscriptionColumns, error: columnsError } = await supabaseAdmin
+      .from('information_schema.columns')
+      .select('column_name')
+      .eq('table_schema', 'public')
+      .eq('table_name', 'subscriptions');
+      
+    if (columnsError) {
+      console.error('[API:create] Erro ao verificar colunas da tabela subscriptions:', columnsError);
+      return res.status(500).json({ message: 'Erro ao verificar estrutura do banco de dados' });
+    }
+    
+    // Converter lista de objetos em array de nomes de colunas
+    const availableColumns = subscriptionColumns.map(col => col.column_name);
+    console.log('[API:create] Colunas disponíveis na tabela subscriptions:', availableColumns.join(', '));
+
     // Criar registro de assinatura pendente no Supabase
     const subscriptionData = {
       user_id: userData.id,
       plan_id: planId,
-      plan_name: title.replace(' - Phanteon Games', ''),
       status: 'pending',
-      amount: price,
       payment_id: null,
       created_at: new Date().toISOString(),
-      expires_at: null, // Será definido quando o pagamento for confirmado
       steam_id: userData.steam_id,
       payment_preference_id: preference.id
     };
+    
+    // Adicionar campos opcionais apenas se existirem na tabela
+    if (availableColumns.includes('plan_name')) {
+      subscriptionData.plan_name = title.replace(' - Phanteon Games', '');
+    }
+    
+    if (availableColumns.includes('amount')) {
+      subscriptionData.amount = price;
+    }
+    
+    if (availableColumns.includes('price')) {
+      subscriptionData.price = price;
+    }
+    
+    if (availableColumns.includes('expires_at')) {
+      subscriptionData.expires_at = null; // Será definido quando o pagamento for confirmado
+    }
+    
+    console.log('[API:create] Salvando assinatura pendente com campos:', Object.keys(subscriptionData).join(', '));
 
     console.log('[API:create] Salvando assinatura pendente no Supabase');
     

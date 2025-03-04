@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     // Buscar assinaturas ativas do usuário
     const { data: subscriptions, error: subscriptionError } = await supabaseAdmin
       .from('subscriptions')
-      .select('*, plans:plan_id(name)')
+      .select('*')
       .eq('user_id', userData.id)
       .eq('status', 'active')
       .order('expires_at', { ascending: false });
@@ -62,9 +62,39 @@ export default async function handler(req, res) {
       return res.status(500).json({ message: 'Erro ao verificar assinaturas' });
     }
 
+    // Modificando a query para obter os planos se a relação existir
+    let subscriptionsWithPlans = subscriptions;
+    
+    // Verificar se a tabela planos existe e tentar obter informações do plano
+    try {
+      // Verificar se a tabela plans existe
+      const { data: plansTable, error: plansError } = await supabaseAdmin
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public')
+        .eq('table_name', 'plans');
+        
+      if (!plansError && plansTable && plansTable.length > 0) {
+        // Tabela plans existe, podemos tentar buscar informações do plano
+        const { data: subscriptionsWithPlanData, error: planJoinError } = await supabaseAdmin
+          .from('subscriptions')
+          .select('*, plans:plan_id(name)')
+          .eq('user_id', userData.id)
+          .eq('status', 'active')
+          .order('expires_at', { ascending: false });
+          
+        if (!planJoinError && subscriptionsWithPlanData) {
+          subscriptionsWithPlans = subscriptionsWithPlanData;
+        }
+      }
+    } catch (planError) {
+      console.error('[API:verify] Erro ao buscar dados de planos:', planError);
+      // Continue com os dados de assinaturas normais
+    }
+
     // Verifica se há assinaturas ativas
-    const hasActiveSubscription = subscriptions && subscriptions.length > 0;
-    const currentSubscription = hasActiveSubscription ? subscriptions[0] : null;
+    const hasActiveSubscription = subscriptionsWithPlans && subscriptionsWithPlans.length > 0;
+    const currentSubscription = hasActiveSubscription ? subscriptionsWithPlans[0] : null;
 
     console.log(`[API:verify] Usuário ${discordIdString} tem assinatura ativa: ${hasActiveSubscription}`);
     
@@ -72,12 +102,31 @@ export default async function handler(req, res) {
     if (hasActiveSubscription && userData.role !== 'admin') {
       // Determinar a nova role com base no plano
       let newRole = 'user';
-      const planName = currentSubscription.plans?.name?.toLowerCase() || '';
       
-      if (planName.includes('vip-plus')) {
-        newRole = 'vip-plus';
-      } else if (planName.includes('vip')) {
-        newRole = 'vip';
+      // Verificar se temos informações do plano pelo relacionamento ou pelo nome
+      if (currentSubscription.plans?.name) {
+        const planName = currentSubscription.plans.name.toLowerCase();
+        if (planName.includes('vip-plus') || planName.includes('vip plus')) {
+          newRole = 'vip-plus';
+        } else if (planName.includes('vip')) {
+          newRole = 'vip';
+        }
+      } else if (currentSubscription.plan_name) {
+        // Fallback para o plan_name armazenado diretamente
+        const planName = currentSubscription.plan_name.toLowerCase();
+        if (planName.includes('vip-plus') || planName.includes('vip plus')) {
+          newRole = 'vip-plus';
+        } else if (planName.includes('vip')) {
+          newRole = 'vip';
+        }
+      } else if (currentSubscription.plan_id) {
+        // Fallback para o plan_id
+        const planId = currentSubscription.plan_id.toLowerCase();
+        if (planId.includes('vip-plus')) {
+          newRole = 'vip-plus';
+        } else if (planId.includes('vip')) {
+          newRole = 'vip';
+        }
       }
       
       // Atualizar a role do usuário apenas se for diferente da atual
@@ -119,7 +168,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       active: hasActiveSubscription,
       subscription: currentSubscription,
-      subscriptions: subscriptions || [],
+      subscriptions: subscriptionsWithPlans || [],
       user: {
         id: userData.id,
         role: userData.role
