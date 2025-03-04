@@ -8,9 +8,6 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import { toast } from 'react-hot-toast';
 import { FaCheck, FaExclamationTriangle, FaCreditCard, FaBarcode, FaQrcode } from 'react-icons/fa';
-import { requireAuth } from '../../lib/auth';
-import { createPaymentPreference } from '../../lib/mercadopago';
-import { supabase } from '../../lib/supabase';
 
 // Dados dos planos VIP (os mesmos da página de planos)
 const vipPlans = [
@@ -61,16 +58,30 @@ const vipPlans = [
   },
 ];
 
-export default function CheckoutPage({ userData, activeSubscription }) {
+export default function CheckoutPage({ userData, activeSubscription, error }) {
   const { data: session } = useSession();
   const router = useRouter();
-  const { planoId } = router.query;
+  const { planoId, error: queryError } = router.query;
   
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState(null);
   const [showSteamIdModal, setShowSteamIdModal] = useState(false);
   const [steamId, setSteamId] = useState(userData?.steam_id || '');
+
+  // Verifica erros de query string
+  useEffect(() => {
+    if (queryError === 'true') {
+      toast.error('Ocorreu um erro durante o processamento do pagamento.');
+    }
+  }, [queryError]);
+
+  // Exibe mensagem de erro se houver
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
   
   // Busca o plano selecionado
   useEffect(() => {
@@ -105,18 +116,44 @@ export default function CheckoutPage({ userData, activeSubscription }) {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ steam_id: steamId })
-        .eq('discord_id', session.user.discord_id);
+      console.log('[Checkout] Salvando Steam ID:', steamId);
       
-      if (error) throw error;
+      const response = await fetch('/api/user/update-steam-id', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ steamId }),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Erro ao atualizar Steam ID';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {}
+        throw new Error(errorMessage);
+      }
       
-      toast.success('Steam ID atualizado com sucesso!');
-      setShowSteamIdModal(false);
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success('Steam ID atualizado com sucesso!');
+        setShowSteamIdModal(false);
+        
+        // Atualiza o estado local
+        setSteamId(steamId);
+        
+        // Recarrega a página após um breve delay
+        setTimeout(() => {
+          router.reload();
+        }, 1500);
+      } else {
+        throw new Error('Falha ao atualizar Steam ID');
+      }
     } catch (error) {
-      console.error('Erro ao atualizar Steam ID:', error);
-      toast.error('Erro ao atualizar Steam ID');
+      console.error('[Checkout] Erro ao atualizar Steam ID:', error);
+      toast.error(error.message || 'Erro ao atualizar Steam ID');
     } finally {
       setLoading(false);
     }
@@ -128,13 +165,15 @@ export default function CheckoutPage({ userData, activeSubscription }) {
       return;
     }
 
-    if (!userData.steam_id) {
+    if (!userData?.steam_id) {
       setShowSteamIdModal(true);
       return;
     }
 
     setLoading(true);
     try {
+      console.log(`[Checkout] Iniciando checkout para plano: ${selectedPlan.id}`);
+
       // Criar preferência de pagamento no Mercado Pago
       const paymentData = {
         title: `Plano ${selectedPlan.name} - Phanteon Games`,
@@ -142,9 +181,11 @@ export default function CheckoutPage({ userData, activeSubscription }) {
         quantity: 1,
         userId: session.user.discord_id,
         planId: selectedPlan.id,
-        successUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/perfil?success=true`,
-        failureUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/${selectedPlan.id}?error=true`,
+        successUrl: `${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/perfil?success=true`,
+        failureUrl: `${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/checkout/${selectedPlan.id}?error=true`,
       };
+
+      console.log('[Checkout] Enviando solicitação para criar assinatura');
 
       const response = await fetch('/api/subscriptions/create', {
         method: 'POST',
@@ -155,21 +196,31 @@ export default function CheckoutPage({ userData, activeSubscription }) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao processar pagamento');
+        let errorMessage = 'Erro ao processar pagamento';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || `Erro (${response.status}): ${response.statusText}`;
+          console.error('[Checkout] Resposta de erro da API:', errorData);
+        } catch (e) {
+          console.error('[Checkout] Erro ao processar resposta de erro:', e);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       
+      console.log('[Checkout] Resposta recebida da API:', data);
+      
       // Redireciona para a página de pagamento do Mercado Pago
       if (data.init_point) {
+        console.log('[Checkout] Redirecionando para Mercado Pago:', data.init_point);
         setPaymentUrl(data.init_point);
       } else {
-        throw new Error('URL de pagamento não encontrada');
+        throw new Error('URL de pagamento não encontrada na resposta');
       }
     } catch (error) {
-      console.error('Erro ao processar checkout:', error);
-      toast.error(error.message || 'Erro ao processar pagamento');
+      console.error('[Checkout] Erro ao processar checkout:', error);
+      toast.error(error.message || 'Erro ao processar pagamento. Tente novamente mais tarde.');
     } finally {
       setLoading(false);
     }
@@ -356,17 +407,17 @@ export default function CheckoutPage({ userData, activeSubscription }) {
       <Modal
         isOpen={showSteamIdModal}
         onClose={() => {
-          if (userData.steam_id) {
+          if (userData?.steam_id) {
             setShowSteamIdModal(false);
           } else {
             router.push('/perfil');
           }
         }}
         title="Configure seu Steam ID"
-        closeOnOverlayClick={!!userData.steam_id}
+        closeOnOverlayClick={!!userData?.steam_id}
         footer={
           <>
-            {userData.steam_id && (
+            {userData?.steam_id && (
               <Button
                 variant="ghost"
                 onClick={() => setShowSteamIdModal(false)}
@@ -422,50 +473,62 @@ export default function CheckoutPage({ userData, activeSubscription }) {
 
 // Função para buscar dados do servidor
 export async function getServerSideProps(context) {
-  // Verifica se o usuário está autenticado
-  const authResult = await requireAuth(context);
+  // Para receber o objeto de sessão completo do servidor
+  const { req, res } = context;
   
-  // Se o resultado contiver um redirecionamento, retorna-o
-  if (authResult.redirect) {
-    return authResult;
-  }
-  
-  const session = authResult.props.session;
-  const { planoId } = context.params;
-  
-  // Verifica se o planoId é válido
-  const validPlan = vipPlans.find(p => p.id === planoId);
-  if (!validPlan) {
-    return {
-      redirect: {
-        destination: '/planos',
-        permanent: false,
-      },
-    };
-  }
+  // Importa as funções necessárias
+  const { getServerSession } = await import('next-auth/next');
+  const { authOptions } = await import('../api/auth/[...nextauth]');
+  const { getUserByDiscordId, getUserSubscription } = await import('../../lib/supabase');
   
   try {
-    // Busca dados do usuário no Supabase
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('discord_id', session.user.discord_id)
-      .single();
+    // Verifica se o usuário está autenticado
+    const session = await getServerSession(req, res, authOptions);
     
-    if (userError) throw userError;
+    if (!session) {
+      console.log('[CheckoutSSR] Usuário não autenticado, redirecionando');
+      return {
+        redirect: {
+          destination: '/?auth=required',
+          permanent: false,
+        },
+      };
+    }
+    
+    const { planoId } = context.params;
+    
+    // Verifica se o planoId é válido
+    const validPlan = vipPlans.find(p => p.id === planoId);
+    if (!validPlan) {
+      console.log(`[CheckoutSSR] Plano inválido: ${planoId}, redirecionando`);
+      return {
+        redirect: {
+          destination: '/planos',
+          permanent: false,
+        },
+      };
+    }
+    
+    // Busca dados do usuário pelo Discord ID
+    const discordId = session.user.discord_id;
+    console.log(`[CheckoutSSR] Buscando usuário para discord_id: ${discordId}`);
+    
+    const userData = await getUserByDiscordId(discordId);
+    
+    if (!userData) {
+      console.log('[CheckoutSSR] Usuário não encontrado no banco de dados');
+      return {
+        props: {
+          userData: null,
+          activeSubscription: null,
+          error: 'Não foi possível recuperar seus dados. Tente fazer login novamente.',
+        },
+      };
+    }
     
     // Busca dados da assinatura ativa
-    const { data: activeSubscription, error: subError } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', session.user.discord_id)
-      .eq('status', 'active')
-      .gte('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-    
-    // Não lançamos erro aqui pois o usuário pode não ter assinatura
+    console.log(`[CheckoutSSR] Buscando assinatura para usuário: ${userData.id}`);
+    const activeSubscription = await getUserSubscription(userData.id);
     
     return {
       props: {
@@ -474,13 +537,13 @@ export async function getServerSideProps(context) {
       },
     };
   } catch (error) {
-    console.error('Erro ao buscar dados do usuário:', error);
+    console.error('[CheckoutSSR] Erro ao processar checkout:', error);
     
     return {
       props: {
         userData: null,
         activeSubscription: null,
-        error: 'Falha ao carregar dados do usuário',
+        error: 'Erro ao carregar dados. Tente novamente mais tarde.',
       },
     };
   }

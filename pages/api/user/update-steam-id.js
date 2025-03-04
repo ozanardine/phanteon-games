@@ -1,6 +1,6 @@
-import { unstable_getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth/react";
 import { authOptions } from "../auth/[...nextauth]";
-import { supabaseAdmin } from '../../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 
 export default async function handler(req, res) {
   // Verifica método
@@ -9,16 +9,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Obtém a sessão do servidor (mais confiável que getSession para APIs)
-    const session = await unstable_getServerSession(req, res, authOptions);
+    // Obtém a sessão do servidor
+    const session = await getServerSession({ req, res, authOptions });
     
     if (!session) {
-      console.error('API: Sessão não encontrada');
+      console.error('[API:steamID] Sessão não encontrada');
       return res.status(401).json({ success: false, message: 'Não autenticado' });
     }
 
     if (!session.user?.discord_id) {
-      console.error('API: Sessão sem discord_id');
+      console.error('[API:steamID] Sessão sem discord_id');
       return res.status(400).json({ success: false, message: 'ID de usuário inválido' });
     }
 
@@ -33,53 +33,51 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log(`API: Atualizando Steam ID para discord_id: ${discordId}`);
+    console.log(`[API:steamID] Atualizando Steam ID para discord_id: ${discordId}`);
 
     // Busca usuário pelo discord_id
-    const { data: userData, error: userError } = await supabaseAdmin
+    const { data: userData, error: userError } = await supabase
       .from('users')
       .select('id')
       .eq('discord_id', discordId)
       .maybeSingle();
 
     if (userError) {
-      console.error('API: Erro ao buscar usuário:', userError);
+      console.error('[API:steamID] Erro ao buscar usuário:', userError);
       return res.status(500).json({ success: false, message: 'Erro ao buscar usuário' });
     }
 
     if (!userData) {
-      console.error('API: Usuário não encontrado com discord_id:', discordId);
+      console.error('[API:steamID] Usuário não encontrado com discord_id:', discordId);
       
-      // Tentativa de recuperação - criar o usuário se não existir
-      try {
-        const { data: insertedUser, error: insertError } = await supabaseAdmin
-          .from('users')
-          .insert({
-            discord_id: discordId,
-            name: session.user.name,
-            email: session.user.email,
-            steam_id: steamId,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
+      // Vamos tentar criar o usuário se não existir
+      console.log('[API:steamID] Tentando criar novo usuário');
+      
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({
+          discord_id: discordId,
+          name: session.user.name,
+          email: session.user.email,
+          discord_avatar: session.user.image,
+          steam_id: steamId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
           
-        if (insertError) {
-          console.error('API: Erro ao criar usuário:', insertError);
-          return res.status(500).json({ success: false, message: 'Erro ao criar usuário' });
-        }
-        
-        console.log('API: Usuário criado com sucesso:', insertedUser.id);
-        return res.status(200).json({ success: true });
-      } catch (createError) {
-        console.error('API: Exceção ao criar usuário:', createError);
-        return res.status(500).json({ success: false, message: 'Erro ao processar solicitação' });
+      if (createError) {
+        console.error('[API:steamID] Erro ao criar usuário:', createError);
+        return res.status(500).json({ success: false, message: 'Erro ao criar usuário' });
       }
+        
+      console.log('[API:steamID] Usuário criado com Steam ID:', newUser.id);
+      return res.status(200).json({ success: true });
     }
 
     // Atualiza o Steam ID para o usuário encontrado
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await supabase
       .from('users')
       .update({ 
         steam_id: steamId,
@@ -88,14 +86,18 @@ export default async function handler(req, res) {
       .eq('id', userData.id);
 
     if (updateError) {
-      console.error('API: Erro ao atualizar Steam ID:', updateError);
+      console.error('[API:steamID] Erro ao atualizar Steam ID:', updateError);
       return res.status(500).json({ success: false, message: 'Erro ao atualizar Steam ID' });
     }
 
-    console.log('API: Steam ID atualizado com sucesso para:', userData.id);
+    console.log('[API:steamID] Steam ID atualizado com sucesso para:', userData.id);
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error('API: Erro não tratado:', error);
-    return res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+    console.error('[API:steamID] Erro não tratado:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Erro interno do servidor',
+      details: error.message
+    });
   }
 }
