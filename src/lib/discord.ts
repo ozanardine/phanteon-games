@@ -1,5 +1,6 @@
 // src/lib/discord.ts
 import { supabase } from './supabase';
+import { nanoid } from 'nanoid';
 
 /**
  * Inicia o processo de OAuth do Discord
@@ -13,8 +14,8 @@ export async function initiateDiscordAuth() {
     // Permissões que vamos solicitar
     const scope = 'identify guilds.join';
     
-    // Gerar state para proteção CSRF
-    const state = generateRandomString(16);
+    // Gerar state para proteção CSRF (usando nanoid para maior segurança)
+    const state = nanoid(32);
     
     // Armazenar o state no banco de dados associado ao usuário atual
     const { data: { user } } = await supabase.auth.getUser();
@@ -23,20 +24,28 @@ export async function initiateDiscordAuth() {
       throw new Error('Usuário não autenticado');
     }
     
-    // Remover qualquer state anterior
+    // Remover qualquer state anterior para evitar poluição
     await supabase
       .from('auth_states')
       .delete()
       .eq('user_id', user.id);
     
+    // Definir validade curta para o estado (10 minutos)
+    const expiryTime = new Date();
+    expiryTime.setMinutes(expiryTime.getMinutes() + 10);
+    
     // Inserir o novo state
-    await supabase
+    const { error: stateError } = await supabase
       .from('auth_states')
       .insert({
         user_id: user.id,
         state: state,
-        expires_at: new Date(Date.now() + 3600000).toISOString() // 1 hora
+        expires_at: expiryTime.toISOString()
       });
+      
+    if (stateError) {
+      throw new Error(`Erro ao armazenar estado: ${stateError.message}`);
+    }
     
     // Salvar state no sessionStorage também como backup
     sessionStorage.setItem('discord_oauth_state', state);
@@ -52,18 +61,6 @@ export async function initiateDiscordAuth() {
     console.error('Erro ao iniciar autenticação Discord:', error);
     alert('Erro ao conectar com Discord. Por favor, certifique-se de estar logado.');
   }
-}
-
-/**
- * Gera uma string aleatória para o state (proteção CSRF)
- */
-function generateRandomString(length: number): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  const randomValues = new Uint8Array(length);
-  window.crypto.getRandomValues(randomValues);
-  randomValues.forEach(val => result += chars[val % chars.length]);
-  return result;
 }
 
 /**
@@ -83,7 +80,7 @@ export async function checkDiscordConnection(): Promise<{
       return { connected: false, error: new Error('Usuário não autenticado') };
     }
     
-    // Adicionar timestamp para evitar cache
+    // Evitar cache no navegador
     const timestamp = Date.now();
     const response = await fetch(`/api/auth/discord/status?t=${timestamp}`, {
       method: 'GET',

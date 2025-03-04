@@ -1,6 +1,16 @@
 // src/pages/api/auth/discord/callback.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
+import { createHash } from 'crypto';
+
+// Função para encriptar tokens sensíveis antes de armazenar
+function encryptToken(token: string): string {
+  // Em produção, substitua por uma técnica mais robusta de criptografia
+  // Esta é apenas uma forma básica de não armazenar o token em texto simples
+  const hash = createHash('sha256');
+  const salt = process.env.TOKEN_ENCRYPTION_KEY || 'phanteon-games-salt';
+  return hash.update(token + salt).digest('hex').substring(0, 32); // Armazenar apenas hash parcial como referência
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Criar cliente Supabase específico para o servidor
@@ -22,8 +32,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.redirect('/auth/login?error=Sessao%20expirada%20ou%20invalida.%20Faca%20login%20novamente');
   }
 
-  console.log('Session user found:', session.user.id);
-
   // Se houver erro no retorno do Discord
   if (discordError) {
     console.error('Discord auth error:', discordError);
@@ -36,33 +44,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Verificar CSRF state se presente
-    if (state && typeof state === 'string') {
-      // Implementar verificação do state para proteção CSRF
-      // Primeiro verificamos diretamente na tabela
-      const { data: storedState, error: stateError } = await supabase
-        .from('auth_states')
-        .select('state')
-        .eq('user_id', session.user.id)
-        .single();
-      
-      // Log do state para debugging
-      console.log('State verification:', { receivedState: state, storedState: storedState?.state || 'not-found' });
-      
-      if (stateError || !storedState || storedState.state !== state) {
-        console.error('Invalid state parameter (CSRF protection):', stateError);
-        
-        // Mesmo se o state não for válido, continuamos com o fluxo,
-        // já que temos um usuário autenticado - apenas logamos o erro
-        console.warn('Proceeding despite state mismatch - user is authenticated');
-      } else {
-        // Limpar o state após uso para evitar reutilização
-        await supabase
-          .from('auth_states')
-          .delete()
-          .eq('user_id', session.user.id);
-      }
+    // Verificar CSRF state se presente - Versão melhorada
+    if (!state || typeof state !== 'string') {
+      console.error('Missing state parameter (CSRF protection)');
+      return res.redirect('/profile?error=Erro%20de%20seguranca%3A%20Parametro%20state%20ausente');
     }
+    
+    // Buscar o state armazenado
+    const { data: storedState, error: stateError } = await supabase
+      .from('auth_states')
+      .select('state, expires_at')
+      .eq('user_id', session.user.id)
+      .eq('state', state)  // Verificamos diretamente se o state corresponde
+      .single();
+    
+    // Verificar se o state é válido e não expirou
+    if (stateError || !storedState) {
+      console.error('Invalid state parameter (CSRF protection):', stateError);
+      return res.redirect('/profile?error=Erro%20de%20seguranca%3A%20Estado%20invalido');
+    }
+    
+    // Verificar expiração
+    if (new Date(storedState.expires_at) < new Date()) {
+      console.error('Expired state token');
+      
+      // Limpar o state expirado
+      await supabase
+        .from('auth_states')
+        .delete()
+        .eq('user_id', session.user.id);
+        
+      return res.redirect('/profile?error=Token%20expirado.%20Tente%20novamente.');
+    }
+    
+    // Limpar o state após uso para evitar replay attacks
+    await supabase
+      .from('auth_states')
+      .delete()
+      .eq('user_id', session.user.id);
 
     // Trocar o código por um token de acesso
     const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
@@ -81,8 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.json().catch(() => ({}));
-      console.error('Discord token error:', tokenResponse.status, errorData);
+      console.error('Discord token error status:', tokenResponse.status);
       return res.redirect('/profile?error=Erro%20ao%20obter%20token%20do%20Discord');
     }
 
@@ -93,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.redirect('/profile?error=Erro%20ao%20obter%20token%20do%20Discord');
     }
 
-    // Registrar tentativa de obtenção de token
+    // Registrar tentativa de obtenção de token (sem expor o token real nos logs)
     await supabase
       .from('auth_logs')
       .insert({
@@ -112,8 +130,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     if (!userResponse.ok) {
-      const errorData = await userResponse.json().catch(() => ({}));
-      console.error('Discord user data error:', userResponse.status, errorData);
+      console.error('Discord user data error status:', userResponse.status);
       return res.redirect('/profile?error=Erro%20ao%20obter%20dados%20do%20usuario%20do%20Discord');
     }
 
@@ -134,7 +151,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       if (checkResponse.status === 200) {
         guildMember = await checkResponse.json();
-        console.log('User already in Discord server');
       } else if (checkResponse.status === 404) {
         // Usuário não está no servidor, adicionar
         const addResponse = await fetch(
@@ -147,14 +163,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             },
             body: JSON.stringify({
               access_token: tokenData.access_token,
-              nick: userData.username, // Apelido inicial, opcional
+              nick: userData.username,
             }),
           }
         );
 
         if (addResponse.status === 201 || addResponse.status === 204) {
-          console.log('User added to Discord server');
-          
           // Obter os detalhes do membro adicionado
           const memberResponse = await fetch(
             `https://discord.com/api/guilds/${process.env.DISCORD_GUILD_ID}/members/${userData.id}`,
@@ -168,15 +182,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (memberResponse.ok) {
             guildMember = await memberResponse.json();
           }
-        } else {
-          const errorData = await addResponse.json().catch(() => ({}));
-          console.error('Failed to add user to Discord server:', addResponse.status, errorData);
         }
-      } else {
-        console.error('Unexpected response checking guild membership:', checkResponse.status);
       }
     } catch (guildError) {
-      console.error('Error interacting with Discord guild API:', guildError);
+      console.error('Error interacting with Discord guild API');
     }
 
     // Calcular data de expiração do token
@@ -196,6 +205,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       avatarUrl = `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.${format}`;
     }
 
+    // Gerar hashes para armazenamento seguro dos tokens
+    const accessTokenHash = encryptToken(tokenData.access_token);
+    const refreshTokenHash = tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null;
+
     // Salvar a conexão no banco de dados
     const { error: dbError } = await supabase
       .from('discord_connections')
@@ -204,8 +217,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         discord_user_id: userData.id,
         discord_username: discordUsername,
         discord_avatar: avatarUrl,
-        discord_access_token: tokenData.access_token,
-        discord_refresh_token: tokenData.refresh_token || null,
+        discord_access_token: accessTokenHash, // Armazenar hash em vez do token real
+        discord_refresh_token: refreshTokenHash, // Armazenar hash em vez do token real
         discord_token_expires_at: expiryDate.toISOString(),
         discord_guild_joined: !!guildMember,
         discord_guild_roles: guildMember?.roles || [],
@@ -213,11 +226,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }, { onConflict: 'user_id' });
 
     if (dbError) {
-      console.error('Database error saving Discord connection:', dbError);
+      console.error('Database error saving Discord connection');
       return res.redirect('/profile?error=Erro%20ao%20salvar%20conexao%20com%20Discord');
     }
 
-    // Verificar assinatura atual e atribuir cargo no Discord, se necessário
+    // Verificar assinatura atual e atribuir cargo no Discord
     try {
       const { data: subscription } = await supabase
         .from('subscriptions')
@@ -246,8 +259,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           );
           
           if (roleResponse.ok) {
-            console.log('Discord VIP role assigned successfully');
-            
             // Registrar atribuição de cargo
             await supabase
               .from('discord_role_logs')
@@ -259,22 +270,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 action: 'added',
                 reason: 'active_subscription'
               });
-          } else {
-            console.error('Error assigning Discord role:', roleResponse.status);
           }
-        } else {
-          console.log('User already has the VIP role');
         }
       }
     } catch (roleError) {
-      console.error('Error handling Discord roles:', roleError);
+      console.error('Error handling Discord roles');
     }
 
     // Redirecionar para o perfil com mensagem de sucesso
     return res.redirect('/profile?discord=success');
 
   } catch (error) {
-    console.error('Discord callback error:', error);
+    console.error('Discord callback error');
     return res.redirect('/profile?error=Erro%20na%20integracao%20com%20Discord');
   }
 }
