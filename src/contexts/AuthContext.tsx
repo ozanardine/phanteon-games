@@ -1,278 +1,223 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+// src/contexts/AuthContext.tsx
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
-import { supabase, UserProfile, getCurrentProfile } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
-export type AuthContextType = {
-  session: Session | null;
+export type UserProfile = {
+  id: string;
+  email?: string;
+  username?: string;
+  display_name?: string;
+  avatar_url?: string;
+  is_admin: boolean;
+};
+
+type AuthContextType = {
   user: User | null;
   profile: UserProfile | null;
+  session: Session | null;
   isLoading: boolean;
   isAdmin: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, username: string) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  refreshSession: () => Promise<void>;
-  checkSessionValidity: () => Promise<boolean>;
-  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
-  session: null,
   user: null,
   profile: null,
+  session: null,
   isLoading: true,
   isAdmin: false,
+  signIn: async () => ({ error: null }),
+  signUp: async () => ({ error: null }),
+  signOut: async () => {},
   refreshProfile: async () => {},
-  refreshSession: async () => {},
-  checkSessionValidity: async () => false,
-  logout: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
-export type AuthProviderProps = {
-  children: ReactNode;
-};
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [session, setSession] = useState<Session | null>(null);
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [sessionTimeoutId, setSessionTimeoutId] = useState<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
-  // Configurar timer para expiração da sessão
-  const setupSessionExpiryTimer = useCallback((expiresAt: number) => {
-    if (sessionTimeoutId) {
-      clearTimeout(sessionTimeoutId);
-    }
+  // Função para buscar perfil do usuário
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    const now = Date.now();
-    const timeUntilExpiry = expiresAt - now - 60000; // 1 minuto antes para alertar usuário
-    
-    if (timeUntilExpiry > 0) {
-      const newTimeoutId = setTimeout(() => {
-        alert('Sua sessão está prestes a expirar. Clique OK para renovar.');
-        refreshSession();
-      }, timeUntilExpiry);
-      
-      setSessionTimeoutId(newTimeoutId);
-    } else {
-      // Se já expirou, forçar logout
-      logout();
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Unexpected error fetching profile:', error);
+      return null;
     }
   }, []);
 
-  const checkSessionValidity = async (): Promise<boolean> => {
-    try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Session validity check error:', error);
-        return false;
-      }
-      
-      if (!session) {
-        return false;
-      }
-      
-      // Verificar expiração
-      const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
-      const now = Date.now();
-      
-      if (expiresAt && expiresAt < now) {
-        console.log('Session expired, logging out');
-        logout();
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error checking session validity:', error);
-      return false;
-    }
-  };
-
-  const loadUserProfile = async (userId: string) => {
+  // Função para atualizar o estado com os dados do usuário
+  const refreshUserState = useCallback(async (session: Session | null) => {
     setIsLoading(true);
+    
     try {
-      const { profile, error } = await getCurrentProfile();
-      
-      if (error) {
-        console.error('Error loading user profile:', error);
+      if (!session) {
+        setUser(null);
         setProfile(null);
         setIsAdmin(false);
-      } else {
+        return;
+      }
+
+      setUser(session.user);
+      
+      const profile = await fetchProfile(session.user.id);
+      if (profile) {
         setProfile(profile);
-        setIsAdmin(profile?.is_admin || false);
+        setIsAdmin(!!profile.is_admin);
       }
     } catch (error) {
-      console.error('Error in loadUserProfile:', error);
-      setProfile(null);
-      setIsAdmin(false);
+      console.error('Error refreshing user state:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchProfile]);
 
-  const refreshProfile = async () => {
-    if (user) {
-      await loadUserProfile(user.id);
-    }
-  };
-
-  const refreshSession = async () => {
-    try {
+  // Inicializar o estado da autenticação
+  useEffect(() => {
+    const initializeAuth = async () => {
       setIsLoading(true);
       
-      // Verificar se token de refresh existe
-      if (!session?.refresh_token) {
-        console.log('No refresh token available, redirecting to login');
-        await logout();
-        return;
-      }
-      
-      // Atualizar sessão com Supabase
-      const { data: { session: newSession }, error } = await supabase.auth.refreshSession();
-      
-      if (error) {
-        console.error('Session refresh error:', error);
-        await logout();
-        return;
-      }
-      
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      
-      if (newSession?.user) {
-        await loadUserProfile(newSession.user.id);
+      try {
+        // Obter sessão atual
+        const { data, error } = await supabase.auth.getSession();
         
-        // Configurar novo timer se a sessão tiver data de expiração
-        if (newSession.expires_at) {
-          setupSessionExpiryTimer(newSession.expires_at * 1000);
+        if (error) {
+          throw error;
         }
-      }
-    } catch (error) {
-      console.error('Error in refreshSession:', error);
-      await logout();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-      
-      setSession(null);
-      setUser(null);
-      setProfile(null);
-      setIsAdmin(false);
-      
-      if (sessionTimeoutId) {
-        clearTimeout(sessionTimeoutId);
-        setSessionTimeoutId(null);
-      }
-      
-      // Redirecionar para a página de login
-      const currentPath = router.asPath;
-      router.push(`/auth/login?redirect=${encodeURIComponent(currentPath)}`);
-    } catch (error) {
-      console.error('Error during logout:', error);
-    }
-  };
-
-  // Carregar sessão inicial
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Error getting initial session:', error);
-        return;
-      }
-      
-      console.log('Initial session loaded:', session?.user?.id || 'No session');
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        loadUserProfile(session.user.id);
         
-        // Configurar timer se a sessão tiver data de expiração
-        if (session.expires_at) {
-          setupSessionExpiryTimer(session.expires_at * 1000);
-        }
-      } else {
+        setSession(data.session);
+        await refreshUserState(data.session);
+        
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+        setIsAdmin(false);
+      } finally {
         setIsLoading(false);
       }
-    });
+    };
 
-    // Listener para mudanças no estado de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    initializeAuth();
+
+    // Configurar listener para mudanças de autenticação
+    const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id);
+        console.log('Auth state changed:', event);
+        setSession(session);
+        await refreshUserState(session);
         
-        if (event === 'SIGNED_OUT') {
-          if (sessionTimeoutId) {
-            clearTimeout(sessionTimeoutId);
-            setSessionTimeoutId(null);
+        // Redirecionar com base no evento
+        if (event === 'SIGNED_IN') {
+          // Se estiver em uma página de autenticação, redirecionar para a home
+          if (router.pathname.startsWith('/auth')) {
+            router.push('/home');
           }
-          
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setIsAdmin(false);
-          setIsLoading(false);
-          
-          // Verificar se estamos em uma rota protegida e redirecionar se necessário
-          const path = router.pathname;
-          const protectedRoutes = ['/profile', '/vip', '/subscriptions', '/admin', '/dashboard', '/payment'];
-          
-          if (protectedRoutes.some(route => path.startsWith(route))) {
-            router.push('/auth/login');
-          }
-        } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          setSession(session);
-          setUser(session?.user ?? null);
-          
-          if (session?.user) {
-            await loadUserProfile(session.user.id);
-            
-            // Configurar timer para expiração
-            if (session.expires_at) {
-              setupSessionExpiryTimer(session.expires_at * 1000);
-            }
-          }
+        } else if (event === 'SIGNED_OUT') {
+          router.push('/auth/login');
         }
       }
     );
 
-    // Verificar validade da sessão periodicamente (a cada 5 minutos)
-    const intervalId = setInterval(() => {
-      checkSessionValidity();
-    }, 300000);
-
     return () => {
-      subscription.unsubscribe();
-      clearInterval(intervalId);
-      if (sessionTimeoutId) {
-        clearTimeout(sessionTimeoutId);
-      }
+      authListener.subscription.unsubscribe();
     };
-  }, [router, setupSessionExpiryTimer]);
+  }, [refreshUserState, router]);
+
+  // Login com email/senha
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      return { error };
+    } catch (error) {
+      console.error('Error signing in:', error);
+      return { error };
+    }
+  };
+
+  // Registro de novo usuário
+  const signUp = async (email: string, password: string, username: string) => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+          },
+        },
+      });
+      
+      return { error };
+    } catch (error) {
+      console.error('Error signing up:', error);
+      return { error };
+    }
+  };
+
+  // Logout
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  // Atualizar o perfil do usuário
+  const refreshProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const profile = await fetchProfile(user.id);
+      if (profile) {
+        setProfile(profile);
+        setIsAdmin(!!profile.is_admin);
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  };
 
   return (
     <AuthContext.Provider
       value={{
-        session,
         user,
         profile,
+        session,
         isLoading,
         isAdmin,
+        signIn,
+        signUp,
+        signOut,
         refreshProfile,
-        refreshSession,
-        checkSessionValidity,
-        logout,
       }}
     >
       {children}

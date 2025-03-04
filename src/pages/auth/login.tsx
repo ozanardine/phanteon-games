@@ -8,88 +8,53 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 import { FormControl } from '@/components/ui/FormControl';
-import { signIn } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { initiateDiscordAuth } from '@/lib/discord';
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
   
   const router = useRouter();
   const { redirect } = router.query;
+  const { signIn, session } = useAuth();
 
-  // Verificar se há um erro de autenticação na URL (vindo de OAuth)
+  // Se já estiver autenticado, redirecionar
   useEffect(() => {
-    const { error } = router.query;
-    if (error) {
-      setServerError(decodeURIComponent(error as string));
+    if (session) {
+      router.push(typeof redirect === 'string' ? redirect : '/home');
     }
-  }, [router.query]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    // Limpar erro ao editar o campo
-    if (errors[name]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.email.trim()) {
-      newErrors.email = 'E-mail é obrigatório';
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Senha é obrigatória';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  }, [session, router, redirect]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    if (!email || !password) {
+      setError('Por favor, preencha todos os campos.');
+      return;
+    }
     
     setIsLoading(true);
-    setServerError(null);
+    setError(null);
     
     try {
-      const { data, error } = await signIn(
-        formData.email,
-        formData.password
-      );
+      const { error: signInError } = await signIn(email, password);
       
-      if (error) {
-        throw error;
+      if (signInError) {
+        throw signInError;
       }
       
-      // Redirecionar para a página solicitada ou home
-      router.push(
-        typeof redirect === 'string' ? redirect : '/home'
-      );
-      
+      // A redireção será feita automaticamente pelo listener do AuthContext
     } catch (error: any) {
       console.error('Login error:', error);
       
       if (error.message.includes('Invalid login credentials')) {
-        setServerError('E-mail ou senha incorretos.');
+        setError('E-mail ou senha incorretos.');
       } else {
-        setServerError(error.message || 'Erro ao fazer login. Tente novamente.');
+        setError(error.message || 'Erro ao fazer login. Tente novamente.');
       }
     } finally {
       setIsLoading(false);
@@ -115,10 +80,10 @@ export default function LoginPage() {
               </p>
             </div>
             
-            {serverError && (
+            {error && (
               <div className="mb-4">
-                <Alert variant="error" onClose={() => setServerError(null)}>
-                  {serverError}
+                <Alert variant="error" onClose={() => setError(null)}>
+                  {error}
                 </Alert>
               </div>
             )}
@@ -126,16 +91,15 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit}>
               <FormControl 
                 label="E-mail" 
-                htmlFor="email" 
-                error={errors.email}
+                htmlFor="email"
               >
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   placeholder="seu-email@exemplo.com"
-                  value={formData.email}
-                  onChange={handleChange}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   icon={<FiMail />}
                   autoComplete="email"
                   fullWidth
@@ -145,8 +109,7 @@ export default function LoginPage() {
               
               <FormControl 
                 label="Senha" 
-                htmlFor="password" 
-                error={errors.password}
+                htmlFor="password"
               >
                 <div className="relative">
                   <Input
@@ -154,8 +117,8 @@ export default function LoginPage() {
                     name="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Sua senha"
-                    value={formData.password}
-                    onChange={handleChange}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     icon={<FiLock />}
                     autoComplete="current-password"
                     fullWidth
