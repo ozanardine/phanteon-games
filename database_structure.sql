@@ -844,6 +844,8 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "discord_username" "text",
     "discord_avatar" "text",
     "rust_username" "text",
+    "email" "text",
+    "name" "text",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"()
 );

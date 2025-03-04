@@ -48,6 +48,13 @@ export default NextAuth({
     },
     async signIn({ user, account, profile }) {
       try {
+        console.log('SignIn callback - user data:', { 
+          id: account.providerAccountId, 
+          email: user.email, 
+          name: user.name, 
+          image: user.image 
+        });
+        
         // Sincroniza dados do usuário com o Supabase
         const userData = {
           id: account.providerAccountId,
