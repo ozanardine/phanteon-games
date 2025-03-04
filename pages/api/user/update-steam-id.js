@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]";
-import { supabase } from '../../../lib/supabase';
+import { supabaseAdmin } from '../../../lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 export default async function handler(req, res) {
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     console.log(`[API:update-steam-id] Atualizando Steam ID para usuário: ${discordIdString}`);
 
     // Buscar o usuário no Supabase pelo discord_id
-    let { data: userData, error: userError } = await supabase
+    let { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('*')
       .or(`discord_id.eq.${discordIdString},discord_id.eq.${parseInt(discordIdString, 10)}`)
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
       console.error('[API:update-steam-id] Usuário não encontrado, discord_id:', discordIdString);
       
       // Log para depuração
-      const { data: allUsers, error: listError } = await supabase
+      const { data: allUsers, error: listError } = await supabaseAdmin
         .from('users')
         .select('id, discord_id')
         .limit(10);
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
       console.log(`[API:update-steam-id] Tentando criar usuário para discord_id: ${discordIdString}`);
       
       // Buscar estrutura correta da tabela users dinamicamente
-      const { data: tableInfo, error: tableError } = await supabase
+      const { data: tableInfo, error: tableError } = await supabaseAdmin
         .from('users')
         .select('*')
         .limit(1);
@@ -94,7 +94,7 @@ export default async function handler(req, res) {
       
       console.log('[API:update-steam-id] Criando novo usuário com campos:', Object.keys(newUser).join(', '));
         
-      const { data: createdUser, error: createError } = await supabase
+      const { data: createdUser, error: createError } = await supabaseAdmin
         .from('users')
         .insert(newUser)
         .select()
@@ -122,7 +122,7 @@ export default async function handler(req, res) {
     }
 
     // Atualiza o Steam ID para o usuário encontrado
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('users')
       .update({ 
         steam_id: steamId,

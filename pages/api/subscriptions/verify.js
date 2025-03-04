@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]';
-import { supabase } from '../../../lib/supabase';
+import { supabaseAdmin } from '../../../lib/supabase';
 
 export default async function handler(req, res) {
   // Aceita apenas método GET
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     console.log(`[API:verify] Verificando assinaturas para usuário: ${discordIdString}`);
 
     // Buscar usuário no Supabase pelo discord_id
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('id, role')
       .or(`discord_id.eq.${discordIdString},discord_id.eq.${parseInt(discordIdString, 10)}`)
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       console.error('[API:verify] Usuário não encontrado, discord_id:', discordIdString);
       
       // Log para depuração
-      const { data: allUsers, error: listError } = await supabase
+      const { data: allUsers, error: listError } = await supabaseAdmin
         .from('users')
         .select('id, discord_id')
         .limit(10);
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     }
 
     // Buscar assinaturas ativas do usuário
-    const { data: subscriptions, error: subscriptionError } = await supabase
+    const { data: subscriptions, error: subscriptionError } = await supabaseAdmin
       .from('subscriptions')
       .select('*, plans:plan_id(name)')
       .eq('user_id', userData.id)
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
       if (userData.role !== newRole) {
         console.log(`[API:verify] Atualizando role do usuário de '${userData.role}' para '${newRole}'`);
         
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
           .from('users')
           .update({ role: newRole })
           .eq('id', userData.id);
@@ -101,7 +101,7 @@ export default async function handler(req, res) {
       // Se não tiver assinatura ativa e a role for VIP, volta para usuário normal
       console.log(`[API:verify] Usuário não tem assinatura ativa, revertendo role de '${userData.role}' para 'user'`);
       
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseAdmin
         .from('users')
         .update({ role: 'user' })
         .eq('id', userData.id);

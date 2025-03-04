@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]';
 import { createPaymentPreference } from '../../../lib/mercadopago';
-import { supabase } from '../../../lib/supabase';
+import { supabaseAdmin } from '../../../lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 export default async function handler(req, res) {
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
     // Verificar se o usuário existe
     // Fazemos uma consulta OR para aceitar discord_id tanto como string quanto como número
-    let { data: userData, error: userError } = await supabase
+    let { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('*')
       .or(`discord_id.eq.${discordIdString},discord_id.eq.${parseInt(discordIdString, 10)}`)
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       console.error('[API:create] Usuário não encontrado para discord_id:', discordIdString);
       
       // Log para depuração
-      const { data: allUsers, error: listError } = await supabase
+      const { data: allUsers, error: listError } = await supabaseAdmin
         .from('users')
         .select('id, discord_id')
         .limit(10);
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
           console.log('[API:create] Tentando criar usuário para discord_id:', discordIdString);
           
           // Buscar estrutura correta da tabela users dinamicamente
-          const { data: tableInfo, error: tableError } = await supabase
+          const { data: tableInfo, error: tableError } = await supabaseAdmin
             .from('users')
             .select('*')
             .limit(1);
@@ -94,7 +94,7 @@ export default async function handler(req, res) {
           
           console.log('[API:create] Criando novo usuário com campos:', Object.keys(newUser).join(', '));
           
-          const { data: createdUser, error: createError } = await supabase
+          const { data: createdUser, error: createError } = await supabaseAdmin
             .from('users')
             .insert(newUser)
             .select()
@@ -161,7 +161,7 @@ export default async function handler(req, res) {
 
     console.log('[API:create] Salvando assinatura pendente no Supabase');
     
-    const { data: subscription, error: subscriptionError } = await supabase
+    const { data: subscription, error: subscriptionError } = await supabaseAdmin
       .from('subscriptions')
       .insert([subscriptionData])
       .select()
@@ -178,7 +178,7 @@ export default async function handler(req, res) {
     if (title.toLowerCase().includes('vip-plus') || title.toLowerCase().includes('vip plus')) {
       console.log(`[API:create] Atualizando role do usuário para 'vip-plus'`);
       
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseAdmin
         .from('users')
         .update({ role: 'vip-plus' })
         .eq('id', userData.id);
@@ -191,7 +191,7 @@ export default async function handler(req, res) {
     } else if (title.toLowerCase().includes('vip')) {
       console.log(`[API:create] Atualizando role do usuário para 'vip'`);
       
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseAdmin
         .from('users')
         .update({ role: 'vip' })
         .eq('id', userData.id);
