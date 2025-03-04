@@ -1,5 +1,5 @@
 import { getSession } from 'next-auth/react';
-import { supabaseAdmin } from '../../../lib/supabase';
+import { getUserByDiscordId, supabaseAdmin } from '../../../lib/supabase';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -10,11 +10,16 @@ export default async function handler(req, res) {
     const session = await getSession({ req });
     
     if (!session) {
-      console.error('Sessão não encontrada');
+      console.error('[API] Sessão não encontrada');
       return res.status(401).json({ message: 'Não autenticado' });
     }
 
-    console.log('Sessão encontrada, discord_id:', session.user.discord_id);
+    if (!session.user?.discord_id) {
+      console.error('[API] Sessão sem discord_id');
+      return res.status(400).json({ message: 'ID de usuário inválido' });
+    }
+
+    console.log('[API] Sessão encontrada, discord_id:', session.user.discord_id);
 
     const { steamId } = req.body;
     const discordId = session.user.discord_id.toString();
@@ -25,34 +30,14 @@ export default async function handler(req, res) {
     }
 
     // Buscar usuário diretamente por discord_id
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('discord_id', discordId)
-      .maybeSingle();
-
-    if (userError) {
-      console.error('Erro ao buscar usuário:', userError);
-      return res.status(500).json({ message: 'Erro ao buscar usuário' });
-    }
+    const userData = await getUserByDiscordId(discordId);
 
     if (!userData) {
-      console.error('Usuário não encontrado com discord_id:', discordId);
-      
-      // Log adicional para depuração
-      const { data: allUsers, error: listError } = await supabaseAdmin
-        .from('users')
-        .select('id, discord_id')
-        .limit(5);
-        
-      if (!listError && allUsers) {
-        console.log('Exemplos de usuários no banco:', allUsers);
-      }
-      
+      console.error('[API] Usuário não encontrado com discord_id:', discordId);
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 
-    console.log('Usuário encontrado, id:', userData.id);
+    console.log('[API] Usuário encontrado, id:', userData.id);
 
     // Atualizar o SteamID
     const { error } = await supabaseAdmin
@@ -61,13 +46,14 @@ export default async function handler(req, res) {
       .eq('id', userData.id);
 
     if (error) {
-      console.error('Erro ao atualizar SteamID:', error);
+      console.error('[API] Erro ao atualizar SteamID:', error);
       return res.status(500).json({ message: 'Erro ao atualizar SteamID' });
     }
 
+    console.log('[API] SteamID atualizado com sucesso para o usuário:', userData.id);
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error('Erro no servidor:', error);
+    console.error('[API] Erro no servidor:', error);
     return res.status(500).json({ message: 'Erro interno do servidor' });
   }
 }

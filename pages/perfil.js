@@ -378,71 +378,89 @@ export default function PerfilPage({ userData, subscriptionData }) {
 }
 
 // Função para buscar dados do servidor
-// Função para buscar dados do servidor
 export async function getServerSideProps(context) {
   // Verifica se o usuário está autenticado
   const authResult = await requireAuth(context);
   
   // Se o resultado contiver um redirecionamento, retorna-o
   if (authResult.redirect) {
+    console.log('[Perfil] Redirecionando usuário não autenticado');
     return authResult;
   }
   
   const session = authResult.props.session;
   
+  if (!session?.user?.discord_id) {
+    console.error('[Perfil] Sessão sem discord_id!', { session });
+    return {
+      redirect: {
+        destination: '/api/auth/signin?error=missing_discord_id',
+        permanent: false,
+      },
+    };
+  }
+  
   try {
-    console.log('Buscando perfil para discord_id:', session.user.discord_id);
+    const discordId = session.user.discord_id.toString();
     
-    // Busca dados do usuário no Supabase - certifique-se de que discord_id é uma string
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('discord_id', session.user.discord_id.toString())
-      .maybeSingle();
+    console.log('[Perfil] Buscando perfil para discord_id:', discordId);
     
-    if (userError) {
-      console.error('Erro ao buscar usuário:', userError);
-      throw userError;
-    }
+    // Obtém dados do usuário via função auxiliar
+    const userData = await getUserByDiscordId(discordId);
     
     if (!userData) {
-      console.log('Usuário não encontrado no banco de dados');
+      console.error('[Perfil] Usuário não encontrado no banco de dados');
       
-      // Log adicional para depuração
-      const { data: allUsers, error: listError } = await supabase
-        .from('users')
-        .select('id, discord_id')
-        .limit(5);
-        
-      if (!listError && allUsers) {
-        console.log('Exemplos de usuários no banco:', allUsers);
+      // Tenta sincronizar dados novamente
+      const syncResult = await syncUserData({
+        id: discordId,
+        email: session.user.email,
+        name: session.user.name,
+        image: session.user.image
+      });
+      
+      if (!syncResult) {
+        console.error('[Perfil] Falha ao sincronizar dados do usuário');
+        return {
+          props: {
+            userData: null,
+            subscriptionData: null,
+            errorMessage: 'Não foi possível encontrar seus dados. Por favor, faça login novamente.'
+          },
+        };
       }
+      
+      // Busca novamente após sincronização
+      const syncedUserData = await getUserByDiscordId(discordId);
+      
+      if (!syncedUserData) {
+        console.error('[Perfil] Usuário ainda não encontrado após sincronização');
+        return {
+          props: {
+            userData: null,
+            subscriptionData: null,
+            errorMessage: 'Erro ao sincronizar seus dados. Por favor, tente novamente mais tarde.'
+          },
+        };
+      }
+      
+      console.log('[Perfil] Usuário sincronizado com sucesso:', syncedUserData.id);
+      
+      // Busca dados da assinatura ativa usando o UUID correto
+      const subscriptionData = await getUserSubscription(syncedUserData.id);
       
       return {
         props: {
-          userData: null,
-          subscriptionData: null,
-          message: 'Usuário não encontrado. Por favor, faça login novamente.'
+          userData: syncedUserData || null,
+          subscriptionData: subscriptionData || null,
         },
       };
     }
     
-    console.log('Usuário encontrado, id:', userData.id);
+    console.log('[Perfil] Usuário encontrado, id:', userData.id);
     
     // Busca dados da assinatura ativa usando o UUID correto
-    const { data: subscriptionData, error: subError } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', userData.id)  // Use o UUID do usuário, não o discord_id
-      .eq('status', 'active')
-      .gte('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(); // Use maybeSingle para não gerar erro quando não encontrar
-    
-    if (subError) {
-      console.error('Erro ao buscar assinatura:', subError);
-    }
+    const subscriptionData = await getUserSubscription(userData.id);
     
     return {
       props: {
@@ -451,13 +469,13 @@ export async function getServerSideProps(context) {
       },
     };
   } catch (error) {
-    console.error('Erro ao buscar dados do perfil:', error);
+    console.error('[Perfil] Erro ao buscar dados do perfil:', error);
     
     return {
       props: {
         userData: null,
         subscriptionData: null,
-        error: 'Falha ao carregar dados do perfil',
+        errorMessage: 'Erro ao carregar seus dados. Por favor, tente novamente mais tarde.'
       },
     };
   }
