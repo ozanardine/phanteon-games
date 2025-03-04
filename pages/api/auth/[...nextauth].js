@@ -43,20 +43,27 @@ async function syncUserWithDatabase(userData) {
       return { id: existingUser.id, discord_id: discordIdString };
     }
     
-    // Se não existe, cria um novo usuário auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: userData.email,
-      password: Math.random().toString(36).slice(-16) + Math.random().toString(36).toUpperCase().slice(-8) + '!',
-      email_confirm: true,
-      user_metadata: {
-        discord_id: discordIdString,
-        name: userData.name
-      }
-    });
+    // Se não existe, tenta criar novo usuário auth
+    let authUserId;
     
-    if (authError) {
+    try {
+      // Cria o usuário no sistema de autenticação
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
+        email: userData.email,
+        password: Math.random().toString(36).slice(-16) + Math.random().toString(36).toUpperCase().slice(-8) + '!',
+        email_confirm: true,
+        user_metadata: {
+          discord_id: discordIdString,
+          name: userData.name
+        }
+      });
+      
+      if (error) throw error;
+      authUserId = data.user.id;
+    } catch (authError) {
       console.error('Erro ao criar usuário auth:', authError);
-      // Tenta encontrar o usuário pelo email se falhar
+      
+      // Tenta encontrar o usuário pelo email
       const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({
         limit: 50,
         page: 1
@@ -67,14 +74,14 @@ async function syncUserWithDatabase(userData) {
         return null;
       }
       
-      authData = { user: existingAuthUser };
+      authUserId = existingAuthUser.id;
     }
     
     // Cria o registro na tabela users
     const { data: insertedUser, error: insertError } = await supabaseAdmin
       .from('users')
       .insert({
-        id: authData.user.id,
+        id: authUserId,
         discord_id: discordIdString,
         name: userData.name,
         email: userData.email,

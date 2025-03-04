@@ -312,6 +312,103 @@ $$;
 ALTER FUNCTION "public"."fix_user_references"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."sync_missing_users"() RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    auth_user RECORD;
+BEGIN
+    -- Para cada usuário em auth.users sem correspondente em public.users
+    FOR auth_user IN 
+        SELECT 
+            au.id, 
+            au.email,
+            COALESCE(au.raw_user_meta_data->>'name', au.email) as name,
+            au.raw_user_meta_data->>'discord_id' as discord_id
+        FROM auth.users au
+        LEFT JOIN public.users pu ON au.id = pu.id
+        WHERE pu.id IS NULL 
+            AND au.raw_user_meta_data->>'discord_id' IS NOT NULL
+    LOOP
+        -- Insere o usuário em public.users
+        INSERT INTO public.users (
+            id, 
+            discord_id, 
+            name, 
+            email, 
+            created_at, 
+            updated_at
+        ) VALUES (
+            auth_user.id,
+            auth_user.discord_id,
+            auth_user.name,
+            auth_user.email,
+            NOW(),
+            NOW()
+        );
+        
+        RAISE NOTICE 'Usuário sincronizado: %, %', auth_user.id, auth_user.discord_id;
+    END LOOP;
+    
+    -- Atualiza discord_id em public.users quando falta mas existe em auth.users
+    UPDATE public.users pu
+    SET discord_id = au.raw_user_meta_data->>'discord_id'
+    FROM auth.users au
+    WHERE pu.id = au.id 
+        AND pu.discord_id IS NULL 
+        AND au.raw_user_meta_data->>'discord_id' IS NOT NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."sync_missing_users"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."sync_subscription_status"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        -- Se payment_status existe na tabela
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'subscriptions' 
+            AND table_schema = 'public' 
+            AND column_name = 'payment_status'
+        ) THEN
+            -- Sincroniza nos dois sentidos
+            IF NEW.payment_status IS DISTINCT FROM OLD.payment_status THEN
+                NEW.status = NEW.payment_status;
+            ELSIF NEW.status IS DISTINCT FROM OLD.status THEN
+                NEW.payment_status = NEW.status;
+            END IF;
+        END IF;
+        
+        -- Se is_active existe na tabela
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name = 'subscriptions' 
+            AND table_schema = 'public' 
+            AND column_name = 'is_active'
+        ) THEN
+            -- Sincroniza status com is_active
+            IF NEW.status = 'active' AND NEW.is_active IS DISTINCT FROM TRUE THEN
+                NEW.is_active = TRUE;
+            ELSIF NEW.status = 'expired' AND NEW.is_active IS DISTINCT FROM FALSE THEN
+                NEW.is_active = FALSE;
+            ELSIF NEW.is_active IS DISTINCT FROM OLD.is_active THEN
+                NEW.status = CASE WHEN NEW.is_active THEN 'active' ELSE 'expired' END;
+            END IF;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."sync_subscription_status"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."update_updated_at"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -990,7 +1087,8 @@ CREATE TABLE IF NOT EXISTS "public"."subscriptions" (
     "discord_role_assigned" boolean DEFAULT false,
     "rust_permission_assigned" boolean DEFAULT false,
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "updated_at" timestamp with time zone DEFAULT "now"()
+    "updated_at" timestamp with time zone DEFAULT "now"(),
+    "status" "text"
 );
 
 
@@ -1460,6 +1558,10 @@ CREATE INDEX "name_prefix_search" ON "storage"."objects" USING "btree" ("name" "
 
 
 
+CREATE OR REPLACE TRIGGER "sync_status_trigger" BEFORE UPDATE ON "public"."subscriptions" FOR EACH ROW EXECUTE FUNCTION "public"."sync_subscription_status"();
+
+
+
 CREATE OR REPLACE TRIGGER "update_payments_updated_at" BEFORE UPDATE ON "public"."payments" FOR EACH ROW EXECUTE FUNCTION "public"."update_updated_at"();
 
 
@@ -1730,6 +1832,18 @@ GRANT ALL ON FUNCTION "public"."fix_missing_users"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."fix_user_references"() TO "anon";
 GRANT ALL ON FUNCTION "public"."fix_user_references"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."fix_user_references"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."sync_missing_users"() TO "anon";
+GRANT ALL ON FUNCTION "public"."sync_missing_users"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_missing_users"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."sync_subscription_status"() TO "anon";
+GRANT ALL ON FUNCTION "public"."sync_subscription_status"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."sync_subscription_status"() TO "service_role";
 
 
 
