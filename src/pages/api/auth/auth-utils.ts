@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from './auth/[...nextauth]';
+import { authOptions } from './[...nextauth]';
 import { supabase } from '@/lib/supabase';
 
 // Esta API é usada para diagnosticar problemas de autenticação
