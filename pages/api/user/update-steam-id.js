@@ -17,14 +17,14 @@ export default async function handler(req, res) {
     console.log('Sessão encontrada, discord_id:', session.user.discord_id);
 
     const { steamId } = req.body;
-    const discordId = session.user.discord_id;
+    const discordId = session.user.discord_id.toString();
 
     // Validar steamId
     if (!steamId || !steamId.match(/^[0-9]{17}$/)) {
       return res.status(400).json({ message: 'Steam ID inválido' });
     }
 
-    // Obter o UUID do usuário
+    // Buscar usuário diretamente por discord_id
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('id')
@@ -37,7 +37,18 @@ export default async function handler(req, res) {
     }
 
     if (!userData) {
-      console.error('Usuário não encontrado');
+      console.error('Usuário não encontrado com discord_id:', discordId);
+      
+      // Log adicional para depuração
+      const { data: allUsers, error: listError } = await supabaseAdmin
+        .from('users')
+        .select('id, discord_id')
+        .limit(5);
+        
+      if (!listError && allUsers) {
+        console.log('Exemplos de usuários no banco:', allUsers);
+      }
+      
       return res.status(404).json({ message: 'Usuário não encontrado' });
     }
 

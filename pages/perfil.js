@@ -378,6 +378,7 @@ export default function PerfilPage({ userData, subscriptionData }) {
 }
 
 // Função para buscar dados do servidor
+// Função para buscar dados do servidor
 export async function getServerSideProps(context) {
   // Verifica se o usuário está autenticado
   const authResult = await requireAuth(context);
@@ -392,11 +393,11 @@ export async function getServerSideProps(context) {
   try {
     console.log('Buscando perfil para discord_id:', session.user.discord_id);
     
-    // Busca dados do usuário no Supabase
+    // Busca dados do usuário no Supabase - certifique-se de que discord_id é uma string
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('discord_id', session.user.discord_id)
+      .eq('discord_id', session.user.discord_id.toString())
       .maybeSingle();
     
     if (userError) {
@@ -406,6 +407,17 @@ export async function getServerSideProps(context) {
     
     if (!userData) {
       console.log('Usuário não encontrado no banco de dados');
+      
+      // Log adicional para depuração
+      const { data: allUsers, error: listError } = await supabase
+        .from('users')
+        .select('id, discord_id')
+        .limit(5);
+        
+      if (!listError && allUsers) {
+        console.log('Exemplos de usuários no banco:', allUsers);
+      }
+      
       return {
         props: {
           userData: null,
