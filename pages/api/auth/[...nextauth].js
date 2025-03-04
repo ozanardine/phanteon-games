@@ -2,6 +2,11 @@ import NextAuth from 'next-auth';
 import DiscordProvider from 'next-auth/providers/discord';
 import { syncUserData } from '../../../lib/auth';
 
+// Determine the base URL based on environment
+const baseUrl = process.env.NODE_ENV === 'development' 
+  ? 'http://localhost:3000'
+  : process.env.NEXTAUTH_URL;
+
 export default NextAuth({
   providers: [
     DiscordProvider({
@@ -13,6 +18,7 @@ export default NextAuth({
     }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
+  site: baseUrl,
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 dias
