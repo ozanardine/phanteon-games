@@ -1,18 +1,18 @@
-// tailwind.config.js
-/** @type {import('tailwindcss').Config} */
 module.exports = {
     content: [
-      './src/pages/**/*.{js,ts,jsx,tsx}',
-      './src/components/**/*.{js,ts,jsx,tsx}',
-      './src/app/**/*.{js,ts,jsx,tsx}',
+      "./pages/**/*.{js,ts,jsx,tsx}",
+      "./components/**/*.{js,ts,jsx,tsx}",
     ],
     theme: {
       extend: {
         colors: {
-          'phanteon-orange': '#EC4D2D',
-          'phanteon-dark': '#121212',
-          'phanteon-gray': '#1E1E1E',
-          'phanteon-light': '#2D2D2D',
+          primary: '#EC4D2D',
+          dark: {
+            100: '#2D2D2D',
+            200: '#252525',
+            300: '#1A1A1A',
+            400: '#121212',
+          },
         },
         fontFamily: {
           sans: ['Inter', 'sans-serif'],

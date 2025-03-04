@@ -1,0 +1,54 @@
+phanteon-games/
+│
+├── pages/                     # Páginas da aplicação
+│   ├── _app.js               # Configuração global da aplicação
+│   ├── _document.js          # Personalização do documento HTML
+│   ├── index.js              # Página inicial
+│   ├── planos.js             # Página de planos VIP
+│   ├── perfil.js             # Página de perfil do usuário
+│   ├── checkout/[planoId].js # Página de checkout dinâmica
+│   └── api/                  # Rotas da API serverless
+│       ├── auth/             # Rotas de autenticação
+│       │   └── [...nextauth].js  # Configuração do NextAuth.js
+│       ├── webhook/          
+│       │   └── mercadopago.js    # Webhook para notificações do Mercado Pago
+│       └── subscriptions/    # API para gerenciamento de assinaturas
+│           ├── create.js     # Criar nova assinatura
+│           ├── verify.js     # Verificar status da assinatura
+│           └── update.js     # Atualizar assinatura
+│
+├── components/               # Componentes reutilizáveis
+│   ├── layout/
+│   │   ├── Navbar.js         # Barra de navegação
+│   │   ├── Footer.js         # Rodapé
+│   │   └── Layout.js         # Layout principal
+│   ├── ui/
+│   │   ├── Button.js         # Botão personalizado
+│   │   ├── Card.js           # Componente de card
+│   │   └── Modal.js          # Modal para avisos/confirmações
+│   └── subscriptions/
+│       ├── PlanCard.js       # Card de plano de assinatura
+│       └── SubscriptionStatus.js # Status da assinatura atual
+│
+├── lib/                      # Funções utilitárias
+│   ├── supabase.js           # Cliente e funções do Supabase
+│   ├── mercadopago.js        # Funções de integração com Mercado Pago
+│   ├── discord.js            # Funções para interação com API do Discord
+│   ├── rust-server.js        # Funções para interação com servidor Rust
+│   └── auth.js               # Funções auxiliares de autenticação
+│
+├── styles/                   # Estilos globais
+│   └── globals.css           # Estilos CSS globais + configuração Tailwind
+│
+├── public/                   # Arquivos estáticos
+│   ├── images/               # Imagens
+│   ├── favicon.ico           # Favicon
+│   └── logo.svg              # Logo do Phanteon Games
+│
+├── .env.local                # Variáveis de ambiente locais (não versionado)
+├── .env.example              # Exemplo de variáveis de ambiente
+├── next.config.js            # Configuração do Next.js
+├── tailwind.config.js        # Configuração do Tailwind CSS
+├── postcss.config.js         # Configuração do PostCSS
+├── package.json              # Dependências e scripts
+└── README.md                 # Documentação do projeto

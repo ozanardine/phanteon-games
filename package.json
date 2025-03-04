@@ -1,6 +1,6 @@
 {
   "name": "phanteon-games",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,35 +9,20 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@auth/supabase-adapter": "^0.1.2",
-    "@supabase/auth-helpers-nextjs": "^0.8.1",
-    "@supabase/auth-helpers-react": "^0.4.2",
-    "@supabase/supabase-js": "^2.38.0",
-    "mercadopago": "^1.5.16",
-    "next": "13.4.1",
+    "@supabase/supabase-js": "^2.39.0",
+    "mercadopago": "^2.0.5",
+    "next": "^14.0.3",
     "next-auth": "^4.24.5",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "react-icons": "^4.8.0",
-    "typescript": "5.0.4",
-    "zod": "^3.21.4",
-    "uuid": "^9.0.0"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.4.1",
+    "react-icons": "^4.12.0"
   },
   "devDependencies": {
-    "@types/node": "18.16.0",
-    "@types/react": "18.2.0",
-    "@types/react-dom": "18.2.0",
-    "autoprefixer": "10.4.14",
-    "eslint": "8.39.0",
-    "eslint-config-next": "13.4.1",
-    "postcss": "8.4.23",
-    "tailwindcss": "3.3.2",
-    "@types/uuid": "^9.0.1"
-  },
-  "resolutions": {
-    "@auth/core": "^0.18.1"
-  },
-  "overrides": {
-    "@auth/core": "^0.18.1"
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.55.0",
+    "eslint-config-next": "^14.0.3",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6"
   }
 }

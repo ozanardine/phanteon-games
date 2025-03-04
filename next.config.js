@@ -1,35 +1,21 @@
-// next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: [
-      'cdn.discordapp.com', 
-      'avatars.steamstatic.com', 
-      'community.cloudflare.steamstatic.com',
-      'i.imgur.com',
-      'media.steampowered.com',
-    ],
-    formats: ['image/avif', 'image/webp'],
+    domains: ['cdn.discordapp.com', 'steamcdn-a.akamaihd.net'],
   },
-  // Otimizações para o build
+  env: {
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+    MERCADOPAGO_ACCESS_TOKEN: process.env.MERCADOPAGO_ACCESS_TOKEN,
+    MERCADOPAGO_PUBLIC_KEY: process.env.MERCADOPAGO_PUBLIC_KEY,
+    WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
+  },
+  // Configuração para otimização de performance
   swcMinify: true,
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
-      exclude: ['error'],
-    } : false,
-  },
-  // Aumentar timeout para builds maiores
-  experimental: {
-    serverActions: true, // Corrigido para boolean
-    turbo: {
-      loaders: { '.svg': ['@svgr/webpack'] },
-    },
-  },
-  typescript: {
-    // Ignorar erros de tipo para permitir o build
-    ignoreBuildErrors: true,
-  },
 };
 
 module.exports = nextConfig;
