@@ -1,10 +1,9 @@
-// src/pages/api/auth/discord/callback.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Método não permitido' });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   // Obter parâmetros da query
@@ -13,12 +12,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Verificar erros do Discord
   if (discordError) {
     console.error('Erro na autenticação do Discord:', discordError);
-    return res.redirect('/profile?error=Erro+na+autenticação+do+Discord');
+    return res.redirect('/profile?error=Discord+auth+error');
   }
 
   // Verificar código de autorização
   if (!code) {
-    return res.redirect('/profile?error=Código+de+autorização+ausente');
+    return res.redirect('/profile?error=Missing+auth+code');
   }
 
   try {
@@ -29,7 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session) {
-      return res.redirect('/auth/login?error=Sessão+expirada');
+      // Usando apenas caracteres ASCII aqui
+      return res.redirect('/auth/login?error=Session+expired');
     }
 
     // Trocar o código por tokens de acesso
@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!tokenResponse.ok) {
       console.error('Erro ao obter token do Discord:', tokenResponse.status);
-      return res.redirect('/profile?error=Erro+ao+obter+token+do+Discord');
+      return res.redirect('/profile?error=Token+error');
     }
 
     const tokens = await tokenResponse.json();
@@ -63,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!userResponse.ok) {
       console.error('Erro ao obter dados do usuário do Discord:', userResponse.status);
-      return res.redirect('/profile?error=Erro+ao+obter+dados+do+usuário');
+      return res.redirect('/profile?error=User+data+error');
     }
 
     const userData = await userResponse.json();
@@ -99,7 +99,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (saveError) {
       console.error('Erro ao salvar conexão com Discord:', saveError);
-      return res.redirect('/profile?error=Erro+ao+salvar+conexão+com+Discord');
+      return res.redirect('/profile?error=Save+connection+error');
     }
 
     // Atribuir cargo VIP se o usuário tiver assinatura ativa
@@ -109,7 +109,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.redirect('/profile?discord=success');
   } catch (error) {
     console.error('Erro no callback do Discord:', error);
-    return res.redirect('/profile?error=Erro+inesperado+na+integração+com+Discord');
+    return res.redirect('/profile?error=Unexpected+error');
   }
 }
 

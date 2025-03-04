@@ -1,6 +1,5 @@
-// src/pages/api/auth/discord/status.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
+import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -8,35 +7,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Criar cliente Supabase com configurações simplificadas
-    const supabaseServerClient = createServerSupabaseClient({
-      req,
-      res,
-      options: {
-        cookieOptions: {
-          secure: process.env.NODE_ENV === 'production',
-          path: '/',
-          sameSite: 'lax'
-        }
-      }
-    });
+    // Usar a função recomendada pelo Supabase
+    const supabase = createPagesServerClient({ req, res });
 
     // Verificar sessão
-    const { data: { session }, error: sessionError } = await supabaseServerClient.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
     // Verificar erro na obtenção da sessão
     if (sessionError) {
       console.error('Error getting session:', sessionError);
-      return res.status(401).json({ error: 'Erro ao obter sessão' });
+      return res.status(401).json({ error: 'Auth error' });
     }
 
     // Verificar se a sessão existe
     if (!session) {
-      return res.status(401).json({ error: 'Não autenticado' });
+      return res.status(401).json({ error: 'No session' });
     }
 
     // Com a sessão validada, buscar informações do Discord
-    const { data: discordConnection, error: discordError } = await supabaseServerClient
+    const { data: discordConnection, error: discordError } = await supabase
       .from('discord_connections')
       .select('discord_username, discord_user_id, discord_avatar')
       .eq('user_id', session.user.id)
@@ -44,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (discordError && discordError.code !== 'PGRST116') { // PGRST116 = não encontrado
       console.error('Error fetching Discord connection:', discordError);
-      return res.status(500).json({ error: 'Erro ao buscar conexão do Discord' });
+      return res.status(500).json({ error: 'Discord data error' });
     }
 
     if (!discordConnection) {
@@ -60,6 +49,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error) {
     console.error('Discord status check error:', error);
-    return res.status(500).json({ error: 'Erro interno do servidor' });
+    return res.status(500).json({ error: 'Server error' });
   }
 }
