@@ -36,25 +36,38 @@ export async function initiateDiscordAuth() {
  */
 export async function checkDiscordConnection() {
   try {
-    const timestamp = Date.now(); // Para evitar cache
+    // Primeiro verificar se o usuário está autenticado
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      console.log('Checking Discord connection failed: No active session');
+      return { connected: false };
+    }
+    
+    // Adicionar um timestamp para evitar cache e header de autorização explícito
+    const timestamp = Date.now();
     const response = await fetch(`/api/auth/discord/status?t=${timestamp}`, {
       method: 'GET',
-      credentials: 'include',
       headers: {
-        'Cache-Control': 'no-cache'
-      }
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      credentials: 'include', // Crucial para enviar cookies
     });
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        console.log('Auth error in Discord check: user not authenticated');
-        return { connected: false };
-      } else {
-        console.error(`Error checking Discord: ${response.status}`);
-        return { connected: false };
-      }
+    // Tratar problemas comuns
+    if (response.status === 401 || response.status === 403) {
+      console.log('Discord check auth failed with status:', response.status);
+      return { connected: false };
     }
 
+    if (!response.ok) {
+      console.error('Discord check failed with status:', response.status);
+      return { connected: false };
+    }
+
+    // Processar resposta
     const data = await response.json();
     return {
       connected: data.connected,
@@ -62,7 +75,7 @@ export async function checkDiscordConnection() {
       avatar: data.avatar
     };
   } catch (error) {
-    console.error('Exception checking Discord connection:', error);
+    console.error('Discord connection check error:', error);
     return { connected: false };
   }
 }

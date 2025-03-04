@@ -1,14 +1,33 @@
+// src/pages/api/auth/discord/status.ts
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Habilitar CORS para esta rota se necessário
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', process.env.NEXT_PUBLIC_SITE_URL || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Usar a função recomendada pelo Supabase
-    const supabase = createPagesServerClient({ req, res });
+    // Criar cliente Supabase com opções melhoradas
+    const supabase = createPagesServerClient({ 
+      req, 
+      res,
+      options: {
+        cookies: {
+          name: 'sb-auth',
+          lifetime: 60 * 60 * 24 * 7, // 1 semana
+          domain: '',
+          path: '/',
+          sameSite: 'lax'
+        }
+      }
+    });
 
     // Verificar sessão
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -21,7 +40,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Verificar se a sessão existe
     if (!session) {
-      return res.status(401).json({ error: 'No session' });
+      // Tentativa de renovação de sessão automática
+      try {
+        const refreshResult = await supabase.auth.refreshSession();
+        if (refreshResult.error || !refreshResult.data.session) {
+          return res.status(401).json({ error: 'No session' });
+        }
+        
+        // Renovação bem-sucedida, continuar com a sessão renovada
+      } catch (refreshError) {
+        console.error('Session refresh error:', refreshError);
+        return res.status(401).json({ error: 'No session' });
+      }
     }
 
     // Com a sessão validada, buscar informações do Discord

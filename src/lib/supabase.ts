@@ -4,12 +4,41 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// Criar o cliente do Supabase com configurações melhoradas
+// Criar o cliente do Supabase com configurações aprimoradas para persistência de sessão
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true, // Habilita persistência de sessão
-    autoRefreshToken: true, // Habilita renovação automática de token
-    detectSessionInUrl: true, // Verifica tokens de acesso na URL
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: 'supabase.auth.token', // Chave específica para armazenamento
+    storage: {
+      getItem: (key) => {
+        if (typeof window === 'undefined') {
+          return null;
+        }
+        return JSON.parse(window.localStorage.getItem(key) || 'null');
+      },
+      setItem: (key, value) => {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(key, JSON.stringify(value));
+        }
+      },
+      removeItem: (key) => {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(key);
+        }
+      },
+    },
+  },
+  global: {
+    headers: {
+      'X-Client-Info': `phanteon-games/1.0.0`
+    },
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
   },
 });
 

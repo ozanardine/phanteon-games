@@ -4,6 +4,9 @@ import { Session, User } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabase';
 
+const STORAGE_KEY = 'supabase.auth.token';
+const LOCAL_STORAGE_KEY = 'phanteon.user.profile';
+
 export type UserProfile = {
   id: string;
   email?: string;
@@ -116,52 +119,116 @@ export const AuthProvider = ({ children }) => {
       setIsLoading(true);
       
       try {
-        // Obter sessão atual
+        // Tentar recuperar sessão do localStorage primeiro (mais rápido)
+        const localProfile = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (localProfile) {
+          const parsedProfile = JSON.parse(localProfile);
+          setProfile(parsedProfile);
+          setIsAdmin(!!parsedProfile.is_admin);
+        }
+        
+        // Obter sessão atual do Supabase
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
-          throw error;
+          console.error('Error getting session:', error);
+          await handleSessionError();
+          return;
         }
         
-        setSession(data.session);
-        await refreshUserState(data.session);
-        
+        if (data?.session) {
+          console.log('Session found, user authenticated');
+          setSession(data.session);
+          setUser(data.session.user);
+          
+          // Buscar perfil atualizado
+          const profile = await fetchProfile(data.session.user.id);
+          if (profile) {
+            setProfile(profile);
+            setIsAdmin(!!profile.is_admin);
+            
+            // Armazenar no localStorage para recuperação rápida
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(profile));
+          }
+        } else {
+          console.log('No session found, user not authenticated');
+          clearUserData();
+        }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        setUser(null);
-        setProfile(null);
-        setSession(null);
-        setIsAdmin(false);
+        clearUserData();
       } finally {
         setIsLoading(false);
       }
     };
-
+  
+    // Limpar dados do usuário
+    const clearUserData = () => {
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      setIsAdmin(false);
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+    };
+    
+    // Lidar com erros de sessão
+    const handleSessionError = async () => {
+      try {
+        // Tentar renovar a sessão
+        await supabase.auth.refreshSession();
+        // Se chegou aqui sem erro, a sessão foi renovada
+        const { data } = await supabase.auth.getSession();
+        if (data?.session) {
+          setSession(data.session);
+          setUser(data.session.user);
+          await refreshProfile();
+        } else {
+          clearUserData();
+        }
+      } catch (refreshError) {
+        console.error('Error refreshing session:', refreshError);
+        clearUserData();
+      }
+    };
+  
     initializeAuth();
-
+  
     // Configurar listener para mudanças de autenticação
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event, newSession) => {
         console.log('Auth state changed:', event);
-        setSession(session);
-        await refreshUserState(session);
         
-        // Redirecionar com base no evento
         if (event === 'SIGNED_IN') {
+          setSession(newSession);
+          setUser(newSession?.user || null);
+          
+          if (newSession?.user) {
+            const profile = await fetchProfile(newSession.user.id);
+            if (profile) {
+              setProfile(profile);
+              setIsAdmin(!!profile.is_admin);
+              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(profile));
+            }
+          }
+          
           // Se estiver em uma página de autenticação, redirecionar para a home
           if (router.pathname.startsWith('/auth')) {
             router.push('/home');
           }
-        } else if (event === 'SIGNED_OUT') {
+        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+          clearUserData();
           router.push('/auth/login');
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Atualizar a sessão
+          setSession(newSession);
         }
       }
     );
-
+  
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [refreshUserState, router]);
+  }, [fetchProfile, router, refreshProfile]);
 
   // Login com email/senha
   const signIn = async (email: string, password: string) => {
