@@ -74,7 +74,7 @@ const Navbar = () => {
           <Link href="/" className="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-dark-300 rounded-md" aria-label="Ir para página inicial">
             <div className="relative h-8 w-8">
               <Image 
-                src="/logo.svg" 
+                src="/logo.png" 
                 alt="Phanteon Games Logo" 
                 fill 
                 className="object-contain"

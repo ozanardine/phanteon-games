@@ -36,7 +36,7 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
         <meta property="og:description" content="O melhor servidor brasileiro de Rust. Obtenha vantagens VIP, comandos exclusivos e kits especiais." />
         <meta property="og:image" content="/images/og-image.jpg" />
         <meta name="theme-color" content="#FF4B00" />
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/logo.png" />
       </Head>
       <SessionProvider 
         session={session}
