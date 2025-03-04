@@ -10,3 +10,6 @@ env
 package-lock.json
 
 supabase
+
+database_structure.sql
+database_roles.sql

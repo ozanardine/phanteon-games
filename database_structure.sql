@@ -153,6 +153,165 @@ COMMENT ON FUNCTION "auth"."uid"() IS 'Deprecated. Use auth.jwt() -> ''sub'' ins
 
 
 
+CREATE OR REPLACE FUNCTION "public"."check_and_fix_duplicate_discord_ids"() RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+  duplicate RECORD;
+BEGIN
+  FOR duplicate IN 
+    SELECT discord_id, COUNT(*) as count, array_agg(id) as ids
+    FROM public.users
+    WHERE discord_id IS NOT NULL
+    GROUP BY discord_id
+    HAVING COUNT(*) > 1
+  LOOP
+    RAISE NOTICE 'Duplicatas de discord_id encontradas: %, contagem: %, ids: %', 
+      duplicate.discord_id, duplicate.count, duplicate.ids;
+    
+    -- Manter apenas o registro mais recente para cada discord_id duplicado
+    -- (Na produção seria necessário uma análise mais cuidadosa)
+    WITH ranked AS (
+      SELECT id, ROW_NUMBER() OVER (PARTITION BY discord_id ORDER BY created_at DESC) as rn
+      FROM public.users
+      WHERE discord_id = duplicate.discord_id
+    )
+    DELETE FROM public.users
+    WHERE id IN (
+      SELECT id FROM ranked WHERE rn > 1
+    );
+  END LOOP;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."check_and_fix_duplicate_discord_ids"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."fix_duplicate_discord_ids"() RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+  duplicate RECORD;
+BEGIN
+  FOR duplicate IN 
+    SELECT discord_id, array_agg(id) as ids
+    FROM public.users
+    WHERE discord_id IS NOT NULL
+    GROUP BY discord_id
+    HAVING COUNT(*) > 1
+  LOOP
+    RAISE NOTICE 'Encontrada duplicata para discord_id %: %', 
+      duplicate.discord_id, duplicate.ids;
+      
+    -- Mantém apenas a entrada mais recente
+    WITH ranked AS (
+      SELECT 
+        id, 
+        ROW_NUMBER() OVER (PARTITION BY discord_id ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST) as rn
+      FROM public.users
+      WHERE discord_id = duplicate.discord_id
+    )
+    DELETE FROM public.users
+    WHERE id IN (
+      SELECT id FROM ranked WHERE rn > 1
+    );
+  END LOOP;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."fix_duplicate_discord_ids"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."fix_missing_users"() RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+  auth_user RECORD;
+BEGIN
+  FOR auth_user IN 
+    SELECT 
+      au.id, 
+      au.email,
+      au.raw_user_meta_data->>'name' as name,
+      au.raw_user_meta_data->>'discord_id' as discord_id
+    FROM auth.users au
+    LEFT JOIN public.users pu ON au.id = pu.id
+    WHERE pu.id IS NULL 
+      AND au.raw_user_meta_data->>'discord_id' IS NOT NULL
+  LOOP
+    -- Log para debugging
+    RAISE NOTICE 'Corrigindo usuário: ID %, Discord ID %', 
+      auth_user.id, auth_user.discord_id;
+    
+    -- Inserir o usuário na tabela public.users
+    INSERT INTO public.users (
+      id, 
+      discord_id, 
+      name, 
+      email, 
+      created_at, 
+      updated_at
+    ) VALUES (
+      auth_user.id,
+      auth_user.discord_id,
+      auth_user.name,
+      auth_user.email,
+      NOW(),
+      NOW()
+    );
+  END LOOP;
+  
+  -- Também corrigimos casos onde o discord_id está presente em auth.users mas não em public.users
+  UPDATE public.users pu
+  SET discord_id = au.raw_user_meta_data->>'discord_id'
+  FROM auth.users au
+  WHERE pu.id = au.id 
+    AND pu.discord_id IS NULL 
+    AND au.raw_user_meta_data->>'discord_id' IS NOT NULL;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."fix_missing_users"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."fix_user_references"() RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+  auth_user RECORD;
+BEGIN
+  -- Percorre usuários do auth que possam não ter correspondente em public.users
+  FOR auth_user IN 
+    SELECT au.id, au.email, 
+           COALESCE(au.raw_user_meta_data->>'name', au.email) as name,
+           au.raw_user_meta_data->>'discord_id' as discord_id
+    FROM auth.users au
+    LEFT JOIN public.users pu ON au.id = pu.id
+    WHERE pu.id IS NULL
+      AND au.raw_user_meta_data->>'discord_id' IS NOT NULL
+  LOOP
+    -- Insere o usuário na tabela public.users
+    INSERT INTO public.users (id, discord_id, name, email)
+    VALUES (
+      auth_user.id,
+      auth_user.discord_id,
+      auth_user.name,
+      auth_user.email
+    )
+    ON CONFLICT (id) DO NOTHING;
+    
+    RAISE NOTICE 'Usuário corrigido: ID %, Discord ID %', auth_user.id, auth_user.discord_id;
+  END LOOP;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."fix_user_references"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."update_updated_at"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -1073,6 +1232,11 @@ ALTER TABLE ONLY "public"."subscriptions"
 
 
 ALTER TABLE ONLY "public"."users"
+    ADD CONSTRAINT "unique_discord_id" UNIQUE ("discord_id");
+
+
+
+ALTER TABLE ONLY "public"."users"
     ADD CONSTRAINT "users_discord_id_key" UNIQUE ("discord_id");
 
 
@@ -1269,6 +1433,10 @@ CREATE INDEX "users_instance_id_idx" ON "auth"."users" USING "btree" ("instance_
 
 
 CREATE INDEX "users_is_anonymous_idx" ON "auth"."users" USING "btree" ("is_anonymous");
+
+
+
+CREATE INDEX "idx_users_discord_id" ON "public"."users" USING "btree" ("discord_id");
 
 
 
@@ -1538,6 +1706,30 @@ GRANT ALL ON FUNCTION "auth"."role"() TO "dashboard_user";
 
 
 GRANT ALL ON FUNCTION "auth"."uid"() TO "dashboard_user";
+
+
+
+GRANT ALL ON FUNCTION "public"."check_and_fix_duplicate_discord_ids"() TO "anon";
+GRANT ALL ON FUNCTION "public"."check_and_fix_duplicate_discord_ids"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."check_and_fix_duplicate_discord_ids"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."fix_duplicate_discord_ids"() TO "anon";
+GRANT ALL ON FUNCTION "public"."fix_duplicate_discord_ids"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."fix_duplicate_discord_ids"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."fix_missing_users"() TO "anon";
+GRANT ALL ON FUNCTION "public"."fix_missing_users"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."fix_missing_users"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."fix_user_references"() TO "anon";
+GRANT ALL ON FUNCTION "public"."fix_user_references"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."fix_user_references"() TO "service_role";
 
 
 

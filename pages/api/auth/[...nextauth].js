@@ -1,8 +1,103 @@
 import NextAuth from 'next-auth';
 import DiscordProvider from 'next-auth/providers/discord';
-import { syncUserData } from '../../../lib/auth';
+import { supabaseAdmin } from '../../../lib/supabase';
 
-export default NextAuth({
+async function syncUserWithDatabase(userData) {
+  if (!userData || !userData.id) {
+    console.error('Dados de usuário inválidos para sincronização:', userData);
+    return null;
+  }
+
+  try {
+    const discordIdString = userData.id.toString();
+    
+    // Verifica se o usuário já existe
+    const { data: existingUser, error: queryError } = await supabaseAdmin
+      .from('users')
+      .select('id, discord_id, email')
+      .eq('discord_id', discordIdString)
+      .maybeSingle();
+    
+    if (queryError) {
+      console.error('Erro ao buscar usuário:', queryError);
+      return null;
+    }
+    
+    // Se já existe, atualiza os dados
+    if (existingUser) {
+      const { error: updateError } = await supabaseAdmin
+        .from('users')
+        .update({
+          name: userData.name,
+          email: userData.email,
+          discord_avatar: userData.image,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingUser.id);
+      
+      if (updateError) {
+        console.error('Erro ao atualizar usuário:', updateError);
+        return null;
+      }
+      
+      return { id: existingUser.id, discord_id: discordIdString };
+    }
+    
+    // Se não existe, cria um novo usuário auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: userData.email,
+      password: Math.random().toString(36).slice(-16) + Math.random().toString(36).toUpperCase().slice(-8) + '!',
+      email_confirm: true,
+      user_metadata: {
+        discord_id: discordIdString,
+        name: userData.name
+      }
+    });
+    
+    if (authError) {
+      console.error('Erro ao criar usuário auth:', authError);
+      // Tenta encontrar o usuário pelo email se falhar
+      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({
+        limit: 50,
+        page: 1
+      });
+      
+      const existingAuthUser = users.find(u => u.email === userData.email);
+      if (!existingAuthUser) {
+        return null;
+      }
+      
+      authData = { user: existingAuthUser };
+    }
+    
+    // Cria o registro na tabela users
+    const { data: insertedUser, error: insertError } = await supabaseAdmin
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        discord_id: discordIdString,
+        name: userData.name,
+        email: userData.email,
+        discord_avatar: userData.image,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (insertError) {
+      console.error('Erro ao inserir usuário:', insertError);
+      return null;
+    }
+    
+    return { id: insertedUser.id, discord_id: discordIdString };
+  } catch (error) {
+    console.error('Erro ao sincronizar usuário:', error);
+    return null;
+  }
+}
+
+export const authOptions = {
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID,
@@ -32,68 +127,25 @@ export default NextAuth({
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 dias
-    updateAge: 24 * 60 * 60, // 1 dia
-  },
-  jwt: {
-    secret: process.env.JWT_SECRET,
-    maxAge: 60 * 60 * 24 * 30, // 30 dias
-  },
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production'
-      }
-    }
   },
   callbacks: {
-    async jwt({ token, account, profile, user }) {
-      // Initial sign in
+    async jwt({ token, account, user }) {
       if (account && user) {
-        console.log('[NextAuth] JWT Callback - Initial sign in:', { 
-          id: user.id,
-          name: user.name
-        });
-        
-        return {
-          ...token,
-          discord_id: user.id,
-          access_token: account.access_token,
-          token_type: account.token_type,
-          expires_at: account.expires_at,
-        };
+        // Initial sign in
+        token.discord_id = user.id;
+        token.access_token = account.access_token;
       }
-      
-      // Subsequent calls
       return token;
     },
     async session({ session, token }) {
-      // Send properties to the client
+      // Adiciona discord_id à sessão
       if (token) {
         session.user.discord_id = token.discord_id;
-        session.user.access_token = token.access_token;
-        session.user.token_type = token.token_type;
-        
-        console.log('[NextAuth] Session Callback:', { 
-          user: session.user.name,
-          discord_id: session.user.discord_id
-        });
       }
-      
       return session;
     },
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       try {
-        console.log('[NextAuth] SignIn callback - user data:', { 
-          id: user.id, 
-          email: user.email, 
-          name: user.name,
-          image: user.image
-        });
-        
         // Sincroniza dados do usuário com o Supabase
         const userData = {
           id: user.id,
@@ -102,20 +154,19 @@ export default NextAuth({
           image: user.image,
         };
         
-        const syncedUser = await syncUserData(userData);
-        
+        const syncedUser = await syncUserWithDatabase(userData);
         if (!syncedUser) {
-          console.error('[NextAuth] Falha ao sincronizar dados do usuário');
-          return false;
+          console.error('Falha ao sincronizar usuário com banco de dados');
         }
         
-        console.log('[NextAuth] Usuário sincronizado com sucesso:', syncedUser);
         return true;
       } catch (error) {
-        console.error('[NextAuth] Erro no callback signIn:', error);
-        return false;
+        console.error('Erro no callback signIn:', error);
+        return true; // Permite login mesmo com erro de sincronização
       }
     },
   },
   debug: process.env.NODE_ENV === 'development',
-});
+};
+
+export default NextAuth(authOptions);
