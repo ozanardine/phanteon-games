@@ -8,26 +8,29 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 import { FormControl } from '@/components/ui/FormControl';
-import { useAuth } from '@/contexts/AuthContext';
-import { initiateDiscordAuth } from '@/lib/discord';
+import { useAuth } from '@/hooks/useAuth';
+import { signIn } from 'next-auth/react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
   const router = useRouter();
-  const { redirect } = router.query;
-  const { signIn, session } = useAuth();
+  const { redirect, error: routerError } = router.query;
+  const { login, connectDiscord, isAuthenticated, isLoading } = useAuth();
 
   // Se já estiver autenticado, redirecionar
   useEffect(() => {
-    if (session) {
+    if (isAuthenticated) {
       router.push(typeof redirect === 'string' ? redirect : '/home');
     }
-  }, [session, router, redirect]);
+    
+    if (routerError) {
+      setError(decodeURIComponent(routerError as string));
+    }
+  }, [isAuthenticated, router, redirect, routerError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,32 +40,23 @@ export default function LoginPage() {
       return;
     }
     
-    setIsLoading(true);
     setError(null);
     
-    try {
-      const { error: signInError } = await signIn(email, password);
-      
-      if (signInError) {
-        throw signInError;
-      }
-      
-      // A redireção será feita automaticamente pelo listener do AuthContext
-    } catch (error: any) {
-      console.error('Login error:', error);
-      
-      if (error.message.includes('Invalid login credentials')) {
+    const { success, error } = await login(email, password, redirect as string);
+    
+    if (!success && error) {
+      if (error.includes('Invalid login credentials')) {
         setError('E-mail ou senha incorretos.');
       } else {
-        setError(error.message || 'Erro ao fazer login. Tente novamente.');
+        setError(error);
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const handleDiscordLogin = () => {
-    initiateDiscordAuth();
+  const handleDiscordLogin = async () => {
+    await signIn('discord', { 
+      callbackUrl: typeof redirect === 'string' ? redirect : '/home' 
+    });
   };
 
   return (
@@ -165,6 +159,7 @@ export default function LoginPage() {
                 fullWidth
                 className="bg-[#5865F2]/10 hover:bg-[#5865F2]/20 border-[#5865F2]/30"
                 onClick={handleDiscordLogin}
+                isLoading={isLoading}
               >
                 <FaDiscord className="mr-2" /> Continuar com Discord
               </Button>

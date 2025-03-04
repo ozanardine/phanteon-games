@@ -1,7 +1,6 @@
-// src/components/layout/ProtectedRoute.tsx
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSession } from 'next-auth/react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -9,18 +8,21 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
-  const { user, isLoading, isAdmin } = useAuth();
+  const { data: session, status } = useSession();
   const router = useRouter();
+  const isLoading = status === 'loading';
+  const isAuthenticated = status === 'authenticated';
+  const isAdmin = session?.user?.isAdmin || false;
 
   useEffect(() => {
     if (!isLoading) {
-      if (!user) {
+      if (!isAuthenticated) {
         router.push(`/auth/login?redirect=${encodeURIComponent(router.pathname)}`);
       } else if (adminOnly && !isAdmin) {
         router.push('/home');
       }
     }
-  }, [user, isLoading, isAdmin, router, adminOnly]);
+  }, [isAuthenticated, isLoading, isAdmin, router, adminOnly]);
 
   if (isLoading) {
     return (
@@ -33,7 +35,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
     );
   }
 
-  if (!user || (adminOnly && !isAdmin)) {
+  if (!isAuthenticated || (adminOnly && !isAdmin)) {
     return null;
   }
 

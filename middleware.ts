@@ -1,7 +1,6 @@
-// middleware.ts - Versão simplificada e mais robusta
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
 // Rotas que requerem autenticação
 const PROTECTED_ROUTES = [
@@ -21,42 +20,43 @@ const AUTH_ROUTES = [
 
 export async function middleware(req: NextRequest) {
   try {
-    // Criar response padrão
-    const res = NextResponse.next();
+    // Obter token JWT do NextAuth
+    const token = await getToken({ 
+      req, 
+      secret: process.env.NEXTAUTH_SECRET 
+    });
     
-    // Criar cliente Supabase
-    const supabase = createMiddlewareClient({ req, res });
-    
-    // Verificar sessão de forma simples
-    const { data } = await supabase.auth.getSession();
-    const session = data?.session;
-    
+    const isAuthenticated = !!token;
     const path = req.nextUrl.pathname;
     
     // Se for rota de API, deixar passar para tratamento específico
     if (path.startsWith('/api/')) {
-      return res;
+      return NextResponse.next();
     }
     
     // Usuário autenticado acessando rotas de auth: redirecionar para home
-    if (session && AUTH_ROUTES.some(route => path.startsWith(route))) {
+    if (isAuthenticated && AUTH_ROUTES.some(route => path.startsWith(route))) {
       return NextResponse.redirect(new URL('/home', req.url));
     }
     
     // Usuário não autenticado acessando rotas protegidas: redirecionar para login
-    if (!session && PROTECTED_ROUTES.some(route => path.startsWith(route))) {
+    if (!isAuthenticated && PROTECTED_ROUTES.some(route => path.startsWith(route))) {
       const redirectUrl = new URL('/auth/login', req.url);
       redirectUrl.searchParams.set('redirect', path);
       return NextResponse.redirect(redirectUrl);
     }
     
+    // Verificar acesso a rotas administrativas
+    if (path.startsWith('/admin') && (!isAuthenticated || !token.isAdmin)) {
+      return NextResponse.redirect(new URL('/auth/login', req.url));
+    }
+    
     // Outros casos: continuar normalmente
-    return res;
+    return NextResponse.next();
   } catch (error) {
     console.error('Middleware error:', error);
     
     // Em caso de erro no middleware, repassar rota normalmente
-    // para evitar loops infinitos ou bloqueios
     return NextResponse.next();
   }
 }
@@ -68,6 +68,7 @@ export const config = {
     '/subscriptions/:path*',
     '/payment/:path*',
     '/auth/:path*',
+    '/admin/:path*',
     '/api/auth/:path*'
   ],
 };
