@@ -1,142 +1,65 @@
 // src/pages/api/auth/discord/status.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Configurar CORS para permitir solicitações do frontend
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', process.env.NEXT_PUBLIC_SITE_URL || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  // Handle preflight request
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Log para depuração
-    console.log('Checking Discord status, request cookies:', req.cookies);
-    
-    // Criar cliente Supabase específico para o servidor
-    const supabase = createPagesServerClient({ 
-      req, 
+    // Criar cliente Supabase com configurações simplificadas
+    const supabaseServerClient = createServerSupabaseClient({
+      req,
       res,
       options: {
         cookieOptions: {
-          name: "sb-auth-token",
-          lifetime: 60 * 60 * 24 * 7, // 1 semana
-          domain: process.env.NODE_ENV === 'production' 
-            ? process.env.COOKIE_DOMAIN || 'phanteongames.com' 
-            : 'localhost',
-          sameSite: "lax",
-          secure: process.env.NODE_ENV === 'production'
+          secure: process.env.NODE_ENV === 'production',
+          path: '/',
+          sameSite: 'lax'
         }
       }
     });
-    
-    // Verificar se o usuário está autenticado
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
+    // Verificar sessão
+    const { data: { session }, error: sessionError } = await supabaseServerClient.auth.getSession();
+
+    // Verificar erro na obtenção da sessão
     if (sessionError) {
-      console.error('Session error:', sessionError);
-      return res.status(401).json({ error: 'Nao autenticado - Erro na sessao' });
+      console.error('Error getting session:', sessionError);
+      return res.status(401).json({ error: 'Erro ao obter sessão' });
     }
 
+    // Verificar se a sessão existe
     if (!session) {
-      console.log('No session found in Discord status check');
-      return res.status(401).json({ error: 'Nao autenticado - Sessao ausente' });
+      return res.status(401).json({ error: 'Não autenticado' });
     }
 
-    // Registrar ID do usuário para depuração
-    console.log('Session user ID found:', session.user.id);
-
-    // Buscar conexão do Discord
-    const { data, error } = await supabase
+    // Com a sessão validada, buscar informações do Discord
+    const { data: discordConnection, error: discordError } = await supabaseServerClient
       .from('discord_connections')
-      .select('*')
+      .select('discord_username, discord_user_id, discord_avatar')
       .eq('user_id', session.user.id)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = not found
-      console.error('Database error fetching Discord connection:', error);
-      return res.status(500).json({ error: 'Erro ao verificar conexao com Discord' });
+    if (discordError && discordError.code !== 'PGRST116') { // PGRST116 = não encontrado
+      console.error('Error fetching Discord connection:', discordError);
+      return res.status(500).json({ error: 'Erro ao buscar conexão do Discord' });
     }
 
-    // Se não houver conexão
-    if (!data) {
+    if (!discordConnection) {
       return res.status(200).json({ connected: false });
     }
 
-    // Verificar se o token expirou
-    const tokenExpiry = new Date(data.discord_token_expires_at || '');
-    const isExpired = tokenExpiry < new Date();
-
-    // Se o token expirou e temos refresh token, renovar
-    if (isExpired && data.discord_refresh_token) {
-      try {
-        const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            client_id: process.env.DISCORD_CLIENT_ID || '',
-            client_secret: process.env.DISCORD_CLIENT_SECRET || '',
-            grant_type: 'refresh_token',
-            refresh_token: data.discord_refresh_token,
-          }),
-        });
-
-        const tokenData = await tokenResponse.json();
-
-        if (tokenData.error || !tokenData.access_token) {
-          // Token de atualização inválido, desconectar
-          await supabase
-            .from('discord_connections')
-            .delete()
-            .eq('user_id', session.user.id);
-          
-          return res.status(200).json({ connected: false });
-        }
-
-        // Atualizar tokens no banco de dados
-        const expiryDate = new Date();
-        expiryDate.setSeconds(expiryDate.getSeconds() + tokenData.expires_in);
-
-        await supabase
-          .from('discord_connections')
-          .update({
-            discord_access_token: tokenData.access_token,
-            discord_refresh_token: tokenData.refresh_token,
-            discord_token_expires_at: expiryDate.toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', session.user.id);
-
-        return res.status(200).json({ 
-          connected: true, 
-          username: data.discord_username 
-        });
-
-      } catch (refreshError) {
-        console.error('Error refreshing Discord token:', refreshError);
-        return res.status(200).json({ connected: false });
-      }
-    }
-
-    // Token válido
-    return res.status(200).json({ 
-      connected: true, 
-      username: data.discord_username 
+    return res.status(200).json({
+      connected: true,
+      username: discordConnection.discord_username,
+      avatar: discordConnection.discord_avatar,
+      user_id: discordConnection.discord_user_id
     });
 
   } catch (error) {
     console.error('Discord status check error:', error);
-    return res.status(500).json({ error: 'Erro ao verificar status do Discord' });
+    return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }

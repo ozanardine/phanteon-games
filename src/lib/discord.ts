@@ -36,30 +36,48 @@ export async function initiateDiscordAuth() {
  */
 export async function checkDiscordConnection() {
   try {
-    const timestamp = Date.now(); // Para evitar cache
+    // Garantir token atual no cabeçalho e evitar cache
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      console.warn('No active session found');
+      return { connected: false, error: 'Sem sessão ativa' };
+    }
+    
+    const timestamp = Date.now();
     const response = await fetch(`/api/auth/discord/status?t=${timestamp}`, {
-      credentials: 'include',
+      method: 'GET',
       headers: {
+        'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Authorization': `Bearer ${session.access_token}`
       },
+      credentials: 'include',
     });
 
-    if (response.status === 401) {
-      throw new Error('Usuário não autenticado');
+    // Tratar erros HTTP comuns
+    if (response.status === 401 || response.status === 403) {
+      console.warn('Auth error checking Discord:', response.status);
+      return { connected: false, error: 'Erro de autenticação' };
     }
 
     if (!response.ok) {
-      throw new Error(`Erro ao verificar Discord (Status ${response.status})`);
+      console.error('Error checking Discord:', response.status);
+      return { connected: false, error: `Erro ${response.status}` };
     }
 
     const data = await response.json();
     return {
       connected: data.connected,
       username: data.username,
+      avatar: data.avatar
     };
   } catch (error) {
-    console.error('Erro verificando conexão Discord:', error);
-    return { connected: false };
+    console.error('Exception checking Discord connection:', error);
+    return { 
+      connected: false, 
+      error: error instanceof Error ? error.message : 'Erro desconhecido'
+    };
   }
 }
 

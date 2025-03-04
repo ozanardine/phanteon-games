@@ -50,17 +50,33 @@ export const AuthProvider = ({ children }) => {
   // Função para buscar perfil do usuário
   const fetchProfile = useCallback(async (userId: string) => {
     try {
+      // Verificar sessão primeiro
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('No active session, cannot fetch profile');
+        return null;
+      }
+  
+      // Usar a sessão para buscar o perfil
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
-
+  
       if (error) {
         console.error('Error fetching profile:', error);
+        
+        // Se for erro de permissão, tente reautenticar
+        if (error.code === '42501' || error.code === 'PGRST301') {
+          console.log('Permission error, refreshing session...');
+          await supabase.auth.refreshSession();
+          return null;
+        }
+        
         return null;
       }
-
+  
       return data;
     } catch (error) {
       console.error('Unexpected error fetching profile:', error);
