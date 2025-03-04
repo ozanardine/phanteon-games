@@ -30,15 +30,30 @@ export default function PerfilPage({ userData, subscriptionData }) {
     // Carregar histórico de assinaturas
     const loadSubscriptionHistory = async () => {
       if (!session?.user?.discord_id) return;
-
+    
       try {
+        // Primeiro, obtenha o UUID do usuário a partir do discord_id
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('discord_id', session.user.discord_id)
+          .single();
+    
+        if (userError) throw userError;
+        
+        if (!userData || !userData.id) {
+          console.error('Usuário não encontrado');
+          return;
+        }
+    
+        // Agora use o UUID correto para consultar as assinaturas
         const { data, error } = await supabase
           .from('subscriptions')
           .select('*')
-          .eq('user_id', session.user.discord_id)
+          .eq('user_id', userData.id)
           .order('created_at', { ascending: false })
           .limit(10);
-
+    
         if (error) throw error;
         setSubscriptionHistory(data || []);
       } catch (error) {
@@ -55,25 +70,33 @@ export default function PerfilPage({ userData, subscriptionData }) {
       toast.error('Por favor, insira seu Steam ID');
       return;
     }
-
+  
     if (!steamId.match(/^[0-9]{17}$/)) {
       toast.error('Steam ID inválido. Deve conter 17 dígitos numéricos');
       return;
     }
-
+  
     setLoading(true);
     try {
-      const success = await updateSteamId(session.user.discord_id, steamId);
+      const response = await fetch('/api/user/update-steam-id', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ steamId }),
+      });
+  
+      const data = await response.json();
       
-      if (success) {
+      if (response.ok && data.success) {
         toast.success('Steam ID atualizado com sucesso!');
         setIsEditModalOpen(false);
       } else {
-        toast.error('Erro ao atualizar Steam ID');
+        throw new Error(data.message || 'Erro ao atualizar Steam ID');
       }
     } catch (error) {
       console.error('Erro ao atualizar Steam ID:', error);
-      toast.error('Erro ao atualizar Steam ID');
+      toast.error(error.message || 'Erro ao atualizar Steam ID');
     } finally {
       setLoading(false);
     }
