@@ -15,6 +15,7 @@ const nextConfig = {
     MERCADOPAGO_ACCESS_TOKEN: process.env.MERCADOPAGO_ACCESS_TOKEN,
     MERCADOPAGO_PUBLIC_KEY: process.env.MERCADOPAGO_PUBLIC_KEY,
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
+    NEXT_PUBLIC_BASE_URL: process.env.NEXTAUTH_URL,
   },
   // Configuração para otimização de performance
   swcMinify: true,
