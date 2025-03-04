@@ -10,6 +10,7 @@ export type AuthContextType = {
   isLoading: boolean;
   isAdmin: boolean;
   refreshProfile: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isAdmin: false,
   refreshProfile: async () => {},
+  refreshSession: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -41,6 +43,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         console.error('Error getting session:', error);
       }
       
+      console.log('Initial session loaded:', session?.user?.id || 'No session');
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -103,6 +106,29 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const refreshSession = async () => {
+    try {
+      setIsLoading(true);
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Error refreshing session:', error);
+        return;
+      }
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        await loadUserProfile(session.user.id);
+      }
+    } catch (error) {
+      console.error('Error in refreshSession:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -112,6 +138,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         isLoading,
         isAdmin,
         refreshProfile,
+        refreshSession,
       }}
     >
       {children}

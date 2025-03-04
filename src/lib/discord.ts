@@ -1,30 +1,57 @@
 // src/lib/discord.ts
-// Este arquivo trata da integração com a API do Discord
+import { supabase } from './supabase';
 
 /**
  * Inicia o processo de OAuth do Discord
  */
-export function initiateDiscordAuth() {
-  // Obter configurações do processo
-  const DISCORD_CLIENT_ID = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
-  const REDIRECT_URI = `${window.location.origin}/api/auth/discord/callback`;
-  
-  // Permissões que vamos solicitar
-  const scope = 'identify guilds.join';
-  
-  // Gerar state para proteção CSRF
-  const state = generateRandomString(16);
-  
-  // Salvar state no sessionStorage
-  sessionStorage.setItem('discord_oauth_state', state);
-  
-  // URL de autorização do Discord
-  const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(
-    REDIRECT_URI
-  )}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}`;
-  
-  // Redirecionar o usuário para a página de autorização do Discord
-  window.location.href = authUrl;
+export async function initiateDiscordAuth() {
+  try {
+    // Obter configurações do processo
+    const DISCORD_CLIENT_ID = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+    const REDIRECT_URI = `${window.location.origin}/api/auth/discord/callback`;
+    
+    // Permissões que vamos solicitar
+    const scope = 'identify guilds.join';
+    
+    // Gerar state para proteção CSRF
+    const state = generateRandomString(16);
+    
+    // Armazenar o state no banco de dados associado ao usuário atual
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      throw new Error('Usuário não autenticado');
+    }
+    
+    // Remover qualquer state anterior
+    await supabase
+      .from('auth_states')
+      .delete()
+      .eq('user_id', user.id);
+    
+    // Inserir o novo state
+    await supabase
+      .from('auth_states')
+      .insert({
+        user_id: user.id,
+        state: state,
+        expires_at: new Date(Date.now() + 3600000).toISOString() // 1 hora
+      });
+    
+    // Salvar state no sessionStorage também como backup
+    sessionStorage.setItem('discord_oauth_state', state);
+    
+    // URL de autorização do Discord
+    const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(
+      REDIRECT_URI
+    )}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}&prompt=consent`;
+    
+    // Redirecionar o usuário para a página de autorização do Discord
+    window.location.href = authUrl;
+  } catch (error) {
+    console.error('Erro ao iniciar autenticação Discord:', error);
+    alert('Erro ao conectar com Discord. Por favor, certifique-se de estar logado.');
+  }
 }
 
 /**
@@ -48,6 +75,14 @@ export async function checkDiscordConnection(): Promise<{
   error?: Error;
 }> {
   try {
+    // Verificar se o usuário está autenticado antes de fazer a solicitação
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('Usuário não autenticado ao verificar conexão Discord');
+      return { connected: false, error: new Error('Usuário não autenticado') };
+    }
+    
     // Adicionar timestamp para evitar cache
     const timestamp = Date.now();
     const response = await fetch(`/api/auth/discord/status?t=${timestamp}`, {
@@ -90,6 +125,13 @@ export async function unlinkDiscord(): Promise<{
   error?: Error;
 }> {
   try {
+    // Verificar se o usuário está autenticado antes de fazer a solicitação
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      return { success: false, error: new Error('Usuário não autenticado') };
+    }
+    
     const response = await fetch('/api/auth/discord/unlink', {
       method: 'POST',
       headers: {

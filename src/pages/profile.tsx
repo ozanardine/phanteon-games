@@ -1,7 +1,8 @@
 // src/pages/profile.tsx
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { FiUser, FiMail, FiEdit2, FiKey, FiSave, FiCheck, FiX, FiLink, FiUnlink } from 'react-icons/fi';
+import Link from 'next/link';
+import { FiUser, FiMail, FiEdit2, FiKey, FiSave, FiCheck, FiX, FiLink, FiUnlink, FiRefreshCw } from 'react-icons/fi';
 import { FaDiscord, FaSteam } from 'react-icons/fa';
 import { MainLayout } from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
@@ -18,7 +19,7 @@ import { checkDiscordConnection, initiateDiscordAuth, unlinkDiscord } from '@/li
 import { getCurrentSubscription } from '@/lib/supabase';
 
 export default function ProfilePage() {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, refreshSession } = useAuth();
   const [editMode, setEditMode] = useState(false);
   const [profileData, setProfileData] = useState({
     username: '',
@@ -42,6 +43,7 @@ export default function ProfilePage() {
   const [currentSubscription, setCurrentSubscription] = useState<any>(null);
   
   const [loading, setLoading] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(false);
   const [profileUpdated, setProfileUpdated] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -229,6 +231,19 @@ export default function ProfilePage() {
       setError(error.message || 'Erro ao desvincular conta do Discord.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefreshSession = async () => {
+    setSessionLoading(true);
+    try {
+      await refreshSession();
+      // Re-verificar status do Discord após atualizar sessão
+      await checkDiscordStatus();
+    } catch (error) {
+      console.error('Error refreshing session:', error);
+    } finally {
+      setSessionLoading(false);
     }
   };
 
@@ -511,6 +526,31 @@ export default function ProfilePage() {
 
   const ConnectionsTab = () => (
     <div className="space-y-6">
+      {/* Sessão */}
+      <Card>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Status da Sessão</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshSession}
+              isLoading={sessionLoading}
+            >
+              <FiRefreshCw className="mr-2" /> Atualizar Sessão
+            </Button>
+          </div>
+          <div className="bg-phanteon-dark/40 p-4 rounded-lg">
+            <p className="text-sm text-gray-300">
+              ID do usuário: <span className="text-white">{user?.id || 'Não disponível'}</span>
+            </p>
+            <p className="text-sm text-gray-300 mt-1">
+              Status: <Badge variant={user ? 'success' : 'error'}>{user ? 'Autenticado' : 'Não autenticado'}</Badge>
+            </p>
+          </div>
+        </div>
+      </Card>
+    
       {/* Discord Connection */}
       <Card>
         <div className="p-6">

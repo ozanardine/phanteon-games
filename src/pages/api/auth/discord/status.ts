@@ -3,13 +3,41 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Configurar CORS para permitir solicitações do frontend
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', process.env.NEXT_PUBLIC_SITE_URL || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    // Log para depuração
+    console.log('Checking Discord status, request cookies:', req.cookies);
+    
     // Criar cliente Supabase específico para o servidor
-    const supabase = createPagesServerClient({ req, res });
+    const supabase = createPagesServerClient({ 
+      req, 
+      res,
+      options: {
+        cookieOptions: {
+          name: "sb-auth-token",
+          lifetime: 60 * 60 * 24 * 7, // 1 semana
+          domain: process.env.NODE_ENV === 'production' 
+            ? process.env.COOKIE_DOMAIN || 'phanteongames.com' 
+            : 'localhost',
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === 'production'
+        }
+      }
+    });
     
     // Verificar se o usuário está autenticado
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -20,11 +48,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (!session) {
+      console.log('No session found in Discord status check');
       return res.status(401).json({ error: 'Nao autenticado - Sessao ausente' });
     }
 
     // Registrar ID do usuário para depuração
-    console.log('Session user ID:', session.user.id);
+    console.log('Session user ID found:', session.user.id);
 
     // Buscar conexão do Discord
     const { data, error } = await supabase
