@@ -37,12 +37,10 @@ const nextConfig = {
   
   // Otimização avançada para melhor tempo de carregamento
   experimental: {
-    // Habilitar otimizações experimentais
+    // Habilitar otimizações experimentais com configurações mais seguras
     optimizeCss: true,
-    // Compilação paralela para melhor performance de build
-    cpus: Math.max(1, (Number(process.env.CIRCLE_NODE_TOTAL) || require('os').cpus().length) - 1),
     // Melhorias de cache para módulos
-    esmExternals: 'loose',
+    esmExternals: true,
   },
   
   // Configurações para PWA e estratégias de cache
