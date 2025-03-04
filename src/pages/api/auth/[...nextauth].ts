@@ -3,13 +3,44 @@ import DiscordProvider from "next-auth/providers/discord";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { supabase } from "@/lib/supabase";
 
+// Verifica se as variáveis de ambiente essenciais estão definidas
+const checkEnv = () => {
+  const requiredEnvs = [
+    'DISCORD_CLIENT_ID',
+    'DISCORD_CLIENT_SECRET',
+    'NEXTAUTH_SECRET'
+  ];
+  
+  const missingEnvs = requiredEnvs.filter(env => !process.env[env]);
+  
+  if (missingEnvs.length > 0) {
+    console.error(`Missing required environment variables: ${missingEnvs.join(', ')}`);
+    
+    // Em desenvolvimento, mostra um erro mais detalhado
+    if (process.env.NODE_ENV === 'development') {
+      throw new Error(`Authentication configuration error: Missing ${missingEnvs.join(', ')}`);
+    }
+  }
+};
+
+// Executa a verificação
+checkEnv();
+
+// Log as variáveis para depuração (redacted para segurança)
+console.log('AUTH CONFIG:', {
+  DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID ? '✓ Set' : '✗ Missing',
+  DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET ? '✓ Set' : '✗ Missing',
+  NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'Using default',
+  NODE_ENV: process.env.NODE_ENV
+});
+
 export const authOptions: NextAuthOptions = {
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID || "",
       clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
       authorization: {
-        params: { scope: "identify guilds.join email" },
+        params: { scope: "identify email guilds.join" },
       },
     }),
     CredentialsProvider({
@@ -135,7 +166,7 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 dias
   },
-  debug: process.env.NODE_ENV === "development",
+  debug: process.env.NODE_ENV !== "production",
 };
 
 export default NextAuth(authOptions);

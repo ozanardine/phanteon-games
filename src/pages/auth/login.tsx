@@ -69,9 +69,28 @@ export default function LoginPage() {
   };
 
   const handleDiscordLogin = async () => {
-    await signIn('discord', { 
-      callbackUrl: typeof redirect === 'string' ? redirect : '/home' 
-    });
+    try {
+      // Adicionar mensagem de log
+      console.log("Iniciando autenticação Discord");
+      
+      // Flag de carregamento para feedback visual
+      setIsLoggingIn(true);
+      
+      // Usar uma forma mais direta de chamar o signIn
+      await signIn('discord', { 
+        callbackUrl: typeof redirect === 'string' ? redirect : '/home',
+        redirect: true // Força redirecionamento
+      });
+      
+      // Se chegar aqui sem redirecionamento, mostrar mensagem
+      console.log("Auth Discord falhou no redirecionamento");
+      setError("Falha ao conectar com o Discord. Tente novamente.");
+    } catch (err) {
+      console.error('Discord login error:', err);
+      setError('Ocorreu um erro ao tentar login com Discord. Tente novamente.');
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   return (
