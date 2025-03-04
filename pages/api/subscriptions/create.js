@@ -1,4 +1,4 @@
-import { getServerSession } from 'next-auth/react';
+import { getServerSession } from 'next-auth';
 import { authOptions } from '../auth/[...nextauth]';
 import { createPaymentPreference } from '../../../lib/mercadopago';
 import { supabase } from '../../../lib/supabase';
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   try {
     // Verificar autenticação
-    const session = await getServerSession({ req, res, authOptions });
+    const session = await getServerSession(req, res, authOptions);
     if (!session) {
       return res.status(401).json({ message: 'Não autenticado' });
     }

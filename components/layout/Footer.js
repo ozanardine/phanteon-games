@@ -15,8 +15,8 @@ const Footer = () => {
             <div className="flex items-center space-x-2 mb-4">
               <div className="relative h-10 w-10">
                 <Image 
-                  src="/logo.svg" 
-                  alt="Phanteon Games Logo" 
+                  src="/logo.png" 
+                  alt="Phanteon Games Logo"
                   fill 
                   className="object-contain"
                 />
@@ -28,7 +28,7 @@ const Footer = () => {
             </p>
             <div className="flex space-x-4">
               <a 
-                href="https://discord.gg/phanteon" 
+                href="https://discord.gg/phanteon"
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-primary transition-colors"
@@ -99,16 +99,16 @@ const Footer = () => {
             <h3 className="text-white font-semibold mb-4">Servidor</h3>
             <ul className="space-y-2">
               <li className="text-gray-400">
-                <span className="text-white">IP:</span> connect.phanteongames.com
+                <span className="text-white">IP:</span> 82.29.62.21:28015
               </li>
               <li className="text-gray-400">
                 <span className="text-white">Discord:</span> discord.gg/phanteon
               </li>
               <li className="text-gray-400">
-                <span className="text-white">Wipe:</span> Toda quinta-feira
+                <span className="text-white">Wipe:</span> Primeira quinta do mês
               </li>
               <li className="text-gray-400">
-                <span className="text-white">Mapa:</span> 4000
+                <span className="text-white">Mapa:</span> 4500
               </li>
             </ul>
           </div>

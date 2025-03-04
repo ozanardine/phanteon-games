@@ -1,4 +1,4 @@
-import { getServerSession } from "next-auth/react";
+import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]";
 import { supabase } from '../../../lib/supabase';
 
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   try {
     // Obtém a sessão do servidor
-    const session = await getServerSession({ req, res, authOptions });
+    const session = await getServerSession(req, res, authOptions);
     
     if (!session) {
       console.error('[API:steamID] Sessão não encontrada');
