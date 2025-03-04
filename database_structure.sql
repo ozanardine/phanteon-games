@@ -839,7 +839,7 @@ ALTER TABLE "public"."subscriptions" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."users" (
-    "id" "uuid" NOT NULL,
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "discord_id" "text",
     "discord_username" "text",
     "discord_avatar" "text",
