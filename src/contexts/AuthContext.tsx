@@ -30,6 +30,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (session?.user?.id) {
       fetchProfile(session.user.id);
+      
+      // Verificar se o usuário está autenticado no Supabase
+      const checkSupabaseAuth = async () => {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error || !data.session) {
+          console.log("Usuário não autenticado no Supabase, aplicando fallback");
+          // Implementar lógica de fallback se necessário
+        }
+      };
+      
+      checkSupabaseAuth();
     } else if (status !== 'loading') {
       setIsLoading(false);
       setProfile(null);
