@@ -6,7 +6,8 @@ import Image from 'next/image';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
-import { toast } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { FaCheck, FaExclamationTriangle, FaCreditCard, FaBarcode, FaQrcode } from 'react-icons/fa';
 import { fetchWithBaseUrl } from '../../lib/api';
 
@@ -247,10 +248,13 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
   return (
     <>
       <Head>
-        <title>Checkout | {selectedPlan.name} | Phanteon Games</title>
+        <title>Checkout - Phanteon Games</title>
+        <meta name="description" content="Checkout para assinatura VIP Phanteon Games" />
       </Head>
+      
+      <ToastContainer position="top-right" autoClose={5000} />
 
-      <div className="container-custom mx-auto py-12 px-4">
+      <div className="container-custom mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-3xl font-bold text-white mb-8 text-center">Checkout</h1>
 

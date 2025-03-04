@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
     // Verificar se o usuário existe
     // Fazemos uma consulta OR para aceitar discord_id tanto como string quanto como número
-    const { data: userData, error: userError } = await supabase
+    let { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
       .or(`discord_id.eq.${discordIdString},discord_id.eq.${parseInt(discordIdString, 10)}`)

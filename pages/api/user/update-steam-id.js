@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     console.log(`[API:update-steam-id] Atualizando Steam ID para usuário: ${discordIdString}`);
 
     // Buscar o usuário no Supabase pelo discord_id
-    const { data: userData, error: userError } = await supabase
+    let { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
       .or(`discord_id.eq.${discordIdString},discord_id.eq.${parseInt(discordIdString, 10)}`)
