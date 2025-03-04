@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -8,11 +8,9 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
-  const { data: session, status } = useSession();
+  const { user, isAdmin, isLoading } = useAuth();
   const router = useRouter();
-  const isLoading = status === 'loading';
-  const isAuthenticated = status === 'authenticated';
-  const isAdmin = session?.user?.isAdmin || false;
+  const isAuthenticated = !!user;
 
   useEffect(() => {
     if (!isLoading) {

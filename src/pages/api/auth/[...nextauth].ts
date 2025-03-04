@@ -1,17 +1,9 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { SupabaseAdapter } from "@auth/supabase-adapter";
 import { supabase } from "@/lib/supabase";
 
-// Para uso com o evento signIn
-import { createClient } from "@supabase/supabase-js";
-
 export const authOptions: NextAuthOptions = {
-  adapter: SupabaseAdapter({
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    secret: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-  }),
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID || "",
@@ -42,18 +34,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          const adminClient = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-            process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-            {
-              auth: {
-                autoRefreshToken: false,
-                persistSession: false,
-              },
-            }
-          );
-
-          const { data, error } = await adminClient.auth.signInWithPassword({
+          const { data, error } = await supabase.auth.signInWithPassword({
             email: credentials.email,
             password: credentials.password,
           });
@@ -63,7 +44,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           // Obter dados do perfil
-          const { data: profileData } = await adminClient
+          const { data: profileData } = await supabase
             .from("profiles")
             .select("*")
             .eq("id", data.user.id)
@@ -98,13 +79,8 @@ export const authOptions: NextAuthOptions = {
         // Se for login do Discord, vincular conta
         if (account?.provider === "discord" && account.access_token) {
           try {
-            const adminClient = createClient(
-              process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-              process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-            );
-            
             // Adicionar registro na tabela discord_connections
-            await adminClient.from("discord_connections").upsert({
+            const { error } = await supabase.from("discord_connections").upsert({
               user_id: user.id,
               discord_user_id: profile?.id,
               discord_username: profile?.username,
@@ -117,15 +93,10 @@ export const authOptions: NextAuthOptions = {
                 : null,
               updated_at: new Date().toISOString(),
             }, { onConflict: "user_id" });
-            
-            // Atribuir cargo Discord para usuários com assinatura ativa
-            await assignDiscordRoleIfSubscribed(
-              adminClient, 
-              user.id, 
-              profile?.id as string
-            );
 
-            token.discord_connected = true;
+            if (!error) {
+              token.discord_connected = true;
+            }
           } catch (error) {
             console.error("Error linking Discord account:", error);
           }
@@ -155,48 +126,5 @@ export const authOptions: NextAuthOptions = {
   },
   debug: process.env.NODE_ENV === "development",
 };
-
-// Função auxiliar para atribuir cargo VIP no Discord
-async function assignDiscordRoleIfSubscribed(supabaseAdmin, userId, discordUserId) {
-  try {
-    // Verificar assinatura ativa
-    const { data: subscription } = await supabaseAdmin
-      .from("subscriptions")
-      .select("*, plan:subscription_plans(*)")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .single();
-
-    if (!subscription?.plan?.discord_role_id) {
-      return; // Sem assinatura ativa ou sem role definida
-    }
-
-    // Adicionar o usuário ao servidor Discord e atribuir cargo VIP
-    await fetch(
-      `https://discord.com/api/guilds/${process.env.DISCORD_GUILD_ID}/members/${discordUserId}/roles/${subscription.plan.discord_role_id}`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
-        },
-      }
-    );
-
-    // Registrar adição de cargo
-    await supabaseAdmin
-      .from("discord_role_logs")
-      .insert({
-        user_id: userId,
-        discord_user_id: discordUserId,
-        discord_role_id: subscription.plan.discord_role_id,
-        role_name: subscription.plan.name,
-        action: "added",
-        reason: "active_subscription"
-      });
-  } catch (error) {
-    console.error("Erro ao atribuir cargo VIP no Discord:", error);
-  }
-}
 
 export default NextAuth(authOptions);

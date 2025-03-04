@@ -6,15 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "apply-db-fix": "psql -f fix_recursive_policy.sql https://nljdosomawiutuelqyqk.supabase.co"
+    "lint": "next lint"
   },
   "dependencies": {
+    "@auth/supabase-adapter": "^0.1.2",
     "@supabase/auth-helpers-nextjs": "^0.8.1",
     "@supabase/auth-helpers-react": "^0.4.2",
     "@supabase/supabase-js": "^2.38.0",
     "mercadopago": "^1.5.16",
     "next": "13.4.1",
+    "next-auth": "^4.24.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-icons": "^4.8.0",
@@ -30,5 +31,11 @@
     "eslint-config-next": "13.4.1",
     "postcss": "8.4.23",
     "tailwindcss": "3.3.2"
+  },
+  "resolutions": {
+    "@auth/core": "^0.18.1"
+  },
+  "overrides": {
+    "@auth/core": "^0.18.1"
   }
 }

@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../[...nextauth]';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -18,14 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Unlinking Discord for user:', session.user.id);
 
-    // Criar cliente Supabase admin
-    const adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-    );
-
     // Buscar dados da conexão para remover o cargo do Discord se necessário
-    const { data: discordConnection } = await adminClient
+    const { data: discordConnection } = await supabase
       .from('discord_connections')
       .select('discord_user_id')
       .eq('user_id', session.user.id)
@@ -33,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Se tiver assinatura ativa, remover o cargo do Discord
     if (discordConnection?.discord_user_id) {
-      const { data: subscription } = await adminClient
+      const { data: subscription } = await supabase
         .from('subscriptions')
         .select('*, plan:subscription_plans(*)')
         .eq('user_id', session.user.id)
@@ -42,27 +36,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (subscription?.plan?.discord_role_id) {
         try {
-          await fetch(
-            `https://discord.com/api/guilds/${process.env.DISCORD_GUILD_ID}/members/${discordConnection.discord_user_id}/roles/${subscription.plan.discord_role_id}`,
-            {
-              method: 'DELETE',
-              headers: {
-                Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
-              },
-            }
-          );
-
-          // Registrar remoção de cargo
-          await adminClient
-            .from('discord_role_logs')
-            .insert({
-              user_id: session.user.id,
-              discord_user_id: discordConnection.discord_user_id,
-              discord_role_id: subscription.plan.discord_role_id,
-              role_name: subscription.plan.name,
-              action: 'removed',
-              reason: 'account_unlinked'
-            });
+          // Aqui você pode adicionar a lógica para remover o cargo do Discord
+          console.log('Would remove Discord role:', {
+            userId: session.user.id,
+            discordId: discordConnection.discord_user_id,
+            roleId: subscription.plan.discord_role_id
+          });
         } catch (error) {
           console.error('Error removing Discord role:', error);
         }
@@ -70,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Remover conexão do Discord
-    const { error } = await adminClient
+    const { error } = await supabase
       .from('discord_connections')
       .delete()
       .eq('user_id', session.user.id);
@@ -81,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Registrar desvinculação
-    await adminClient
+    await supabase
       .from('auth_logs')
       .insert({
         user_id: session.user.id,

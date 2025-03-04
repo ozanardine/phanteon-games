@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 import { FormControl } from '@/components/ui/FormControl';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { signIn } from 'next-auth/react';
 
 export default function LoginPage() {
@@ -16,21 +16,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   const router = useRouter();
   const { redirect, error: routerError } = router.query;
-  const { login, connectDiscord, isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
   // Se já estiver autenticado, redirecionar
   useEffect(() => {
-    if (isAuthenticated) {
+    if (user) {
       router.push(typeof redirect === 'string' ? redirect : '/home');
     }
     
     if (routerError) {
       setError(decodeURIComponent(routerError as string));
     }
-  }, [isAuthenticated, router, redirect, routerError]);
+  }, [user, router, redirect, routerError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,15 +42,29 @@ export default function LoginPage() {
     }
     
     setError(null);
+    setIsLoggingIn(true);
     
-    const { success, error } = await login(email, password, redirect as string);
-    
-    if (!success && error) {
-      if (error.includes('Invalid login credentials')) {
-        setError('E-mail ou senha incorretos.');
-      } else {
-        setError(error);
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      });
+      
+      if (result?.error) {
+        if (result.error.includes('Invalid login credentials')) {
+          setError('E-mail ou senha incorretos.');
+        } else {
+          setError(result.error);
+        }
+      } else if (result?.ok) {
+        router.push(typeof redirect === 'string' ? redirect : '/home');
       }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Ocorreu um erro ao tentar fazer login. Tente novamente.');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -140,7 +155,7 @@ export default function LoginPage() {
                 type="submit"
                 variant="primary"
                 size="lg"
-                isLoading={isLoading}
+                isLoading={isLoggingIn || isLoading}
                 fullWidth
                 className="mb-4"
               >
