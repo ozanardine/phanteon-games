@@ -10,8 +10,11 @@ export default async function handler(req, res) {
     const session = await getSession({ req });
     
     if (!session) {
+      console.error('Sessão não encontrada');
       return res.status(401).json({ message: 'Não autenticado' });
     }
+
+    console.log('Sessão encontrada, discord_id:', session.user.discord_id);
 
     const { steamId } = req.body;
     const discordId = session.user.discord_id;
@@ -26,12 +29,19 @@ export default async function handler(req, res) {
       .from('users')
       .select('id')
       .eq('discord_id', discordId)
-      .single();
+      .maybeSingle();
 
     if (userError) {
       console.error('Erro ao buscar usuário:', userError);
       return res.status(500).json({ message: 'Erro ao buscar usuário' });
     }
+
+    if (!userData) {
+      console.error('Usuário não encontrado');
+      return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
+
+    console.log('Usuário encontrado, id:', userData.id);
 
     // Atualizar o SteamID
     const { error } = await supabaseAdmin

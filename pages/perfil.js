@@ -86,13 +86,23 @@ export default function PerfilPage({ userData, subscriptionData }) {
         body: JSON.stringify({ steamId }),
       });
   
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || `Erro (${response.status}): ${response.statusText}`);
+      }
+      
       const data = await response.json();
       
-      if (response.ok && data.success) {
+      if (data.success) {
         toast.success('Steam ID atualizado com sucesso!');
         setIsEditModalOpen(false);
+        
+        // Recarrega a página para atualizar os dados
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } else {
-        throw new Error(data.message || 'Erro ao atualizar Steam ID');
+        throw new Error(data.message || 'Falha ao atualizar Steam ID');
       }
     } catch (error) {
       console.error('Erro ao atualizar Steam ID:', error);
@@ -380,27 +390,47 @@ export async function getServerSideProps(context) {
   const session = authResult.props.session;
   
   try {
+    console.log('Buscando perfil para discord_id:', session.user.discord_id);
+    
     // Busca dados do usuário no Supabase
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('*')
       .eq('discord_id', session.user.discord_id)
-      .single();
+      .maybeSingle();
     
-    if (userError) throw userError;
+    if (userError) {
+      console.error('Erro ao buscar usuário:', userError);
+      throw userError;
+    }
     
-    // Busca dados da assinatura ativa
+    if (!userData) {
+      console.log('Usuário não encontrado no banco de dados');
+      return {
+        props: {
+          userData: null,
+          subscriptionData: null,
+          message: 'Usuário não encontrado. Por favor, faça login novamente.'
+        },
+      };
+    }
+    
+    console.log('Usuário encontrado, id:', userData.id);
+    
+    // Busca dados da assinatura ativa usando o UUID correto
     const { data: subscriptionData, error: subError } = await supabase
       .from('subscriptions')
       .select('*')
-      .eq('user_id', session.user.discord_id)
+      .eq('user_id', userData.id)  // Use o UUID do usuário, não o discord_id
       .eq('status', 'active')
       .gte('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle(); // Use maybeSingle para não gerar erro quando não encontrar
     
-    // Não lançamos erro aqui pois o usuário pode não ter assinatura
+    if (subError) {
+      console.error('Erro ao buscar assinatura:', subError);
+    }
     
     return {
       props: {
