@@ -385,7 +385,7 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
                     </div>
                     <div className="mt-4 text-center">
                       <Image 
-                        src="/images/mercado-pago-logo.png" 
+                        src="/images/mercado-pago-logo.svg" 
                         alt="Mercado Pago" 
                         width={120} 
                         height={40} 
