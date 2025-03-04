@@ -1,3 +1,6 @@
 BKP
 .next
 node_modules
+
+.env.example
+.env.local
