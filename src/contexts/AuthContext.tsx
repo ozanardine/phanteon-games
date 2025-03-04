@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useSession, signOut } from 'next-auth/react';
-import { useRouter } from 'next/router';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import { supabase } from '@/lib/supabase';
 import { UserProfile } from '@/lib/supabase';
 
@@ -9,13 +8,15 @@ interface AuthContextType {
   profile: UserProfile | null;
   isLoading: boolean;
   isAdmin: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, username: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string, redirectTo?: string) => Promise<{ success: boolean; error?: string }>;
+  signUp: (email: string, password: string, username: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: Error | null }>;
-  updatePassword: (password: string) => Promise<{ error: Error | null }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  updatePassword: (password: string) => Promise<{ success: boolean; error?: string }>;
   refreshSession: () => Promise<void>;
+  connectDiscord: (redirectUrl?: string) => Promise<void>;
+  checkDiscordConnection: () => Promise<{ connected: boolean; username?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,36 +25,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { data: session, status } = useSession();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
 
   // Carregar perfil do usuário quando a sessão mudar
   useEffect(() => {
     if (session?.user?.id) {
-      fetchProfile(session.user.id);
-      
-      // Verificar se o usuário está autenticado no Supabase
-      const checkSupabaseAuth = async () => {
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error || !data.session) {
-          console.log("Usuário não autenticado no Supabase, aplicando fallback");
-          // Implementar lógica de fallback se necessário
-        }
-      };
-      
-      checkSupabaseAuth();
+      fetchProfile();
     } else if (status !== 'loading') {
       setIsLoading(false);
       setProfile(null);
     }
   }, [session, status]);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async () => {
+    if (!session?.user?.id) {
+      setIsLoading(false);
+      return;
+    }
+    
     try {
+      setIsLoading(true);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', session.user.id)
         .single();
       
       if (error) {
@@ -66,37 +61,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session?.user?.id]);
 
   const refreshProfile = async () => {
-    if (session?.user?.id) {
-      await fetchProfile(session.user.id);
-    }
+    await fetchProfile();
   };
 
   const refreshSession = async () => {
-    // Com NextAuth esta função não é mais necessária, mas mantemos
-    // para compatibilidade com o código existente
+    // Esta função agora usa Next-Auth para atualizar a sessão
+    // No futuro, podemos implementar uma renovação JWT se necessário
     console.log("Session refresh requested");
     return Promise.resolve();
   };
 
-  // Adaptar métodos antigos para usar o NextAuth
-  const signInAdapter = async (email: string, password: string) => {
+  // Login usando NextAuth (que por sua vez usa Supabase)
+  const handleSignIn = async (email: string, password: string, redirectTo?: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const result = await signIn('credentials', {
         email,
-        password
+        password,
+        redirect: false,
       });
       
-      return { error };
-    } catch (error) {
+      if (result?.error) {
+        return { 
+          success: false, 
+          error: result.error === 'CredentialsSignin' 
+            ? 'Email ou senha incorretos' 
+            : result.error
+        };
+      }
+      
+      return { success: true };
+    } catch (error: any) {
       console.error('Sign in error:', error);
-      return { error: error as Error };
+      return { 
+        success: false, 
+        error: error.message || 'Erro ao fazer login' 
+      };
     }
   };
 
-  const signUpAdapter = async (email: string, password: string, username: string) => {
+  // Registrar usando Supabase e depois fazer login
+  const handleSignUp = async (email: string, password: string, username: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -108,41 +115,129 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
       
-      return { error };
-    } catch (error) {
+      if (error) {
+        return { 
+          success: false, 
+          error: error.message 
+        };
+      }
+      
+      if (data.user) {
+        // No caso de sign-up, vamos direcionar para login após confirmação
+        // em vez de login automático para respeitar o fluxo de email verification
+        return { success: true };
+      }
+      
+      return { 
+        success: false, 
+        error: 'Falha no registro. Tente novamente.' 
+      };
+    } catch (error: any) {
       console.error('Sign up error:', error);
-      return { error: error as Error };
+      return { 
+        success: false, 
+        error: error.message || 'Erro no registro' 
+      };
     }
   };
 
-  const signOutAdapter = async () => {
-    await signOut({ callbackUrl: '/' });
-    await supabase.auth.signOut();
+  // Logout via NextAuth (que por sua vez faz Supabase logout)
+  const handleSignOut = async () => {
+    try {
+      // Também fazer logout do Supabase para garantir que todas as sessões são encerradas
+      await supabase.auth.signOut();
+      
+      // Fazer logout do NextAuth, com redirecionamento para home
+      await signOut({ callbackUrl: '/' });
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
   };
   
-  const resetPasswordAdapter = async (email: string) => {
+  // Solicitar reset de senha
+  const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       });
       
-      return { error };
-    } catch (error) {
+      if (error) {
+        return { 
+          success: false, 
+          error: error.message 
+        };
+      }
+      
+      return { success: true };
+    } catch (error: any) {
       console.error('Reset password error:', error);
-      return { error: error as Error };
+      return { 
+        success: false, 
+        error: error.message || 'Erro ao solicitar redefinição de senha' 
+      };
     }
   };
   
-  const updatePasswordAdapter = async (password: string) => {
+  // Atualizar senha
+  const updatePassword = async (password: string) => {
     try {
       const { error } = await supabase.auth.updateUser({
         password,
       });
       
-      return { error };
-    } catch (error) {
+      if (error) {
+        return { 
+          success: false, 
+          error: error.message 
+        };
+      }
+      
+      return { success: true };
+    } catch (error: any) {
       console.error('Update password error:', error);
-      return { error: error as Error };
+      return { 
+        success: false, 
+        error: error.message || 'Erro ao atualizar senha' 
+      };
+    }
+  };
+  
+  // Iniciar fluxo de autenticação com Discord
+  const connectDiscord = async (redirectUrl?: string) => {
+    try {
+      // Usar o NextAuth para iniciar a autenticação Discord
+      await signIn('discord', {
+        callbackUrl: redirectUrl || window.location.href
+      });
+    } catch (error) {
+      console.error('Discord connection error:', error);
+    }
+  };
+  
+  // Verificar conexão com Discord
+  const checkDiscordConnection = async () => {
+    try {
+      if (!session?.user?.id) {
+        return { connected: false };
+      }
+      
+      const { data, error } = await supabase
+        .from('discord_connections')
+        .select('discord_username, discord_avatar')
+        .eq('user_id', session.user.id)
+        .single();
+      
+      if (error || !data) {
+        return { connected: false };
+      }
+      
+      return { 
+        connected: true, 
+        username: data.discord_username
+      };
+    } catch (error) {
+      console.error('Error checking Discord connection:', error);
+      return { connected: false };
     }
   };
 
@@ -151,13 +246,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     profile,
     isLoading: status === 'loading' || isLoading,
     isAdmin: profile?.is_admin || false,
-    signIn: signInAdapter,
-    signUp: signUpAdapter,
-    signOut: signOutAdapter,
+    signIn: handleSignIn,
+    signUp: handleSignUp,
+    signOut: handleSignOut,
     refreshProfile,
-    resetPassword: resetPasswordAdapter,
-    updatePassword: updatePasswordAdapter,
+    resetPassword,
+    updatePassword,
     refreshSession,
+    connectDiscord,
+    checkDiscordConnection
   };
 
   return (

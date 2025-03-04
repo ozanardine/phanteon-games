@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/Input';
 import { Alert } from '@/components/ui/Alert';
 import { FormControl } from '@/components/ui/FormControl';
 import { useAuth } from '@/contexts/AuthContext';
-import { signIn } from 'next-auth/react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,7 +19,7 @@ export default function LoginPage() {
   
   const router = useRouter();
   const { redirect, error: routerError } = router.query;
-  const { user, isLoading } = useAuth();
+  const { user, signIn, connectDiscord, isLoading } = useAuth();
 
   // Se já estiver autenticado, redirecionar
   useEffect(() => {
@@ -28,14 +27,17 @@ export default function LoginPage() {
       router.push(typeof redirect === 'string' ? redirect : '/home');
     }
     
+    // Processar erros da URL
     if (routerError) {
       setError(decodeURIComponent(routerError as string));
     }
   }, [user, router, redirect, routerError]);
 
+  // Manipular tentativa de login
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validação básica do lado do cliente
     if (!email || !password) {
       setError('Por favor, preencha todos os campos.');
       return;
@@ -45,19 +47,13 @@ export default function LoginPage() {
     setIsLoggingIn(true);
     
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
+      // Usar o método signIn do AuthContext (que usa NextAuth por baixo)
+      const result = await signIn(email, password);
       
-      if (result?.error) {
-        if (result.error.includes('Invalid login credentials')) {
-          setError('E-mail ou senha incorretos.');
-        } else {
-          setError(result.error);
-        }
-      } else if (result?.ok) {
+      if (!result.success) {
+        setError(result.error || 'Falha no login. Verifique suas credenciais.');
+      } else {
+        // Redirecionar para a página solicitada ou para home
         router.push(typeof redirect === 'string' ? redirect : '/home');
       }
     } catch (err) {
@@ -68,21 +64,21 @@ export default function LoginPage() {
     }
   };
 
+  // Manipular tentativa de login com Discord
   const handleDiscordLogin = async () => {
     try {
-      // Adicionar mensagem de log
+      setIsLoggingIn(true);
       console.log("Iniciando autenticação Discord");
       
-      // Flag de carregamento para feedback visual
-      setIsLoggingIn(true);
+      // Garantir que o redirecionamento funcione após o login
+      const redirectUrl = typeof redirect === 'string' 
+        ? `${window.location.origin}${redirect}`
+        : `${window.location.origin}/home`;
       
-      // Usar uma forma mais direta de chamar o signIn
-      await signIn('discord', { 
-        callbackUrl: typeof redirect === 'string' ? redirect : '/home',
-        redirect: true // Força redirecionamento
-      });
+      // Chamar o método connectDiscord do AuthContext
+      await connectDiscord(redirectUrl);
       
-      // Se chegar aqui sem redirecionamento, mostrar mensagem
+      // Esta linha só será executada se a redirecionamento falhar
       console.log("Auth Discord falhou no redirecionamento");
       setError("Falha ao conectar com o Discord. Tente novamente.");
     } catch (err) {
@@ -174,9 +170,10 @@ export default function LoginPage() {
                 type="submit"
                 variant="primary"
                 size="lg"
-                isLoading={isLoggingIn || isLoading}
+                isLoading={isLoggingIn}
                 fullWidth
                 className="mb-4"
+                disabled={isLoading}
               >
                 Entrar
               </Button>
@@ -193,7 +190,8 @@ export default function LoginPage() {
                 fullWidth
                 className="bg-[#5865F2]/10 hover:bg-[#5865F2]/20 border-[#5865F2]/30"
                 onClick={handleDiscordLogin}
-                isLoading={isLoading}
+                isLoading={isLoggingIn}
+                disabled={isLoading}
               >
                 <FaDiscord className="mr-2" /> Continuar com Discord
               </Button>

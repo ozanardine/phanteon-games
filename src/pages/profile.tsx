@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { FiUser, FiMail, FiEdit2, FiKey, FiSave, FiCheck, FiX, FiLink, FiUnlink, FiRefreshCw } from 'react-icons/fi';
+import { FiUser, FiEdit2, FiKey, FiSave, FiCheck, FiX, FiLink, FiUnlink, FiRefreshCw } from 'react-icons/fi';
 import { FaDiscord, FaSteam } from 'react-icons/fa';
 import { MainLayout } from '@/components/layout/MainLayout';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
@@ -14,6 +14,7 @@ import { FormControl } from '@/components/ui/FormControl';
 import { Tabs, TabItem } from '@/components/ui/Tabs';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/contexts/AuthContext';
+import { DiscordConnection } from '@/components/DiscordConnection';
 import { updateProfile, updatePassword } from '@/lib/supabase';
 import { checkDiscordConnection, initiateDiscordAuth, unlinkDiscord } from '@/lib/discord';
 import { getCurrentSubscription } from '@/lib/supabase';
@@ -615,32 +616,6 @@ export default function ProfilePage() {
               </Button>
             </div>
           )}
-        </div>
-      </Card>
-      
-      {/* Steam Connection - Placeholder */}
-      <Card>
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center">
-              <FaSteam className="text-[#1b2838] text-2xl mr-3" />
-              <h2 className="text-xl font-bold">Steam</h2>
-            </div>
-            
-            <Badge variant="secondary">Em breve</Badge>
-          </div>
-          
-          <p className="text-gray-300 mb-6">
-            Em breve você poderá conectar sua conta Steam para uma experiência mais integrada.
-          </p>
-          
-          <Button
-            variant="outline"
-            disabled
-            className="opacity-50 cursor-not-allowed"
-          >
-            <FiLink className="mr-2" /> Conectar Steam
-          </Button>
         </div>
       </Card>
     </div>
