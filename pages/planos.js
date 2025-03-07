@@ -2,56 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
-import PlanCard from '../components/subscriptions/PlanCard';
-import { FaQuestion } from 'react-icons/fa';
+import { FaGamepad, FaQuestionCircle, FaServer, FaRocket } from 'react-icons/fa';
+import { SiRust } from 'react-icons/si';
+import { TabSelector } from '../../components/ui/TabSelector';
+import PlanCard from '../../components/subscriptions/PlanCard';
+import Card from '../../components/ui/Card';
+import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 // Mapeamento de planos para IDs no banco de dados
 const planIdMapping = {
-  'vip-basic': '0b81cf06-ed81-49ce-8680-8f9d9edc932e',   // VIP Bronze
-  'vip-plus': '3994ff53-f110-4c8f-a492-ad988528006f',    // VIP Prata
+  'vip-basic': '0b81cf06-ed81-49ce-8680-8f9d9edc932e',
+  'vip-plus': '3994ff53-f110-4c8f-a492-ad988528006f',
 };
 
-export default function PlanosPage() {
-  const { data: session } = useSession();
-  const router = useRouter();
-  const [planos, setPlanos] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Buscar planos do banco de dados
-  useEffect(() => {
-    async function fetchPlanos() {
-      try {
-        const response = await fetch('/api/plans');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.plans) {
-            // Filtrar apenas os planos que queremos exibir (basic e plus)
-            const planosFiltered = data.plans.filter(plan => 
-              plan.id === 'vip-basic' || plan.id === 'vip-plus'
-            );
-            setPlanos(planosFiltered);
-          } else {
-            // Se falhar, usamos os planos hardcoded abaixo
-            setPlanos(vipPlans);
-          }
-        } else {
-          // Se falhar, usamos os planos hardcoded abaixo
-          setPlanos(vipPlans);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar planos:', error);
-        // Se falhar, usamos os planos hardcoded abaixo
-        setPlanos(vipPlans);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchPlanos();
-  }, []);
-
-  // Dados dos planos VIP hardcoded (fallback)
-  const vipPlans = [
+// Definição dos planos específicos por jogo
+const gameSpecificPlans = {
+  rust: [
     {
       id: 'vip-basic',
       databaseId: '0b81cf06-ed81-49ce-8680-8f9d9edc932e',
@@ -88,7 +54,92 @@ export default function PlanosPage() {
       ],
       isPopular: true,
     },
-  ];
+  ],
+};
+
+// Lista de jogos disponíveis
+const availableGames = [
+  { id: 'rust', name: 'Rust', icon: <SiRust /> },
+  // Aqui podem ser adicionados outros jogos no futuro
+];
+
+export default function PlanosPage() {
+  const { data: session } = useSession();
+  const router = useRouter();
+  const { game: initialGame } = router.query;
+  
+  const [activeGame, setActiveGame] = useState('rust');
+  const [planos, setPlanos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeFaq, setActiveFaq] = useState(null);
+
+  // Define o jogo ativo com base na query ou padrão
+  useEffect(() => {
+    if (initialGame && availableGames.some(g => g.id === initialGame)) {
+      setActiveGame(initialGame);
+    }
+  }, [initialGame]);
+
+  // Buscar planos do banco de dados ou usar os definidos localmente
+  useEffect(() => {
+    async function fetchPlanos() {
+      try {
+        setLoading(true);
+        
+        // Tenta buscar planos da API
+        const response = await fetch('/api/plans');
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.success && data.plans) {
+            // Filtrar planos para o jogo selecionado
+            const gameFilteredPlans = data.plans.filter(plan => 
+              plan.id === 'vip-basic' || plan.id === 'vip-plus'
+            );
+            
+            // Se houver planos, atualize-os com os recursos específicos do jogo
+            if (gameFilteredPlans.length > 0) {
+              const updatedPlans = gameFilteredPlans.map(plan => {
+                const localPlan = gameSpecificPlans[activeGame].find(p => p.id === plan.id);
+                if (localPlan) {
+                  return {
+                    ...plan,
+                    features: localPlan.features,
+                    isPopular: localPlan.isPopular
+                  };
+                }
+                return plan;
+              });
+              
+              setPlanos(updatedPlans);
+            } else {
+              // Fallback para planos locais
+              setPlanos(gameSpecificPlans[activeGame] || []);
+            }
+          } else {
+            // Fallback para planos locais
+            setPlanos(gameSpecificPlans[activeGame] || []);
+          }
+        } else {
+          // Fallback para planos locais
+          setPlanos(gameSpecificPlans[activeGame] || []);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar planos:', error);
+        // Fallback para planos locais
+        setPlanos(gameSpecificPlans[activeGame] || []);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPlanos();
+  }, [activeGame]);
+
+  // Atualiza a URL quando o jogo ativo muda
+  useEffect(() => {
+    router.push(`/planos?game=${activeGame}`, undefined, { shallow: true });
+  }, [activeGame, router]);
 
   const handleSelectPlan = (planId) => {
     if (!session) {
@@ -99,11 +150,72 @@ export default function PlanosPage() {
     router.push(`/checkout/${planId}`);
   };
 
+  const handleGameChange = (gameId) => {
+    setActiveGame(gameId);
+  };
+
+  // Dados de FAQ específicos para cada jogo
+  const faqItems = {
+    rust: [
+      {
+        question: 'Por quanto tempo dura o VIP?',
+        answer: 'Todos os planos VIP têm duração de 30 dias a partir da data de ativação. Você pode renovar seu plano a qualquer momento através do seu perfil.'
+      },
+      {
+        question: 'O que acontece quando o servidor tem wipe?',
+        answer: 'Após cada wipe do servidor, você poderá resgatar novamente seus kits exclusivos. Suas vantagens VIP permanecem ativas independentemente dos wipes.'
+      },
+      {
+        question: 'Como funciona o pagamento?',
+        answer: 'Todos os pagamentos são processados de forma segura através do Mercado Pago. Aceitamos cartões de crédito, boleto bancário e PIX.'
+      },
+      {
+        question: 'Como recebo meu VIP após o pagamento?',
+        answer: 'Após a confirmação do pagamento, seu VIP será ativado automaticamente. Você receberá o cargo no Discord e as permissões no servidor Rust em até 5 minutos.'
+      },
+      {
+        question: 'Posso mudar de plano?',
+        answer: 'Sim! Você pode fazer upgrade do seu plano a qualquer momento. O novo plano substituirá o anterior e terá duração de 30 dias a partir da data de ativação.'
+      }
+    ]
+  };
+
+  // Renderização do título específico para cada jogo
+  const renderGameTitle = () => {
+    switch (activeGame) {
+      case 'rust':
+        return (
+          <div className="flex items-center">
+            <SiRust className="text-3xl mr-3 text-primary" />
+            <h1 className="text-3xl md:text-4xl font-bold text-white">
+              Planos VIP <span className="text-primary">Rust</span>
+            </h1>
+          </div>
+        );
+      default:
+        return (
+          <h1 className="text-3xl md:text-4xl font-bold text-white">
+            Escolha seu Plano VIP
+          </h1>
+        );
+    }
+  };
+
+  // Descrição específica para cada jogo
+  const getGameDescription = () => {
+    switch (activeGame) {
+      case 'rust':
+        return 'Obtenha vantagens exclusivas, kits especiais e comandos adicionais para melhorar sua experiência no servidor Rust.';
+      default:
+        return 'Obtenha vantagens exclusivas, kits especiais e comandos adicionais para melhorar sua experiência no servidor.';
+    }
+  };
+
   if (loading) {
     return (
       <div className="container-custom mx-auto py-12 flex justify-center items-center">
-        <div className="animate-pulse text-center">
-          <p className="text-gray-400">Carregando planos...</p>
+        <div className="text-center">
+          <LoadingSpinner color="primary" size="lg" text="Carregando planos..." />
         </div>
       </div>
     );
@@ -116,14 +228,52 @@ export default function PlanosPage() {
       </Head>
 
       <div className="container-custom mx-auto py-12 px-4">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Escolha seu Plano VIP
-          </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto">
-            Obtenha vantagens exclusivas, kits especiais e comandos adicionais para melhorar sua experiência no servidor.
-          </p>
+        {/* Tabs de jogos */}
+        <div className="mb-8">
+          <TabSelector
+            tabs={availableGames.map(game => ({
+              id: game.id,
+              label: game.name,
+              icon: game.icon
+            }))}
+            activeTab={activeGame}
+            onChange={handleGameChange}
+            className="mb-12"
+          />
+
+          {/* Header específico para o jogo selecionado */}
+          <div className="text-center mb-12">
+            {renderGameTitle()}
+            <p className="text-gray-400 max-w-2xl mx-auto mt-4">
+              {getGameDescription()}
+            </p>
+          </div>
+        </div>
+
+        {/* Banner do servidor */}
+        <div className="mb-12 bg-gradient-to-r from-dark-400 to-dark-300 rounded-lg p-6 border border-dark-200">
+          <div className="flex flex-col md:flex-row items-center">
+            <div className="mb-6 md:mb-0 md:mr-8">
+              <FaServer className="text-5xl text-primary" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-white mb-2">Servidor Phanteon Rust</h3>
+              <p className="text-gray-300 mb-3">
+                O melhor servidor Rust com comunidade ativa, eventos diários e uma experiência de jogo única.
+              </p>
+              <div className="flex flex-wrap gap-4 text-sm text-gray-400">
+                <span className="flex items-center">
+                  <FaGamepad className="mr-1 text-primary" /> 100 Slots
+                </span>
+                <span className="flex items-center">
+                  <FaRocket className="mr-1 text-primary" /> Wipe Mensal
+                </span>
+                <span className="flex items-center">
+                  <FaServer className="mr-1 text-primary" /> 82.29.62.21:28015
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Planos VIP */}
@@ -147,62 +297,110 @@ export default function PlanosPage() {
           ))}
         </div>
 
-        {/* FAQ Section */}
+        {/* Comparativo de planos (opcional) */}
+        <div className="mb-16">
+          <h2 className="text-2xl font-bold text-white mb-6 text-center">
+            Comparativo de Planos
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-dark-400">
+                  <th className="p-4 text-left text-gray-300">Recursos</th>
+                  <th className="p-4 text-center text-white">VIP Basic</th>
+                  <th className="p-4 text-center text-white">VIP Plus</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-dark-300">
+                  <td className="p-4 text-gray-300">Furnace Splitter</td>
+                  <td className="p-4 text-center text-green-500">✓</td>
+                  <td className="p-4 text-center text-green-500">✓</td>
+                </tr>
+                <tr className="border-b border-dark-300">
+                  <td className="p-4 text-gray-300">QuickSmelt</td>
+                  <td className="p-4 text-center text-red-500">✗</td>
+                  <td className="p-4 text-center text-green-500">✓</td>
+                </tr>
+                <tr className="border-b border-dark-300">
+                  <td className="p-4 text-gray-300">Prioridade na fila</td>
+                  <td className="p-4 text-center text-green-500">Normal</td>
+                  <td className="p-4 text-center text-green-500">Máxima</td>
+                </tr>
+                <tr className="border-b border-dark-300">
+                  <td className="p-4 text-gray-300">Acesso a eventos exclusivos</td>
+                  <td className="p-4 text-center text-green-500">Básicos</td>
+                  <td className="p-4 text-center text-green-500">Todos</td>
+                </tr>
+                <tr className="border-b border-dark-300">
+                  <td className="p-4 text-gray-300">Sorteios mensais de skins</td>
+                  <td className="p-4 text-center text-red-500">✗</td>
+                  <td className="p-4 text-center text-green-500">✓</td>
+                </tr>
+                <tr className="border-b border-dark-300">
+                  <td className="p-4 text-gray-300">Kit ao iniciar</td>
+                  <td className="p-4 text-center text-green-500">Básico</td>
+                  <td className="p-4 text-center text-green-500">Avançado</td>
+                </tr>
+                <tr className="border-b border-dark-300">
+                  <td className="p-4 text-gray-300">Salas exclusivas no Discord</td>
+                  <td className="p-4 text-center text-red-500">✗</td>
+                  <td className="p-4 text-center text-green-500">✓</td>
+                </tr>
+                <tr className="border-b border-dark-300">
+                  <td className="p-4 text-gray-300">Suporte prioritário</td>
+                  <td className="p-4 text-center text-red-500">✗</td>
+                  <td className="p-4 text-center text-green-500">✓</td>
+                </tr>
+                <tr>
+                  <td className="p-4 text-gray-300">Preço</td>
+                  <td className="p-4 text-center text-primary font-bold">R$ 19,90/mês</td>
+                  <td className="p-4 text-center text-primary font-bold">R$ 29,90/mês</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* FAQ Section com Accordion */}
         <div className="bg-dark-300 rounded-lg p-8 border border-dark-200">
-          <h2 className="text-2xl font-bold text-white mb-6">
+          <h2 className="text-2xl font-bold text-white mb-8 flex items-center">
+            <FaQuestionCircle className="text-primary mr-2" />
             Perguntas Frequentes
           </h2>
 
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-2 flex items-center">
-                <FaQuestion className="text-primary mr-2" />
-                Por quanto tempo dura o VIP?
-              </h3>
-              <p className="text-gray-400">
-                Todos os planos VIP têm duração de 30 dias a partir da data de ativação. Você pode renovar seu plano a qualquer momento através do seu perfil.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-2 flex items-center">
-                <FaQuestion className="text-primary mr-2" />
-                O que acontece quando o servidor tem wipe?
-              </h3>
-              <p className="text-gray-400">
-                Após cada wipe do servidor, você poderá resgatar novamente seus kits exclusivos. Suas vantagens VIP permanecem ativas independentemente dos wipes.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-2 flex items-center">
-                <FaQuestion className="text-primary mr-2" />
-                Como funciona o pagamento?
-              </h3>
-              <p className="text-gray-400">
-                Todos os pagamentos são processados de forma segura através do Mercado Pago. Aceitamos cartões de crédito, boleto bancário e PIX.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-2 flex items-center">
-                <FaQuestion className="text-primary mr-2" />
-                Como recebo meu VIP após o pagamento?
-              </h3>
-              <p className="text-gray-400">
-                Após a confirmação do pagamento, seu VIP será ativado automaticamente. Você receberá o cargo no Discord e as permissões no servidor Rust em até 5 minutos.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-2 flex items-center">
-                <FaQuestion className="text-primary mr-2" />
-                Posso mudar de plano?
-              </h3>
-              <p className="text-gray-400">
-                Sim! Você pode fazer upgrade do seu plano a qualquer momento. O novo plano substituirá o anterior e terá duração de 30 dias a partir da data de ativação.
-              </p>
-            </div>
+          <div className="space-y-4">
+            {faqItems[activeGame]?.map((faq, index) => (
+              <div 
+                key={index} 
+                className="border border-dark-200 rounded-lg overflow-hidden"
+              >
+                <button
+                  className="w-full p-4 flex justify-between items-center text-left focus:outline-none focus:ring-2 focus:ring-primary"
+                  onClick={() => setActiveFaq(activeFaq === index ? null : index)}
+                >
+                  <h3 className="text-lg font-semibold text-white">
+                    {faq.question}
+                  </h3>
+                  <span className={`transition-transform duration-300 ${activeFaq === index ? 'rotate-180' : ''}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </span>
+                </button>
+                <div 
+                  className={`transition-all duration-300 ${
+                    activeFaq === index 
+                      ? 'max-h-96 opacity-100' 
+                      : 'max-h-0 opacity-0 overflow-hidden'
+                  }`}
+                >
+                  <p className="p-4 text-gray-400 border-t border-dark-200">
+                    {faq.answer}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
