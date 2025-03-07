@@ -26,6 +26,33 @@ body {
   scroll-behavior: smooth;
 }
 
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--dark-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-phanteon-orange);
+  border-radius: 4px;
+  transition: background-color var(--transition-normal);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-hover);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-phanteon-orange) var(--dark-300);
+}
+
 /* Melhorias de acessibilidade */
 :focus-visible {
   outline: none;
