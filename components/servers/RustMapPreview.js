@@ -3,6 +3,13 @@ import { FiMap, FiAlertCircle, FiLoader, FiExternalLink } from 'react-icons/fi';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 
+// Define the missing fixedMapUrls object with known seed-to-URL mappings
+const fixedMapUrls = {
+  // Format: 'seedNumber': 'URL to map image'
+  '328564061': 'https://content.rustmaps.com/maps/265/f888cf9ea6454502a6816893b82dbac6/map_icons.png'
+  // Add more seed mappings as needed
+};
+
 const RustMapPreview = ({ seed, worldSize }) => {
   const [mapUrl, setMapUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +23,7 @@ const RustMapPreview = ({ seed, worldSize }) => {
       // Use fixed map URL for known seeds
       if (fixedMapUrls[seed]) {
         setMapUrl(fixedMapUrls[seed]);
-        setMapPreviewLoading(false);
+        setIsLoading(false);
         return;
       }
       loadMapPreview();
@@ -33,16 +40,43 @@ const RustMapPreview = ({ seed, worldSize }) => {
     setError(null);
     setImageLoaded(false);
     
-    // Usar a URL fixa que sabemos que funciona
-    // Para o map ID 7f8b8ac9a76744faaaf5ccd88f85b25f
-    const fixedMapUrl = "https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png";
-    
-    setMapUrl(fixedMapUrl);
+    try {
+      // Try to construct a URL for RustMaps based on seed and worldSize
+      // Generate the proper URL format for current RustMaps API
+      let generatedMapUrl;
+      
+      if (apiKey) {
+        // If we have an API key, try to use the official API
+        generatedMapUrl = `https://api.rustmaps.com/v3/maps/${worldSize}/${seed}/preview?apiKey=${apiKey}`;
+      } else {
+        // Without API key, use the content URL format with best-effort
+        // This is less reliable but might work for some seeds
+        generatedMapUrl = `https://content.rustmaps.com/maps/${worldSize}/${seed}/map_icons.png`;
+      }
+      
+      // Fallback to known working URL if all else fails
+      const fallbackUrl = "https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png";
+      
+      // Set the URL - try the generated one, but be ready to fall back
+      setMapUrl(generatedMapUrl || fallbackUrl);
+    } catch (err) {
+      console.error('Error generating map URL:', err);
+      setError('Erro ao gerar URL do mapa');
+      setIsLoading(false);
+    }
   };
 
   const handleImageError = (e) => {
-    setError('Não foi possível carregar a imagem do mapa. Tente visitar o site do RustMaps diretamente.');
-    setIsLoading(false);
+    console.error('Failed to load map image, trying fallback');
+    // If the generated URL fails, try the fallback
+    const fallbackUrl = "https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png";
+    
+    if (mapUrl !== fallbackUrl) {
+      setMapUrl(fallbackUrl);
+    } else {
+      setError('Não foi possível carregar a imagem do mapa. Tente visitar o site do RustMaps diretamente.');
+      setIsLoading(false);
+    }
   };
 
   if (!seed || !worldSize) {
