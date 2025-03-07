@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, memo } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
@@ -89,6 +89,214 @@ const faqItems = {
   ]
 };
 
+// Extraído para componente separado e memoizado para evitar recriações
+const VipCard = memo(({ plan, onSelectPlan }) => {
+  // Normalizar features para array
+  const features = plan.features instanceof Array ? plan.features : 
+    (plan.features ? Object.entries(plan.features).map(([key, value]) => 
+      typeof value === 'boolean' && value 
+        ? key.replace(/_/g, ' ') 
+        : `${key.replace(/_/g, ' ')}: ${value}`
+    ) : []);
+  
+  return (
+    <div 
+      className={`relative overflow-hidden rounded-xl transition-all duration-300 hover:shadow-xl ${
+        plan.isPopular 
+          ? 'border-2 border-primary shadow-lg' 
+          : 'border border-dark-200'
+      }`}
+    >
+      {/* Popular badge */}
+      {plan.isPopular && (
+        <div className="absolute -right-10 top-6 bg-primary text-white py-1 px-10 transform rotate-45 text-sm font-bold z-10">
+          Popular
+        </div>
+      )}
+      
+      {/* Card header */}
+      <div className={`p-6 ${plan.isPopular ? 'bg-gradient-to-r from-primary/10 to-dark-300' : 'bg-dark-300'}`}>
+        <h3 className="text-2xl font-bold text-white mb-2 flex items-center">
+          {plan.name}
+        </h3>
+        <div className="flex items-baseline mb-4">
+          <span className="text-3xl font-extrabold text-white">R${plan.price}</span>
+          <span className="text-gray-400 ml-1">/mês</span>
+        </div>
+        <p className="text-gray-400">{plan.description}</p>
+      </div>
+      
+      {/* Features list */}
+      <div className="bg-dark-400 p-6">
+        <ul className="space-y-3 mb-6">
+          {features.map((feature, idx) => (
+            <li key={idx} className="flex items-start">
+              <div className={`flex-shrink-0 h-5 w-5 rounded-full ${plan.isPopular ? 'bg-primary' : 'bg-gray-600'} flex items-center justify-center mr-3 mt-0.5`}>
+                <FaCheck className="h-3 w-3 text-white" />
+              </div>
+              <span className="text-gray-300">{feature}</span>
+            </li>
+          ))}
+        </ul>
+        
+        <Button
+          variant={plan.isPopular ? 'primary' : 'outline'}
+          size="lg"
+          fullWidth
+          onClick={() => onSelectPlan(plan.id)}
+          className="mt-2"
+        >
+          Assinar Agora
+        </Button>
+      </div>
+    </div>
+  );
+});
+
+// Componente separado e memoizado para comparação de planos
+const PlansComparison = memo(() => {
+  return (
+    <div className="overflow-x-auto">
+      <div className="grid grid-cols-3 gap-px bg-dark-300 rounded-lg overflow-hidden">
+        {/* Headers */}
+        <div className="bg-dark-400 p-4 font-medium text-gray-300">Recursos</div>
+        <div className="bg-dark-400 p-4 font-medium text-white text-center">VIP Basic</div>
+        <div className="bg-dark-400 p-4 font-medium text-white text-center">VIP Plus</div>
+        
+        {/* Linha 1 */}
+        <div className="bg-dark-300 p-4 text-gray-300">Furnace Splitter</div>
+        <div className="bg-dark-300 p-4 text-center">
+          <FaCheck className="inline-block text-green-500" />
+        </div>
+        <div className="bg-dark-300 p-4 text-center">
+          <FaCheck className="inline-block text-green-500" />
+        </div>
+        
+        {/* Linha 2 */}
+        <div className="bg-dark-300 p-4 text-gray-300">QuickSmelt</div>
+        <div className="bg-dark-300 p-4 text-center">
+          <FaTimes className="inline-block text-red-500" />
+        </div>
+        <div className="bg-dark-300 p-4 text-center">
+          <FaCheck className="inline-block text-green-500" />
+        </div>
+        
+        {/* Linha 3 */}
+        <div className="bg-dark-300 p-4 text-gray-300">Prioridade na fila</div>
+        <div className="bg-dark-300 p-4 text-center text-gray-300">Normal</div>
+        <div className="bg-dark-300 p-4 text-center text-primary font-medium">Máxima</div>
+        
+        {/* Linha 4 */}
+        <div className="bg-dark-300 p-4 text-gray-300">Acesso a eventos exclusivos</div>
+        <div className="bg-dark-300 p-4 text-center text-gray-300">Básicos</div>
+        <div className="bg-dark-300 p-4 text-center text-primary font-medium">Todos</div>
+        
+        {/* Linha 5 */}
+        <div className="bg-dark-300 p-4 text-gray-300">Sorteios mensais de skins</div>
+        <div className="bg-dark-300 p-4 text-center">
+          <FaTimes className="inline-block text-red-500" />
+        </div>
+        <div className="bg-dark-300 p-4 text-center">
+          <FaCheck className="inline-block text-green-500" />
+        </div>
+        
+        {/* Linha 6 */}
+        <div className="bg-dark-300 p-4 text-gray-300">Kit ao iniciar</div>
+        <div className="bg-dark-300 p-4 text-center text-gray-300">Básico</div>
+        <div className="bg-dark-300 p-4 text-center text-primary font-medium">Avançado</div>
+        
+        {/* Linha 7 */}
+        <div className="bg-dark-300 p-4 text-gray-300">Salas exclusivas no Discord</div>
+        <div className="bg-dark-300 p-4 text-center">
+        <FaCheck className="inline-block text-green-500" />
+        </div>
+        <div className="bg-dark-300 p-4 text-center">
+          <FaCheck className="inline-block text-green-500" />
+        </div>
+        
+        {/* Linha 8 */}
+        <div className="bg-dark-300 p-4 text-gray-300">Suporte prioritário</div>
+        <div className="bg-dark-300 p-4 text-center">
+          <FaCheck className="inline-block text-green-500" />
+        </div>
+        <div className="bg-dark-300 p-4 text-center">
+          <FaCheck className="inline-block text-green-500" />
+        </div>
+        
+        {/* Linha 9 */}
+        <div className="bg-dark-300 p-4 text-gray-300">Preço</div>
+        <div className="bg-dark-300 p-4 text-center font-bold text-primary">R$ 19,90/mês</div>
+        <div className="bg-dark-300 p-4 text-center font-bold text-primary">R$ 29,90/mês</div>
+      </div>
+    </div>
+  );
+});
+
+// Componente FAQ otimizado para evitar re-renderizações desnecessárias
+const FAQSection = memo(({ activeGame }) => {
+  const [activeFaq, setActiveFaq] = useState(null);
+  const currentFaqItems = faqItems[activeGame] || [];
+
+  const toggleFaq = useCallback((index) => {
+    setActiveFaq(prevActive => prevActive === index ? null : index);
+  }, []);
+
+  return (
+    <div className="bg-dark-300 rounded-lg p-8 border border-dark-200">
+      <h2 className="text-2xl font-bold text-white mb-8 flex items-center">
+        <FaQuestionCircle className="text-primary mr-2" />
+        Perguntas Frequentes
+      </h2>
+
+      <div className="space-y-4">
+        {currentFaqItems.map((faq, index) => (
+          <div 
+            key={index} 
+            className="border border-dark-200 rounded-lg overflow-hidden"
+          >
+            <button
+              className="w-full p-4 flex justify-between items-center text-left focus:outline-none focus:ring-2 focus:ring-primary"
+              onClick={() => toggleFaq(index)}
+              aria-expanded={activeFaq === index}
+            >
+              <h3 className="text-lg font-semibold text-white">
+                {faq.question}
+              </h3>
+              <span 
+                className={`text-primary transition-transform duration-300 ${activeFaq === index ? 'rotate-180' : 'rotate-0'}`}
+              >
+                ▼
+              </span>
+            </button>
+            
+            {activeFaq === index && (
+              <div className="p-4 text-gray-400 border-t border-dark-200">
+                {faq.answer}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+// Define componentes para títulos específicos dos jogos
+const RustGameTitle = memo(() => (
+  <div className="flex items-center">
+    <SiRust className="text-3xl mr-3 text-primary" />
+    <h1 className="text-3xl md:text-4xl font-bold text-white">
+      Planos VIP <span className="text-primary">Rust</span>
+    </h1>
+  </div>
+));
+
+const DefaultGameTitle = memo(() => (
+  <h1 className="text-3xl md:text-4xl font-bold text-white">
+    Escolha seu Plano VIP
+  </h1>
+));
+
 export default function PlanosPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -97,7 +305,6 @@ export default function PlanosPage() {
   const [activeGame, setActiveGame] = useState('rust');
   const [planos, setPlanos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeFaq, setActiveFaq] = useState(null);
 
   // Define o jogo ativo com base na query ou padrão
   useEffect(() => {
@@ -106,129 +313,56 @@ export default function PlanosPage() {
     }
   }, [initialGame]);
 
-  // Usar planos pré-definidos por padrão para evitar requisições desnecessárias
-  // e melhorar a performance. Os planos são fixos mesmo, então isso é seguro.
+  // Carrega os planos do jogo ativo
   useEffect(() => {
-    // Simplesmente use os planos locais definidos no código
     setPlanos(gameSpecificPlans[activeGame] || []);
     setLoading(false);
-    
-    // Nota: Removemos a busca da API que estava causando sobrecarga
-    // Se for necessário buscar da API no futuro, podemos reabilitar com melhor caching
   }, [activeGame]);
 
   // Atualiza a URL quando o jogo ativo muda
-  useEffect(() => {
+  // Usando useCallback para evitar recreação a cada renderização
+  const updateURL = useCallback(() => {
     router.push(`/planos?game=${activeGame}`, undefined, { shallow: true });
   }, [activeGame, router]);
 
-  const handleSelectPlan = (planId) => {
+  useEffect(() => {
+    updateURL();
+  }, [updateURL]);
+
+  // Usando useCallback para evitar recreação a cada renderização
+  const handleSelectPlan = useCallback((planId) => {
     if (!session) {
       router.push('/?login=true');
       return;
     }
     
     router.push(`/checkout/${planId}`);
-  };
+  }, [session, router]);
 
-  const handleGameChange = (gameId) => {
+  // Usando useCallback para evitar recreação a cada renderização
+  const handleGameChange = useCallback((gameId) => {
     setActiveGame(gameId);
-  };
+  }, []);
 
-  // Renderização do título específico para cada jogo
-  const renderGameTitle = () => {
-    switch (activeGame) {
-      case 'rust':
-        return (
-          <div className="flex items-center">
-            <SiRust className="text-3xl mr-3 text-primary" />
-            <h1 className="text-3xl md:text-4xl font-bold text-white">
-              Planos VIP <span className="text-primary">Rust</span>
-            </h1>
-          </div>
-        );
-      default:
-        return (
-          <h1 className="text-3xl md:text-4xl font-bold text-white">
-            Escolha seu Plano VIP
-          </h1>
-        );
-    }
-  };
-
-  // Descrição específica para cada jogo
-  const getGameDescription = () => {
+  // Memoizando para evitar recálculos desnecessários
+  const gameDescription = useMemo(() => {
     switch (activeGame) {
       case 'rust':
         return 'Obtenha vantagens exclusivas, kits especiais e comandos adicionais para melhorar sua experiência no servidor Rust.';
       default:
         return 'Obtenha vantagens exclusivas, kits especiais e comandos adicionais para melhorar sua experiência no servidor.';
     }
-  };
+  }, [activeGame]);
 
-  // Componente VIP Card personalizado
-  const VipCard = ({ plan }) => {
-    // Normalizar features para array
-    const features = plan.features instanceof Array ? plan.features : 
-      (plan.features ? Object.entries(plan.features).map(([key, value]) => 
-        typeof value === 'boolean' && value 
-          ? key.replace(/_/g, ' ') 
-          : `${key.replace(/_/g, ' ')}: ${value}`
-      ) : []);
-    
-    return (
-      <div 
-        className={`relative overflow-hidden rounded-xl transition-all duration-300 hover:shadow-xl ${
-          plan.isPopular 
-            ? 'border-2 border-primary shadow-lg' 
-            : 'border border-dark-200'
-        }`}
-      >
-        {/* Popular badge */}
-        {plan.isPopular && (
-          <div className="absolute -right-10 top-6 bg-primary text-white py-1 px-10 transform rotate-45 text-sm font-bold z-10">
-            Popular
-          </div>
-        )}
-        
-        {/* Card header */}
-        <div className={`p-6 ${plan.isPopular ? 'bg-gradient-to-r from-primary/10 to-dark-300' : 'bg-dark-300'}`}>
-          <h3 className="text-2xl font-bold text-white mb-2 flex items-center">
-            {plan.name}
-          </h3>
-          <div className="flex items-baseline mb-4">
-            <span className="text-3xl font-extrabold text-white">R${plan.price}</span>
-            <span className="text-gray-400 ml-1">/mês</span>
-          </div>
-          <p className="text-gray-400">{plan.description}</p>
-        </div>
-        
-        {/* Features list */}
-        <div className="bg-dark-400 p-6">
-          <ul className="space-y-3 mb-6">
-            {features.map((feature, idx) => (
-              <li key={idx} className="flex items-start">
-                <div className={`flex-shrink-0 h-5 w-5 rounded-full ${plan.isPopular ? 'bg-primary' : 'bg-gray-600'} flex items-center justify-center mr-3 mt-0.5`}>
-                  <FaCheck className="h-3 w-3 text-white" />
-                </div>
-                <span className="text-gray-300">{feature}</span>
-              </li>
-            ))}
-          </ul>
-          
-          <Button
-            variant={plan.isPopular ? 'primary' : 'outline'}
-            size="lg"
-            fullWidth
-            onClick={() => handleSelectPlan(plan.id)}
-            className="mt-2"
-          >
-            Assinar Agora
-          </Button>
-        </div>
-      </div>
-    );
-  };
+  // Memoizando o componente de título do jogo
+  const GameTitle = useMemo(() => {
+    switch (activeGame) {
+      case 'rust':
+        return <RustGameTitle />;
+      default:
+        return <DefaultGameTitle />;
+    }
+  }, [activeGame]);
 
   if (loading) {
     return (
@@ -262,9 +396,9 @@ export default function PlanosPage() {
 
           {/* Header específico para o jogo selecionado */}
           <div className="text-center mb-12">
-            {renderGameTitle()}
+            {GameTitle}
             <p className="text-gray-400 max-w-2xl mx-auto mt-4">
-              {getGameDescription()}
+              {gameDescription}
             </p>
           </div>
         </div>
@@ -282,7 +416,7 @@ export default function PlanosPage() {
               </p>
               <div className="flex flex-wrap gap-4 text-sm text-gray-400">
                 <span className="flex items-center">
-                  <FaGamepad className="mr-1 text-primary" /> 100 Slots
+                  <FaGamepad className="mr-1 text-primary" /> 60 Slots
                 </span>
                 <span className="flex items-center">
                   <FaRocket className="mr-1 text-primary" /> Wipe Mensal
@@ -295,10 +429,14 @@ export default function PlanosPage() {
           </div>
         </div>
 
-        {/* Planos VIP - Novos cards otimizados */}
+        {/* Planos VIP */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-16">
           {planos.map((plan) => (
-            <VipCard key={plan.id} plan={plan} />
+            <VipCard 
+              key={plan.id} 
+              plan={plan} 
+              onSelectPlan={handleSelectPlan} 
+            />
           ))}
         </div>
 
@@ -307,120 +445,11 @@ export default function PlanosPage() {
           <h2 className="text-2xl font-bold text-white mb-6 text-center">
             Comparativo de Planos
           </h2>
-          <div className="overflow-x-auto">
-            <div className="grid grid-cols-3 gap-px bg-dark-300 rounded-lg overflow-hidden">
-              {/* Headers */}
-              <div className="bg-dark-400 p-4 font-medium text-gray-300">Recursos</div>
-              <div className="bg-dark-400 p-4 font-medium text-white text-center">VIP Basic</div>
-              <div className="bg-dark-400 p-4 font-medium text-white text-center">VIP Plus</div>
-              
-              {/* Furnace Splitter */}
-              <div className="bg-dark-300 p-4 text-gray-300">Furnace Splitter</div>
-              <div className="bg-dark-300 p-4 text-center">
-                <FaCheck className="inline-block text-green-500" />
-              </div>
-              <div className="bg-dark-300 p-4 text-center">
-                <FaCheck className="inline-block text-green-500" />
-              </div>
-              
-              {/* QuickSmelt */}
-              <div className="bg-dark-300 p-4 text-gray-300">QuickSmelt</div>
-              <div className="bg-dark-300 p-4 text-center">
-                <FaTimes className="inline-block text-red-500" />
-              </div>
-              <div className="bg-dark-300 p-4 text-center">
-                <FaCheck className="inline-block text-green-500" />
-              </div>
-              
-              {/* Prioridade na fila */}
-              <div className="bg-dark-300 p-4 text-gray-300">Prioridade na fila</div>
-              <div className="bg-dark-300 p-4 text-center text-gray-300">Normal</div>
-              <div className="bg-dark-300 p-4 text-center text-primary font-medium">Máxima</div>
-              
-              {/* Eventos exclusivos */}
-              <div className="bg-dark-300 p-4 text-gray-300">Acesso a eventos exclusivos</div>
-              <div className="bg-dark-300 p-4 text-center text-gray-300">Básicos</div>
-              <div className="bg-dark-300 p-4 text-center text-primary font-medium">Todos</div>
-              
-              {/* Sorteios */}
-              <div className="bg-dark-300 p-4 text-gray-300">Sorteios mensais de skins</div>
-              <div className="bg-dark-300 p-4 text-center">
-                <FaTimes className="inline-block text-red-500" />
-              </div>
-              <div className="bg-dark-300 p-4 text-center">
-                <FaCheck className="inline-block text-green-500" />
-              </div>
-              
-              {/* Kit */}
-              <div className="bg-dark-300 p-4 text-gray-300">Kit ao iniciar</div>
-              <div className="bg-dark-300 p-4 text-center text-gray-300">Básico</div>
-              <div className="bg-dark-300 p-4 text-center text-primary font-medium">Avançado</div>
-              
-              {/* Discord */}
-              <div className="bg-dark-300 p-4 text-gray-300">Salas exclusivas no Discord</div>
-              <div className="bg-dark-300 p-4 text-center">
-              <FaCheck className="inline-block text-green-500" />
-              </div>
-              <div className="bg-dark-300 p-4 text-center">
-                <FaCheck className="inline-block text-green-500" />
-              </div>
-              
-              {/* Suporte */}
-              <div className="bg-dark-300 p-4 text-gray-300">Suporte prioritário</div>
-              <div className="bg-dark-300 p-4 text-center">
-                <FaTimes className="inline-block text-red-500" />
-              </div>
-              <div className="bg-dark-300 p-4 text-center">
-                <FaCheck className="inline-block text-green-500" />
-              </div>
-              
-              {/* Preço */}
-              <div className="bg-dark-300 p-4 text-gray-300">Preço</div>
-              <div className="bg-dark-300 p-4 text-center font-bold text-primary">R$ 19,90/mês</div>
-              <div className="bg-dark-300 p-4 text-center font-bold text-primary">R$ 29,90/mês</div>
-            </div>
-          </div>
+          <PlansComparison />
         </div>
 
         {/* FAQ Section com Accordion - Otimizado */}
-        <div className="bg-dark-300 rounded-lg p-8 border border-dark-200">
-          <h2 className="text-2xl font-bold text-white mb-8 flex items-center">
-            <FaQuestionCircle className="text-primary mr-2" />
-            Perguntas Frequentes
-          </h2>
-
-          <div className="space-y-4">
-            {faqItems[activeGame]?.map((faq, index) => (
-              <div 
-                key={index} 
-                className="border border-dark-200 rounded-lg overflow-hidden"
-              >
-                <button
-                  className="w-full p-4 flex justify-between items-center text-left focus:outline-none focus:ring-2 focus:ring-primary"
-                  onClick={() => setActiveFaq(prevActive => prevActive === index ? null : index)}
-                  aria-expanded={activeFaq === index}
-                >
-                  <h3 className="text-lg font-semibold text-white">
-                    {faq.question}
-                  </h3>
-                  <span 
-                    className="text-primary transition-transform duration-300"
-                    style={{ transform: activeFaq === index ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                  >
-                    ▼
-                  </span>
-                </button>
-                
-                {/* Simpificado para evitar operações de estilo custosas */}
-                {activeFaq === index && (
-                  <div className="p-4 text-gray-400 border-t border-dark-200">
-                    {faq.answer}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        <FAQSection activeGame={activeGame} />
       </div>
     </>
   );
