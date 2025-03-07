@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD700" stop-opacity="1"/>
+      <stop offset="50%" stop-color="#FFEC8B" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#FFD700" stop-opacity="1"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#B8860B" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="60" fill="url(#goldGradient)" stroke="#B8860B" stroke-width="2" filter="url(#shadow)"/>
+  <circle cx="64" cy="64" r="54" fill="none" stroke="#B8860B" stroke-width="1" opacity="0.8"/>
+  <path fill="#B8860B" d="M64,32 L74,52 L96,55 L80,70 L84,92 L64,82 L44,92 L48,70 L32,55 L54,52 Z" filter="url(#glow)"/>
+  <text x="64" y="45" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#B8860B">VIP</text>
+  <text x="64" y="110" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#B8860B">OURO</text>
+</svg>
