@@ -1,80 +1,219 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import Image from 'next/image';
-import Card from '../../components/ui/Card';
+import Link from 'next/link';
+import { toast } from 'react-hot-toast';
+import { 
+  FaCheck, 
+  FaArrowLeft, 
+  FaCreditCard, 
+  FaBarcode, 
+  FaQrcode, 
+  FaLock, 
+  FaShieldAlt, 
+  FaExclamationTriangle, 
+  FaInfoCircle,
+  FaDiscord,
+  FaSteam
+} from 'react-icons/fa';
+import { SiRust } from 'react-icons/si';
+
 import Button from '../../components/ui/Button';
+import Card from '../../components/ui/Card';
 import Modal from '../../components/ui/Modal';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { FaCheck, FaExclamationTriangle, FaCreditCard, FaBarcode, FaQrcode, FaLock, FaShieldAlt } from 'react-icons/fa';
-import { fetchWithBaseUrl } from '../../lib/api';
+import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import VipBadge from '../../components/ui/VipBadge';
+import { fetchWithBaseUrl } from '../../lib/api';
 
-// Dados dos planos VIP (os mesmos da página de planos)
-const vipPlans = [
-  {
-    id: 'vip-basic',
-    name: 'VIP Basic',
-    price: '19.90',
-    description: 'Ideal para jogadores casuais que querem algumas vantagens extras.',
-    features: [
-      'Acesso ao plugin Furnace Splitter',
-      'Prioridade na fila do servidor',
-      'Acesso a eventos exclusivos para VIP Basic',
-      'Badge exclusiva no Discord',
-      'Cargo exclusivo no Discord',
-    ],
-  },
-  {
-    id: 'vip-plus',
-    name: 'VIP Plus',
-    price: '29.90',
-    description: 'Experiência aprimorada para jogadores regulares com benefícios exclusivos.',
-    features: [
-      'Acesso ao plugin Furnace Splitter',
-      'Acesso ao plugin QuickSmelt',
-      'Prioridade máxima na fila do servidor',
-      'Acesso a eventos exclusivos para VIP Plus',
-      'Sorteios mensais de skins do jogo',
-      'Badge exclusiva no Discord',
-      'Cargo exclusivo no Discord',
-      'Acesso a salas exclusivas no Discord',
-      'Suporte prioritário',
-    ],
-  },
-];
+// Estrutura de dados de planos VIP por jogo
+const GAME_DATA = {
+  rust: {
+    id: 'rust',
+    name: 'Rust',
+    icon: <SiRust className="text-primary" />,
+    plans: {
+      'vip-basic': {
+        id: 'vip-basic',
+        databaseId: '0b81cf06-ed81-49ce-8680-8f9d9edc932e',
+        name: 'VIP Basic',
+        price: '19.90',
+        description: 'Ideal para jogadores casuais que querem algumas vantagens extras.',
+        features: [
+          'Acesso ao plugin Furnace Splitter',
+          'Prioridade na fila do servidor',
+          'Acesso a eventos exclusivos para VIP Basic',
+          'Badge exclusiva no Discord',
+          'Cargo exclusivo no Discord',
+          'Kit básico a cada wipe',
+        ],
+        isPopular: false,
+      },
+      'vip-plus': {
+        id: 'vip-plus',
+        databaseId: '3994ff53-f110-4c8f-a492-ad988528006f',
+        name: 'VIP Plus',
+        price: '29.90',
+        description: 'Experiência aprimorada para jogadores regulares com benefícios exclusivos.',
+        features: [
+          'Acesso ao plugin Furnace Splitter',
+          'Acesso ao plugin QuickSmelt',
+          'Prioridade máxima na fila do servidor',
+          'Acesso a eventos exclusivos para VIP Plus',
+          'Sorteios mensais de skins do jogo',
+          'Badge exclusiva no Discord',
+          'Cargo exclusivo no Discord',
+          'Acesso a salas exclusivas no Discord',
+          'Suporte prioritário',
+          'Kit avançado a cada wipe',
+        ],
+        isPopular: true,
+      }
+    }
+  }
+};
 
-export default function CheckoutPage({ userData, activeSubscription, error }) {
+// Fluxo de detecção de jogo por ID de plano
+const detectGameByPlanId = (planId) => {
+  for (const gameKey in GAME_DATA) {
+    const game = GAME_DATA[gameKey];
+    if (game.plans && game.plans[planId]) {
+      return gameKey;
+    }
+  }
+  
+  // Fallback para rust se não encontrar o jogo
+  return 'rust';
+};
+
+const PlanFeatureList = ({ features }) => {
+  if (!features || !features.length) return null;
+  
+  return (
+    <ul className="space-y-2">
+      {features.slice(0, 6).map((feature, index) => (
+        <li key={index} className="flex items-start">
+          <div className="flex-shrink-0 h-5 w-5 rounded-full bg-primary/20 text-primary flex items-center justify-center mr-3 mt-0.5">
+            <FaCheck className="h-3 w-3" />
+          </div>
+          <span className="text-gray-300 text-sm">{feature}</span>
+        </li>
+      ))}
+      {features.length > 6 && (
+        <li className="text-primary text-sm pl-8">
+          +{features.length - 6} outros benefícios
+        </li>
+      )}
+    </ul>
+  );
+};
+
+const SteamIdSection = ({ steamId, setSteamId, onSave, loading }) => {
+  return (
+    <div className="space-y-4 pb-4 border-b border-dark-300 mb-4">
+      <h3 className="flex items-center text-white font-medium">
+        <FaSteam className="text-primary mr-2" /> Steam ID
+      </h3>
+      
+      <div className="flex items-center">
+        <input
+          type="text"
+          value={steamId}
+          onChange={(e) => setSteamId(e.target.value)}
+          placeholder="76561198xxxxxxxxx"
+          className="flex-grow bg-dark-300 border border-dark-200 rounded p-2 text-white focus:border-primary focus:outline-none"
+        />
+        <Button
+          variant="primary"
+          size="sm"
+          className="ml-2"
+          onClick={onSave}
+          loading={loading}
+        >
+          Salvar
+        </Button>
+      </div>
+      
+      <div className="text-xs text-gray-400">
+        <p>Steam ID deve conter 17 dígitos numéricos.</p>
+        <p className="mt-1">
+          Para encontrar seu Steam ID, acesse{' '}
+          <a
+            href="https://steamid.io/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            steamid.io
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+const PaymentMethods = () => (
+  <div className="space-y-3">
+    <div className="p-3 rounded-lg bg-dark-300 flex items-center transition-all hover:bg-dark-200 cursor-pointer">
+      <FaCreditCard className="text-primary mr-4 text-xl" />
+      <span className="text-white">Cartão de Crédito</span>
+    </div>
+    
+    <div className="p-3 rounded-lg bg-dark-300 flex items-center transition-all hover:bg-dark-200 cursor-pointer">
+      <FaBarcode className="text-primary mr-4 text-xl" />
+      <span className="text-white">Boleto Bancário</span>
+    </div>
+    
+    <div className="p-3 rounded-lg bg-dark-300 flex items-center transition-all hover:bg-dark-200 cursor-pointer">
+      <FaQrcode className="text-primary mr-4 text-xl" />
+      <span className="text-white">PIX</span>
+    </div>
+    
+    <div className="mt-4 text-center">
+      <Image 
+        src="/images/mercado-pago-logo.svg" 
+        alt="Mercado Pago" 
+        width={120} 
+        height={30} 
+        className="mx-auto mb-2"
+      />
+      <p className="text-gray-400 text-xs flex items-center justify-center">
+        <FaLock className="mr-1" />
+        Pagamentos processados com segurança
+      </p>
+    </div>
+  </div>
+);
+
+export default function CheckoutPage({ userData, activeSubscription, error: serverError }) {
   const { data: session } = useSession();
   const router = useRouter();
   const { planoId, error: queryError } = router.query;
   
+  // Estados locais
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState(null);
-  const [showSteamIdModal, setShowSteamIdModal] = useState(false);
   const [steamId, setSteamId] = useState(userData?.steam_id || '');
+  const [showSteamIdModal, setShowSteamIdModal] = useState(false);
+  const [processingOrder, setProcessingOrder] = useState(false);
 
-  // Verifica erros de query string
-  useEffect(() => {
-    if (queryError === 'true') {
-      toast.error('Ocorreu um erro durante o processamento do pagamento.');
-    }
-  }, [queryError]);
+  // Detectar automaticamente o jogo com base no plano
+  const gameId = useMemo(() => detectGameByPlanId(planoId), [planoId]);
+  const gameData = useMemo(() => GAME_DATA[gameId] || GAME_DATA.rust, [gameId]);
 
-  // Exibe mensagem de erro se houver
   useEffect(() => {
-    if (error) {
-      toast.error(error);
+    // Verifica erros da query string ou do servidor
+    if (queryError === 'true' || serverError) {
+      toast.error(serverError || 'Ocorreu um erro durante o processamento do pagamento.');
     }
-  }, [error]);
+  }, [queryError, serverError]);
   
-  // Busca o plano selecionado
   useEffect(() => {
-    if (planoId) {
-      const plan = vipPlans.find(p => p.id === planoId);
+    // Busca o plano selecionado
+    if (planoId && gameData.plans) {
+      const plan = gameData.plans[planoId];
       if (plan) {
         setSelectedPlan(plan);
       } else {
@@ -82,10 +221,10 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
         router.push('/planos');
       }
     }
-  }, [planoId, router]);
+  }, [planoId, gameData, router]);
 
-  // Verifica se o usuário tem SteamID configurado
   useEffect(() => {
+    // Verifica se o usuário tem SteamID configurado
     if (userData && !userData.steam_id) {
       setShowSteamIdModal(true);
     }
@@ -155,14 +294,14 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
       return;
     }
 
-    setLoading(true);
+    setProcessingOrder(true);
     try {
       // Garantir que o Discord ID seja uma string
       const discordId = session.user.discord_id.toString();
 
       // Criar preferência de pagamento no Mercado Pago
       const paymentData = {
-        title: `Plano ${selectedPlan.name} - Phanteon Games`,
+        title: `${selectedPlan.name} - ${gameData.name} - Phanteon Games`,
         price: selectedPlan.price,
         quantity: 1,
         userId: discordId,
@@ -202,7 +341,7 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
     } catch (error) {
       toast.error(error.message || 'Erro ao processar pagamento. Tente novamente mais tarde.');
     } finally {
-      setLoading(false);
+      setProcessingOrder(false);
     }
   };
 
@@ -210,9 +349,7 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
   if (!selectedPlan) {
     return (
       <div className="container-custom mx-auto py-12 px-4 flex justify-center">
-        <div className="animate-pulse text-center">
-          <p className="text-gray-400">Carregando...</p>
-        </div>
+        <LoadingSpinner size="lg" text="Carregando detalhes do plano..." />
       </div>
     );
   }
@@ -220,16 +357,21 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
   return (
     <>
       <Head>
-        <title>Checkout - Phanteon Games</title>
-        <meta name="description" content="Checkout para assinatura VIP Phanteon Games" />
+        <title>Checkout - {selectedPlan.name} | Phanteon Games</title>
+        <meta name="description" content={`Checkout para assinatura ${selectedPlan.name} no servidor de ${gameData.name} da Phanteon Games`} />
       </Head>
-      
-      <ToastContainer position="top-right" autoClose={5000} />
 
-      <div className="container-custom mx-auto px-4 pt-16 pb-24">
+      <div className="container-custom mx-auto px-4 pt-12 pb-20">
+        {/* Breadcrumbs */}
+        <div className="mb-6">
+          <Link href="/planos" className="flex items-center text-gray-400 hover:text-primary transition-colors">
+            <FaArrowLeft className="mr-2" /> Voltar para Planos
+          </Link>
+        </div>
+        
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-4xl font-bold text-white mb-3 text-center">Finalizar Compra</h1>
-          <p className="text-gray-400 text-center mb-12 max-w-2xl mx-auto">
+          <h1 className="text-3xl font-bold text-white mb-3 text-center">Finalizar Compra</h1>
+          <p className="text-gray-400 text-center mb-10 max-w-2xl mx-auto">
             Complete seu pedido para ativar seu plano VIP e aproveitar todas as vantagens exclusivas.
           </p>
 
@@ -238,55 +380,76 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
             <div className="lg:col-span-2 space-y-8">
               {/* Card de Detalhes do Plano */}
               <Card 
-                className="border-2 border-dark-200 overflow-hidden transform transition-all duration-300 hover:border-primary/30 hover:shadow-xl"
+                className="border border-dark-200 overflow-hidden transform transition-all duration-300 hover:shadow-lg"
                 shadow={true}
-                padding="large"
+                padding="none"
               >
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 pb-6 border-b border-dark-200">
+                <div className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-gradient-to-r from-dark-300 to-dark-400 border-b border-dark-200">
                   <div className="flex items-center mb-4 md:mb-0">
-                    <div className="mr-4">
-                      <VipBadge plan={selectedPlan.id} size={64} />
+                    <div className="mr-4 flex">
+                      {gameData.icon}
+                      <VipBadge plan={selectedPlan.id} size={40} className="ml-2" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white mb-1">{selectedPlan.name}</h2>
-                      <p className="text-gray-400">{selectedPlan.description}</p>
+                      <h2 className="text-xl font-bold text-white mb-1 flex items-center">
+                        {selectedPlan.name}
+                        <span className="ml-2 px-3 py-0.5 text-xs bg-dark-200 rounded-full text-gray-300">
+                          {gameData.name}
+                        </span>
+                      </h2>
+                      <p className="text-gray-400 text-sm">{selectedPlan.description}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-gray-400 text-sm mb-1">Preço</div>
-                    <div className="text-3xl font-bold text-white">
+                    <div className="text-gray-400 text-sm">Preço</div>
+                    <div className="text-2xl font-bold text-primary">
                       R$ {selectedPlan.price}
-                      <span className="text-sm text-gray-400 font-normal ml-1">/mês</span>
                     </div>
                   </div>
                 </div>
 
-                <h3 className="text-xl font-semibold text-white mb-4">Benefícios Incluídos</h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-8 mb-6">
-                  {selectedPlan.features.map((feature, index) => (
-                    <div key={index} className="flex items-start">
-                      <div className="flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-r from-primary to-orange-500 text-white flex-shrink-0 mr-3">
-                        <FaCheck className="h-3 w-3" />
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Benefícios Incluídos</h3>
+                  <PlanFeatureList features={selectedPlan.features} />
+                  
+                  {userData && !userData.steam_id && (
+                    <div className="mt-6 p-4 rounded-lg border border-primary/20 bg-primary/5">
+                      <div className="flex">
+                        <FaInfoCircle className="text-primary mt-0.5 mr-3 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-white mb-1">Configure seu Steam ID</h4>
+                          <p className="text-gray-300 text-sm">
+                            Para ativar seu VIP no servidor, precisamos do seu Steam ID de 17 dígitos.
+                          </p>
+                        </div>
                       </div>
-                      <span className="text-gray-300">{feature}</span>
+                      <Button 
+                        variant="primary" 
+                        size="sm" 
+                        className="mt-3"
+                        onClick={() => setShowSteamIdModal(true)}
+                      >
+                        Configurar Steam ID
+                      </Button>
                     </div>
-                  ))}
-                </div>
+                  )}
 
-                {activeSubscription && (
-                  <div className="bg-yellow-900/20 border border-yellow-600 rounded-lg p-4 flex items-start mt-6">
-                    <FaExclamationTriangle className="text-yellow-500 mr-3 flex-shrink-0 mt-1" />
-                    <div>
-                      <h4 className="font-medium text-white mb-1">Você já possui um plano ativo</h4>
-                      <p className="text-gray-300 text-sm">
-                        Ao assinar um novo plano, seu plano atual será substituído pelo novo.
-                        Seu plano atual ({activeSubscription.plan_name}) expira em{' '}
-                        {new Date(activeSubscription.expires_at).toLocaleDateString('pt-BR')}.
-                      </p>
+                  {activeSubscription && (
+                    <div className="mt-6 p-4 rounded-lg border border-yellow-600/20 bg-yellow-900/10">
+                      <div className="flex">
+                        <FaExclamationTriangle className="text-yellow-500 mt-0.5 mr-3 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-medium text-white mb-1">Você já possui um plano ativo</h4>
+                          <p className="text-gray-300 text-sm">
+                            Ao assinar um novo plano, seu plano atual ({activeSubscription.plan_name}) será substituído. 
+                            Seu plano atual expira em{' '}
+                            {new Date(activeSubscription.expires_at).toLocaleDateString('pt-BR')}.
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </Card>
 
               {/* Card de Pagamento (quando disponível) */}
@@ -305,7 +468,7 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
                       Você será redirecionado para o ambiente seguro do Mercado Pago para finalizar seu pagamento.
                     </p>
                     <Button
-                      variant="gradient"
+                      variant="primary"
                       size="xl"
                       href={paymentUrl}
                       target="_blank"
@@ -321,15 +484,26 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
                   </div>
                 </Card>
               )}
+              
+              {/* Configuração Steam ID (para usuários com Steam ID não configurado) */}
+              {userData && !userData.steam_id && !paymentUrl && (
+                <Card className="border border-dark-200">
+                  <SteamIdSection 
+                    steamId={steamId}
+                    setSteamId={setSteamId}
+                    onSave={handleSaveSteamId}
+                    loading={loading}
+                  />
+                </Card>
+              )}
             </div>
 
             {/* Coluna de resumo e pagamento */}
             <div className="lg:col-span-1 space-y-8">
               {/* Card de Resumo de Valores */}
               <Card 
-                className="border-2 border-dark-200 overflow-hidden transform transition-all duration-300 hover:border-primary/30 hover:shadow-xl"
+                className="border border-dark-200 overflow-hidden"
                 shadow={true}
-                padding="large"
               >
                 <h3 className="text-xl font-semibold text-white mb-6 pb-2 border-b border-dark-200">
                   Resumo do Pedido
@@ -359,14 +533,17 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
                 
                 {!paymentUrl ? (
                   <Button
-                    variant="gradient"
+                    variant="primary"
                     size="lg"
                     fullWidth
                     onClick={handleCheckout}
-                    loading={loading}
+                    loading={processingOrder}
+                    disabled={processingOrder || !userData?.steam_id}
                     className="py-4"
                   >
-                    Finalizar Compra
+                    {!userData?.steam_id 
+                      ? "Configure seu Steam ID primeiro" 
+                      : "Finalizar Compra"}
                   </Button>
                 ) : (
                   <Button
@@ -382,55 +559,18 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
 
               {/* Card de Métodos de Pagamento */}
               {!paymentUrl && (
-                <Card 
-                  className="border-2 border-dark-200 overflow-hidden transform transition-all duration-300 hover:border-primary/30 hover:shadow-xl"
-                  shadow={true}
-                  padding="large"
-                >
+                <Card className="border border-dark-200">
                   <h3 className="text-xl font-semibold text-white mb-6 pb-2 border-b border-dark-200">
                     Formas de Pagamento
                   </h3>
-                  
-                  <div className="space-y-4 mb-6">
-                    <div className="p-3 rounded-lg bg-dark-400/50 flex items-center transition-all hover:bg-dark-400">
-                      <FaCreditCard className="text-primary mr-4 text-xl" />
-                      <span className="text-white">Cartão de Crédito</span>
-                    </div>
-                    
-                    <div className="p-3 rounded-lg bg-dark-400/50 flex items-center transition-all hover:bg-dark-400">
-                      <FaBarcode className="text-primary mr-4 text-xl" />
-                      <span className="text-white">Boleto Bancário</span>
-                    </div>
-                    
-                    <div className="p-3 rounded-lg bg-dark-400/50 flex items-center transition-all hover:bg-dark-400">
-                      <FaQrcode className="text-primary mr-4 text-xl" />
-                      <span className="text-white">PIX</span>
-                    </div>
-                  </div>
-                  
-                  <div className="text-center border-t border-dark-200 pt-6">
-                    <Image 
-                      src="/images/mercado-pago-logo.svg" 
-                      alt="Mercado Pago" 
-                      width={120} 
-                      height={40}
-                      className="mx-auto mb-2"
-                    />
-                    <p className="text-gray-400 text-xs flex items-center justify-center">
-                      <FaLock className="mr-1" />
-                      Pagamentos processados com segurança
-                    </p>
-                  </div>
+                  <PaymentMethods />
                 </Card>
               )}
               
               {/* Card de Suporte */}
-              <Card 
-                className="border-2 border-dark-200 overflow-hidden transform transition-all duration-300 hover:border-primary/30 hover:shadow-xl"
-                shadow={true}
-                padding="large"
-              >
-                <div className="text-center">
+              <Card className="border border-dark-200 text-center">
+                <div className="flex flex-col items-center">
+                  <FaDiscord className="text-primary text-3xl mb-3" />
                   <h3 className="text-lg font-semibold text-white mb-2">Precisa de ajuda?</h3>
                   <p className="text-gray-400 text-sm mb-4">
                     Entre em contato com nosso suporte pelo Discord
@@ -458,7 +598,7 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
           if (userData?.steam_id) {
             setShowSteamIdModal(false);
           } else {
-            router.push('/perfil');
+            toast.info('É necessário configurar seu Steam ID para continuar o processo de compra.');
           }
         }}
         title="Configure seu Steam ID"
@@ -509,7 +649,7 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
               type="text"
               value={steamId}
               onChange={(e) => setSteamId(e.target.value)}
-              className="input w-full"
+              className="w-full bg-dark-300 border border-dark-200 rounded-md p-2.5 text-white focus:border-primary focus:outline-none"
               placeholder="76561198xxxxxxxxx"
             />
           </div>
@@ -534,7 +674,6 @@ export async function getServerSideProps(context) {
     const session = await getServerSession(req, res, authOptions);
     
     if (!session) {
-      console.log('[CheckoutSSR] Usuário não autenticado, redirecionando');
       return {
         redirect: {
           destination: '/?auth=required',
@@ -545,10 +684,16 @@ export async function getServerSideProps(context) {
     
     const { planoId } = context.params;
     
-    // Verifica se o planoId é válido
-    const validPlan = vipPlans.find(p => p.id === planoId);
+    // Verifica se o planoId é válido buscando em todos os jogos
+    let validPlan = false;
+    for (const gameId in GAME_DATA) {
+      if (GAME_DATA[gameId].plans && GAME_DATA[gameId].plans[planoId]) {
+        validPlan = true;
+        break;
+      }
+    }
+    
     if (!validPlan) {
-      console.log(`[CheckoutSSR] Plano inválido: ${planoId}, redirecionando`);
       return {
         redirect: {
           destination: '/planos',
@@ -559,12 +704,9 @@ export async function getServerSideProps(context) {
     
     // Busca dados do usuário pelo Discord ID
     const discordId = session.user.discord_id;
-    console.log(`[CheckoutSSR] Buscando usuário para discord_id: ${discordId}`);
-    
     const userData = await getUserByDiscordId(discordId);
     
     if (!userData) {
-      console.log('[CheckoutSSR] Usuário não encontrado no banco de dados');
       return {
         props: {
           userData: null,
@@ -575,7 +717,6 @@ export async function getServerSideProps(context) {
     }
     
     // Busca dados da assinatura ativa
-    console.log(`[CheckoutSSR] Buscando assinatura para usuário: ${userData.id}`);
     const activeSubscription = await getUserSubscription(userData.id);
     
     return {
@@ -585,8 +726,6 @@ export async function getServerSideProps(context) {
       },
     };
   } catch (error) {
-    console.error('[CheckoutSSR] Erro ao processar checkout:', error);
-    
     return {
       props: {
         userData: null,
