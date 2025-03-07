@@ -4,10 +4,10 @@ import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import { FaGamepad, FaQuestionCircle, FaServer, FaRocket } from 'react-icons/fa';
 import { SiRust } from 'react-icons/si';
-import { TabSelector } from '../../components/ui/TabSelector';
-import PlanCard from '../../components/subscriptions/PlanCard';
-import Card from '../../components/ui/Card';
-import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import { TabSelector } from '../components/ui/TabSelector';
+import PlanCard from '../components/subscriptions/PlanCard';
+import Card from '../components/ui/Card';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 // Mapeamento de planos para IDs no banco de dados
 const planIdMapping = {
