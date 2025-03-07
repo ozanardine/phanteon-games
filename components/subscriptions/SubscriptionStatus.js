@@ -69,7 +69,7 @@ const vipItems = {
     { shortName: 'jackhammer', amount: 1, name: 'Britadeira' },
     { shortName: 'wood', amount: 15000, name: 'Madeira' },
     { shortName: 'stones', amount: 15000, name: 'Pedras' },
-    { shortName: 'metal_fragments', amount: 1000, name: 'Fragmentos de Metal' },
+    { shortName: 'metal.fragments', amount: 1000, name: 'Fragmentos de Metal' },
     { shortName: 'lock.code', amount: 2, name: 'Cadeado com Código' },
     { shortName: 'syringe.medical', amount: 2, name: 'Seringa Médica' },
     { shortName: 'woodtea.advanced', amount: 10, name: 'Chá de Madeira Avançado' },
