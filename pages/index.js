@@ -57,7 +57,7 @@ export default function Home() {
                 <Button
                   variant="outline"
                   size="lg"
-                  href="https://discord.gg/CFc9VrF2Xh"
+                  href="https://discord.gg/v8575VMgPW"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

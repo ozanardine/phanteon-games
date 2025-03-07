@@ -1,53 +1,141 @@
+// pages/api/webhook/mercadopago.js
+import crypto from 'crypto';
 import { processPaymentNotification } from '../../../lib/mercadopago';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { addVipPermissions } from '../../../lib/rust-server';
 import { addVipRole } from '../../../lib/discord';
 
-// Webhook Secret para validação básica (recomendado configurar em variáveis de ambiente)
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
+// Configuração de segurança
+const MERCADOPAGO_WEBHOOK_SECRET = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+// Tempo máximo permitido de diferença (5 minutos)
+const MAX_TIMESTAMP_DIFF = 5 * 60 * 1000;
+
+/**
+ * Valida a assinatura do webhook do MercadoPago
+ * @param {Object} headers - Cabeçalhos da requisição
+ * @param {String} body - Corpo da requisição (raw)
+ * @returns {Boolean} - Resultado da validação
+ */
+function validateMercadoPagoSignature(headers, body) {
+  try {
+    // Se não temos chave secreta configurada ou estamos em ambiente de desenvolvimento
+    if (!MERCADOPAGO_WEBHOOK_SECRET || process.env.NODE_ENV !== 'production') {
+      console.warn('[Webhook] Validação de assinatura desabilitada - chave secreta não configurada ou ambiente não produtivo');
+      return true;
+    }
+
+    // Obtem o cabeçalho de assinatura (formato: "ts=TIMESTAMP,v1=SIGNATURE")
+    const signatureHeader = headers['x-signature'];
+    
+    if (!signatureHeader) {
+      console.warn('[Webhook] Cabeçalho x-signature não encontrado');
+      // Se estamos em produção, exigimos a assinatura
+      return process.env.NODE_ENV !== 'production';
+    }
+
+    // Extrai timestamp e assinatura do cabeçalho
+    const signatureParts = signatureHeader.split(',');
+    if (signatureParts.length !== 2) {
+      console.warn('[Webhook] Formato inválido de x-signature');
+      return false;
+    }
+
+    const tsMatch = signatureParts[0].match(/ts=(\d+)/);
+    const signatureMatch = signatureParts[1].match(/v1=([a-f0-9]+)/);
+
+    if (!tsMatch || !signatureMatch) {
+      console.warn('[Webhook] Componentes de assinatura mal formatados');
+      return false;
+    }
+
+    const timestamp = parseInt(tsMatch[1]);
+    const signature = signatureMatch[1];
+
+    // Verifica se o timestamp está dentro de um intervalo válido
+    const currentTime = Date.now() / 1000;
+    const timeDiff = Math.abs(currentTime - timestamp);
+    
+    if (timeDiff > MAX_TIMESTAMP_DIFF / 1000) {
+      console.warn(`[Webhook] Timestamp muito antigo ou futuro: ${timeDiff.toFixed(2)}s de diferença`);
+      return false;
+    }
+
+    // Monta a string a ser validada
+    const stringToVerify = `${timestamp}.${body}`;
+    
+    // Calcula o HMAC usando a chave secreta
+    const expectedSignature = crypto
+      .createHmac('sha256', MERCADOPAGO_WEBHOOK_SECRET)
+      .update(stringToVerify)
+      .digest('hex');
+    
+    // Compara de forma segura (tempo constante) para evitar timing attacks
+    const isValid = crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expectedSignature, 'hex')
+    );
+    
+    if (!isValid) {
+      console.warn('[Webhook] Assinatura inválida');
+    }
+    
+    return isValid;
+  } catch (error) {
+    console.error('[Webhook] Erro ao validar assinatura:', error);
+    // Em caso de erro, permitimos passar em dev e rejeitamos em prod
+    return process.env.NODE_ENV !== 'production';
+  }
+}
 
 export default async function handler(req, res) {
+  // Captura o corpo bruto para validação de assinatura
+  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  
   // Apenas método POST é permitido
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Método não permitido' });
   }
 
   try {
-    // Extração robusta de dados da requisição
+    // Extração de dados da requisição
     const { query, body, headers } = req;
     
-    //Log completo para diagnóstico (em produção, considere omitir dados sensíveis)
+    // Logging para diagnóstico (omitir dados sensíveis em produção)
     console.log('[Webhook] Headers recebidos:', JSON.stringify(headers));
     console.log('[Webhook] Query recebidos:', JSON.stringify(query));
     console.log('[Webhook] Body recebido:', typeof body === 'string' ? body.substring(0, 200) : JSON.stringify(body).substring(0, 200));
 
-    // Validação opcional da origem (adicione em produção)
-    if (WEBHOOK_SECRET && headers['x-webhook-token'] !== WEBHOOK_SECRET) {
-      console.warn('[Webhook] Aviso: Token de webhook inválido ou ausente');
-      // Em produção, descomente a linha abaixo:
-      return res.status(401).json({ success: false, message: 'Token de webhook inválido' });
+    // Validação de segurança ajustada para x-signature
+    if (!validateMercadoPagoSignature(headers, rawBody)) {
+      console.warn('[Webhook] Assinatura inválida no webhook do MercadoPago');
+      return res.status(401).json({ success: false, message: 'Assinatura de webhook inválida' });
     }
 
-    // Extração de dados com múltiplas estratégias
+    // Extração de dados da notificação
     let paymentNotification = {
       id: null,
       topic: 'payment' // Valor padrão
     };
 
-    // Estratégia 1: Query parameters (notificações padrão)
-    if (query.id && query.topic) {
+    // Estratégia 1: Query parameters (formato data.id usado pelo MercadoPago)
+    if (query['data.id']) {
+      paymentNotification.id = query['data.id'];
+      paymentNotification.topic = query.type || 'merchant_order';
+    }
+    // Estratégia 2: Query parameters (notificações padrão)
+    else if (query.id && query.topic) {
       paymentNotification.id = query.id;
       paymentNotification.topic = query.topic;
     } 
-    // Estratégia 2: IPN (Instant Payment Notification) no body
+    // Estratégia 3: IPN no body
     else if (body && typeof body === 'object') {
       // Formato IPN
       if (body.data && body.action) {
-        paymentNotification.topic = body.action;
+        paymentNotification.topic = body.action || 'payment';
+        // Extrai ID do objeto data ou da URL
         if (body.data.id) {
           paymentNotification.id = body.data.id;
         } else if (typeof body.data === 'string' && body.data.includes('/')) {
-          // Formato "/payments/123456789"
           const match = body.data.match(/\/([^\/]+)$/);
           if (match) paymentNotification.id = match[1];
         }
@@ -69,7 +157,7 @@ export default async function handler(req, res) {
       }
     }
     
-    // Estratégia 3: Fallback para URLs de retorno incorporadas como form-data
+    // Fallback para URLs de retorno incorporadas como form-data
     if (!paymentNotification.id && query.payment_id) {
       paymentNotification.id = query.payment_id;
       paymentNotification.topic = 'payment';
@@ -80,11 +168,14 @@ export default async function handler(req, res) {
     // Validação final antes de processar
     if (!paymentNotification.id) {
       console.error('[Webhook] Falha ao extrair ID da notificação');
-      // Respondemos 200 para evitar tentativas repetidas, mas logamos o erro
+      // Respondemos 200 para evitar tentativas repetidas
       return res.status(200).json({ 
         success: false, 
-        message: 'ID de pagamento não identificado',
-        received: { query, bodyKeys: Object.keys(body || {}) }
+        message: 'ID de notificação não identificado',
+        received: { 
+          query, 
+          bodyKeys: body ? Object.keys(body) : []
+        }
       });
     }
 
@@ -93,7 +184,7 @@ export default async function handler(req, res) {
 
     if (!result.success) {
       console.warn(`[Webhook] Notificação não processável: ${result.message}`);
-      // Para Mercado Pago, ainda retornamos 200 para evitar reenvios desnecessários
+      // Para MercadoPago, retornamos 200 para evitar reenvios
       return res.status(200).json({ success: false, message: result.message });
     }
 
@@ -118,12 +209,12 @@ export default async function handler(req, res) {
       return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
     }
 
-    // Busca a assinatura pendente ou qualquer assinatura recente para este usuário/plano
+    // Busca a assinatura pendente ou qualquer assinatura recente
     const { data: subscription, error: subError } = await supabaseAdmin
       .from('subscriptions')
       .select('*')
       .eq('user_id', userData.id)
-      .or(`status.eq.pending,payment_preference_id.ilike.%${paymentId}%`)
+      .or(`status.eq.pending,payment_preference_id.ilike.%${paymentId}%,payment_id.eq.${paymentId}`)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -147,12 +238,20 @@ export default async function handler(req, res) {
       let planName = planId.replace('vip-', 'VIP ');
       planName = planName.replace('basic', 'Básico').replace('plus', 'Plus').replace('premium', 'Premium');
 
+      // Buscar o ID do plano no banco de dados se planId for um código interno
+      let dbPlanId = planId;
+      if (planId === 'vip-basic') {
+        dbPlanId = '0b81cf06-ed81-49ce-8680-8f9d9edc932e';
+      } else if (planId === 'vip-plus') {
+        dbPlanId = '3994ff53-f110-4c8f-a492-ad988528006f';
+      }
+
       // Criar uma nova assinatura
       const { data: newSubscription, error: createError } = await supabaseAdmin
         .from('subscriptions')
         .insert([{
           user_id: userData.id,
-          plan_id: planId,
+          plan_id: dbPlanId,
           plan_name: planName,
           status: 'active',
           payment_status: 'approved',

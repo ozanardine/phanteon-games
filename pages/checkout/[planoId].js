@@ -437,7 +437,7 @@ export default function CheckoutPage({ userData, activeSubscription, error }) {
                   <Button
                     variant="secondary"
                     size="sm"
-                    href="https://discord.gg/CFc9VrF2Xh"
+                    href="https://discord.gg/v8575VMgPW"
                     target="_blank"
                     rel="noopener noreferrer"
                   >

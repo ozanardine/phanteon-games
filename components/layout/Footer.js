@@ -28,7 +28,7 @@ const Footer = () => {
             </p>
             <div className="flex space-x-4">
               <a 
-                href="https://discord.gg/CFc9VrF2Xh"
+                href="https://discord.gg/v8575VMgPW"
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-primary transition-colors"
@@ -83,7 +83,7 @@ const Footer = () => {
               </li>
               <li>
                 <a 
-                  href="https://discord.gg/CFc9VrF2Xh" 
+                  href="https://discord.gg/v8575VMgPW" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-primary transition-colors"
@@ -102,7 +102,7 @@ const Footer = () => {
                 <span className="text-white">IP:</span> 82.29.62.21:28015
               </li>
               <li className="text-gray-400">
-                <span className="text-white">Discord:</span> discord.gg/CFc9VrF2Xh
+                <span className="text-white">Discord:</span> discord.gg/v8575VMgPW
               </li>
               <li className="text-gray-400">
                 <span className="text-white">Wipe:</span> Primeira quinta do mês
