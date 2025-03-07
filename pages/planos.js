@@ -359,7 +359,7 @@ export default function PlanosPage() {
               {/* Discord */}
               <div className="bg-dark-300 p-4 text-gray-300">Salas exclusivas no Discord</div>
               <div className="bg-dark-300 p-4 text-center">
-                <FaTimes className="inline-block text-red-500" />
+              <FaCheck className="inline-block text-green-500" />
               </div>
               <div className="bg-dark-300 p-4 text-center">
                 <FaCheck className="inline-block text-green-500" />
