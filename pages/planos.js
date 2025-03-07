@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
@@ -63,6 +63,32 @@ const availableGames = [
   // Aqui podem ser adicionados outros jogos no futuro
 ];
 
+// Dados de FAQ específicos para cada jogo
+const faqItems = {
+  rust: [
+    {
+      question: 'Por quanto tempo dura o VIP?',
+      answer: 'Todos os planos VIP têm duração de 30 dias a partir da data de ativação. Você pode renovar seu plano a qualquer momento através do seu perfil.'
+    },
+    {
+      question: 'O que acontece quando o servidor tem wipe?',
+      answer: 'Após cada wipe do servidor, você poderá resgatar novamente seus kits exclusivos. Suas vantagens VIP permanecem ativas independentemente dos wipes.'
+    },
+    {
+      question: 'Como funciona o pagamento?',
+      answer: 'Todos os pagamentos são processados de forma segura através do Mercado Pago. Aceitamos cartões de crédito, boleto bancário e PIX.'
+    },
+    {
+      question: 'Como recebo meu VIP após o pagamento?',
+      answer: 'Após a confirmação do pagamento, seu VIP será ativado automaticamente. Você receberá o cargo no Discord e as permissões no servidor Rust em até 5 minutos.'
+    },
+    {
+      question: 'Posso mudar de plano?',
+      answer: 'Sim! Você pode fazer upgrade do seu plano a qualquer momento. O novo plano substituirá o anterior e terá duração de 30 dias a partir da data de ativação.'
+    }
+  ]
+};
+
 export default function PlanosPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -109,32 +135,6 @@ export default function PlanosPage() {
     setActiveGame(gameId);
   };
 
-  // Dados de FAQ específicos para cada jogo
-  const faqItems = {
-    rust: [
-      {
-        question: 'Por quanto tempo dura o VIP?',
-        answer: 'Todos os planos VIP têm duração de 30 dias a partir da data de ativação. Você pode renovar seu plano a qualquer momento através do seu perfil.'
-      },
-      {
-        question: 'O que acontece quando o servidor tem wipe?',
-        answer: 'Após cada wipe do servidor, você poderá resgatar novamente seus kits exclusivos. Suas vantagens VIP permanecem ativas independentemente dos wipes.'
-      },
-      {
-        question: 'Como funciona o pagamento?',
-        answer: 'Todos os pagamentos são processados de forma segura através do Mercado Pago. Aceitamos cartões de crédito, boleto bancário e PIX.'
-      },
-      {
-        question: 'Como recebo meu VIP após o pagamento?',
-        answer: 'Após a confirmação do pagamento, seu VIP será ativado automaticamente. Você receberá o cargo no Discord e as permissões no servidor Rust em até 5 minutos.'
-      },
-      {
-        question: 'Posso mudar de plano?',
-        answer: 'Sim! Você pode fazer upgrade do seu plano a qualquer momento. O novo plano substituirá o anterior e terá duração de 30 dias a partir da data de ativação.'
-      }
-    ]
-  };
-
   // Renderização do título específico para cada jogo
   const renderGameTitle = () => {
     switch (activeGame) {
@@ -164,6 +164,70 @@ export default function PlanosPage() {
       default:
         return 'Obtenha vantagens exclusivas, kits especiais e comandos adicionais para melhorar sua experiência no servidor.';
     }
+  };
+
+  // Componente VIP Card personalizado
+  const VipCard = ({ plan }) => {
+    // Normalizar features para array
+    const features = plan.features instanceof Array ? plan.features : 
+      (plan.features ? Object.entries(plan.features).map(([key, value]) => 
+        typeof value === 'boolean' && value 
+          ? key.replace(/_/g, ' ') 
+          : `${key.replace(/_/g, ' ')}: ${value}`
+      ) : []);
+    
+    return (
+      <div 
+        className={`relative overflow-hidden rounded-xl transition-all duration-300 hover:shadow-xl ${
+          plan.isPopular 
+            ? 'border-2 border-primary shadow-lg' 
+            : 'border border-dark-200'
+        }`}
+      >
+        {/* Popular badge */}
+        {plan.isPopular && (
+          <div className="absolute -right-10 top-6 bg-primary text-white py-1 px-10 transform rotate-45 text-sm font-bold z-10">
+            Popular
+          </div>
+        )}
+        
+        {/* Card header */}
+        <div className={`p-6 ${plan.isPopular ? 'bg-gradient-to-r from-primary/10 to-dark-300' : 'bg-dark-300'}`}>
+          <h3 className="text-2xl font-bold text-white mb-2 flex items-center">
+            {plan.name}
+          </h3>
+          <div className="flex items-baseline mb-4">
+            <span className="text-3xl font-extrabold text-white">R${plan.price}</span>
+            <span className="text-gray-400 ml-1">/mês</span>
+          </div>
+          <p className="text-gray-400">{plan.description}</p>
+        </div>
+        
+        {/* Features list */}
+        <div className="bg-dark-400 p-6">
+          <ul className="space-y-3 mb-6">
+            {features.map((feature, idx) => (
+              <li key={idx} className="flex items-start">
+                <div className={`flex-shrink-0 h-5 w-5 rounded-full ${plan.isPopular ? 'bg-primary' : 'bg-gray-600'} flex items-center justify-center mr-3 mt-0.5`}>
+                  <FaCheck className="h-3 w-3 text-white" />
+                </div>
+                <span className="text-gray-300">{feature}</span>
+              </li>
+            ))}
+          </ul>
+          
+          <Button
+            variant={plan.isPopular ? 'primary' : 'outline'}
+            size="lg"
+            fullWidth
+            onClick={() => handleSelectPlan(plan.id)}
+            className="mt-2"
+          >
+            Assinar Agora
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -231,24 +295,10 @@ export default function PlanosPage() {
           </div>
         </div>
 
-        {/* Planos VIP */}
+        {/* Planos VIP - Novos cards otimizados */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-16">
           {planos.map((plan) => (
-            <PlanCard
-              key={plan.id}
-              id={plan.id}
-              name={plan.name}
-              price={plan.price}
-              description={plan.description}
-              features={plan.features instanceof Array ? plan.features : 
-                (plan.features ? Object.entries(plan.features).map(([key, value]) => 
-                  typeof value === 'boolean' && value 
-                    ? key.replace(/_/g, ' ') 
-                    : `${key.replace(/_/g, ' ')}: ${value}`
-                ) : [])}
-              isPopular={plan.isPopular}
-              onClick={() => handleSelectPlan(plan.id)}
-            />
+            <VipCard key={plan.id} plan={plan} />
           ))}
         </div>
 
