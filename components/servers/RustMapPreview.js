@@ -6,7 +6,7 @@ import Button from '../ui/Button';
 // Define the missing fixedMapUrls object with known seed-to-URL mappings
 const fixedMapUrls = {
   // Format: 'seedNumber': 'URL to map image'
-  '328564061': 'https://content.rustmaps.com/maps/265/f888cf9ea6454502a6816893b82dbac6/map_icons.png'
+  '1708110947': 'https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png'
   // Add more seed mappings as needed
 };
 

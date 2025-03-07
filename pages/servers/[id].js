@@ -20,9 +20,6 @@ export default function ServerDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [mapPreviewLoading, setMapPreviewLoading] = useState(false);
-  const [mapPreviewUrl, setMapPreviewUrl] = useState(null);
-  const [mapPreviewError, setMapPreviewError] = useState(null);
 
   const tabs = [
     { id: 'info', label: 'Informações', icon: <FiServer /> },
@@ -48,6 +45,12 @@ export default function ServerDetailPage() {
       }
       
       const data = await response.json();
+      
+      // Preserve description from previous data if missing in the new data
+      if (data.server && !data.server.description && serverData?.server?.description) {
+        data.server.description = serverData.server.description;
+      }
+      
       setServerData(data);
       setError(null);
     } catch (err) {

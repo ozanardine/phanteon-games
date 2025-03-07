@@ -97,22 +97,21 @@ export default async function handler(req, res) {
             const attributes = serverInfo.attributes;
             const details = attributes.details || {};
             
-            // Mantém os valores de seed e worldSize originais - NÃO sobrescreve da API
-            // Pois pode haver incompatibilidade no formato entre BattleMetrics e RustMaps
-            
+            // O PROBLEMA ESTAVA AQUI: Não preservava a descrição original
+            // Atualização: Mantém todos os dados originais e atualiza apenas os específicos da API
             updatedServer = {
-              ...updatedServer,
-              status: attributes.status || 'unknown',
-              players: attributes.players || 0,
-              maxPlayers: attributes.maxPlayers || 100,
-              address: `${attributes.ip}:${attributes.port}` || 'Unknown',
-              map: details.map || 'Unknown',
+              ...serverData, // Preserva todos os dados originais (incluindo description)
+              status: attributes.status || serverData.status || 'unknown',
+              players: attributes.players || serverData.players || 0,
+              maxPlayers: attributes.maxPlayers || serverData.maxPlayers || 100,
+              address: `${attributes.ip}:${attributes.port}` || serverData.address || 'Unknown',
+              map: details.map || serverData.map || 'Unknown',
               // seed e worldSize não são atualizados da API
-              lastWipe: details.rust_last_wipe
+              lastWipe: details.rust_last_wipe || serverData.lastWipe
             };
             
             // Log para debug
-            console.log(`Servidor Rust atualizado - Mantendo seed original: ${updatedServer.seed}`);
+            console.log(`Servidor Rust atualizado - Preservando descrição: "${updatedServer.description}"`);
           }
         }
       } catch (error) {
