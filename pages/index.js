@@ -68,7 +68,7 @@ export default function Home() {
             <div className="md:w-1/2 relative">
               <div className="relative h-[300px] md:h-[400px] w-full">
                 <Image 
-                  src="/images/rust-hero.webp" 
+                  src="/images/rust_banner3.png" 
                   alt="Phanteon Games Rust Server" 
                   fill
                   className="object-cover rounded-lg shadow-2xl"
