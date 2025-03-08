@@ -251,7 +251,7 @@ export default function ServersPage() {
                 <div className="bg-primary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <FiUsers className="text-primary text-2xl" />
                 </div>
-                <h3 className="text-3xl font-bold text-white mb-2">2800+</h3>
+                <h3 className="text-3xl font-bold text-white mb-2">0</h3>
                 <p className="text-gray-400">Jogadores Registrados</p>
               </Card>
               
@@ -259,7 +259,7 @@ export default function ServersPage() {
                 <div className="bg-primary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <FiServer className="text-primary text-2xl" />
                 </div>
-                <h3 className="text-3xl font-bold text-white mb-2">3</h3>
+                <h3 className="text-3xl font-bold text-white mb-2">1</h3>
                 <p className="text-gray-400">Servidores Ativos</p>
               </Card>
               
@@ -267,7 +267,7 @@ export default function ServersPage() {
                 <div className="bg-primary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <FiCrosshair className="text-primary text-2xl" />
                 </div>
-                <h3 className="text-3xl font-bold text-white mb-2">150+</h3>
+                <h3 className="text-3xl font-bold text-white mb-2">0</h3>
                 <p className="text-gray-400">Eventos Realizados</p>
               </Card>
               
@@ -275,7 +275,7 @@ export default function ServersPage() {
                 <div className="bg-primary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <FiShield className="text-primary text-2xl" />
                 </div>
-                <h3 className="text-3xl font-bold text-white mb-2">1000+</h3>
+                <h3 className="text-3xl font-bold text-white mb-2">0</h3>
                 <p className="text-gray-400">Assinaturas VIP</p>
               </Card>
             </div>

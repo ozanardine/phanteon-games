@@ -4,7 +4,7 @@
 const servers = [
   {
     id: "32225312", // ID do servidor no BattleMetrics
-    name: "Rust Survival",
+    name: "Rust Survival #1",
     game: "rust",
     status: "online",
     players: 0,
@@ -14,9 +14,9 @@ const servers = [
     seed: "328564061",
     worldSize: "4000",
     description: "Servidor focado em te proporcionar a melhor experiência de sobrevivência e aproveitar todos os recursos do jogo.",
-    logo: "logo.png", // Updated to use local path for reliability
+    logo: "/images/rust_banner2.png", // Updated to use local path for reliability
     wipeSchedule: "Primeira quinta-feira do mês",
-    features: ["Casual", "Survival", "2x", "Events"],
+    features: ["Casual", "Survival", "2x"],
     modded: false
   }
 ];
