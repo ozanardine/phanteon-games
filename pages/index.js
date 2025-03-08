@@ -322,7 +322,7 @@ export default function Home() {
                     ))}
                   </div>
                   <div className="text-sm text-gray-400">
-                    Mais de <span className="text-primary font-semibold">2800+</span> jogadores confiam em nós
+                    Os <span className="text-primary font-semibold">jogadores</span> confiam em nós
                   </div>
                 </div>
               </div>
@@ -333,7 +333,7 @@ export default function Home() {
                 <div className="absolute -inset-1 bg-gradient-to-r from-primary to-orange-500 opacity-30 rounded-xl blur-xl group-hover:opacity-50 transition-all duration-500"></div>
                 <div className="relative rounded-xl overflow-hidden shadow-2xl border border-dark-200">
                   <Image 
-                    src="/images/rust_banner2.png" 
+                    src="/images/rust_banner5.png" 
                     alt="Phanteon Games Rust Server" 
                     width={600}
                     height={450}
