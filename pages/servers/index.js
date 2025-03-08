@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Image from 'next/image';
 import { FiServer, FiShield, FiCrosshair, FiMoon, FiMonitor, FiRefreshCw } from 'react-icons/fi';
-import { SiRust } from 'react-icons/si';
 import { TabSelector } from '../../components/ui/TabSelector';
 import { ServerCard } from '../../components/servers/ServerCard';
 import Card from '../../components/ui/Card';
@@ -17,7 +17,13 @@ export default function ServersPage() {
 
   const tabs = [
     { id: 'all', label: 'Todos', icon: <FiServer /> },
-    { id: 'rust', label: 'Rust', icon: <SiRust /> },
+    { 
+      id: 'rust', 
+      label: 'Rust', 
+      icon: <div className="w-4 h-4 flex items-center justify-center">
+              <Image src="/images/logos/rust.svg" alt="Rust" width={16} height={16} />
+            </div> 
+    },
     // Adicione mais abas conforme necessário para outros jogos
     // { id: 'minecraft', label: 'Minecraft', icon: <FiCube /> },
     // { id: 'csgo', label: 'CS:GO', icon: <FiCrosshair /> },

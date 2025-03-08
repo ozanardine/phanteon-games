@@ -3,12 +3,12 @@ import Image from 'next/image';
 
 const badgeMapping = {
   'vip-basic': {
-    src: '/badges/vip-bronze.svg',
+    src: '/badges/badge_basic.svg',
     alt: 'VIP Bronze',
     tooltip: 'Assinante VIP Bronze'
   },
   'vip-plus': {
-    src: '/badges/vip-prata.svg',
+    src: '/badges/badge_plus.svg',
     alt: 'VIP Prata',
     tooltip: 'Assinante VIP Prata'
   },
