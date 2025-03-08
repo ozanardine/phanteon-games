@@ -14,7 +14,7 @@ const serversDetails = {
     seed: "328564061",
     worldSize: "4000",
     description: "Servidor focado em te proporcionar a melhor experiência de sobrevivência e aproveitar todos os recursos do jogo. Regras balanceadas, economia sustentável e comunidade ativa te esperam.",
-    logo: "/images/logo.png",
+    logo: "logo.png",
     wipeSchedule: "Primeira quinta-feira do mês",
     features: ["Casual", "Survival", "2x", "Events"],
     modded: false,
@@ -29,12 +29,12 @@ const serversDetails = {
     nextWipe: "2025-04-07T12:00:00Z",
     adminContacts: ["Discord: thezanardine"],
     bannerImage: "/images/rust_banner.png",
-    mods: [
+    /*mods: [
       "PVP Enhancement",
       "Better Loot",
       "Arena Framework",
       "Advanced Combat"
-    ]
+    ]*/
   }
 };
 

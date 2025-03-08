@@ -14,7 +14,7 @@ const servers = [
     seed: "328564061",
     worldSize: "4000",
     description: "Servidor focado em te proporcionar a melhor experiência de sobrevivência e aproveitar todos os recursos do jogo.",
-    logo: "/images/logo.png", // Updated to use local path for reliability
+    logo: "logo.png", // Updated to use local path for reliability
     wipeSchedule: "Primeira quinta-feira do mês",
     features: ["Casual", "Survival", "2x", "Events"],
     modded: false

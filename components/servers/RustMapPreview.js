@@ -151,13 +151,6 @@ const RustMapPreview = ({ seed, worldSize }) => {
                   onClick={toggleZoom}
                   style={{ transition: 'opacity 0.3s ease' }}
                 />
-                
-                {/* Zoom button overlay */}
-                <button 
-                  onClick={toggleZoom}
-                >
-                  {isZoomed ? <FiZoomIn className="rotate-45" /> : <FiZoomIn />}
-                </button>
               </div>
             )}
             {imageLoaded && (
