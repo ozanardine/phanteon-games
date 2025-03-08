@@ -376,23 +376,9 @@ export default function Home() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <ServerStatusCard
-                name="Rust Survival"
-                players={48}
+                name="Rust Survival #1"
+                players={10}
                 maxPlayers={60}
-                status="online"
-              />
-              
-              <ServerStatusCard
-                name="Rust PVP Arena"
-                players={35}
-                maxPlayers={40}
-                status="online"
-              />
-              
-              <ServerStatusCard
-                name="Rust Creative"
-                players={12}
-                maxPlayers={30}
                 status="online"
               />
             </div>

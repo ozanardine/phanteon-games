@@ -32,13 +32,13 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
         <meta property="og:type" content="website" />
         <meta property="og:title" content="Phanteon Games - Comunidade Brasileira de Jogos" />
         <meta property="og:description" content="Comunidade brasileira com servidores de alta qualidade para diversos jogos. Obtenha vantagens VIP, comandos exclusivos e experiências diferenciadas." />
-        <meta property="og:image" content="/images/og-image.jpg" />
+        <meta property="og:image" content="/images/rust_banner3.png" />
         <meta property="og:site_name" content="Phanteon Games" />
         <meta property="og:locale" content="pt_BR" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Phanteon Games - Comunidade Brasileira de Jogos" />
         <meta name="twitter:description" content="Comunidade brasileira com servidores de alta qualidade para diversos jogos. Obtenha vantagens VIP, comandos exclusivos e experiências diferenciadas." />
-        <meta name="twitter:image" content="/images/og-image.jpg" />
+        <meta name="twitter:image" content="/images/rust_banner3.png" />
         <meta name="theme-color" content="#EC4D2D" />
         <link rel="icon" href="/logo.png" />
         <link rel="canonical" href="https://phanteongames.com" />
