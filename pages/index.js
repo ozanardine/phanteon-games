@@ -230,9 +230,10 @@ export default function Home() {
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   
-  const playerCount = useCounter(2800, 0, 1500, 200);
-  const serverCount = useCounter(3, 0, 1000, 200);
-  const plansCount = useCounter(10000, 0, 2000, 200);
+  const playerCount = useCounter(7, 0, 1500, 200);
+  const serverCount = useCounter(1, 0, 1000, 200);
+  const plansCount = useCounter(2, 0, 2000, 200);
+  //                useCounter(end, start, duration, delay)
 
   // Verifica se o usuário foi redirecionado para login
   useEffect(() => {
