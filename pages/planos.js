@@ -4,7 +4,6 @@ import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { FaCheck, FaGamepad, FaInfoCircle, FaServer, FaTimes } from 'react-icons/fa';
-import { SiRust } from 'react-icons/si';
 import { TabSelector } from '../components/ui/TabSelector';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -14,7 +13,13 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 // ==========================================
 
 const GAMES = [
-  { id: 'rust', name: 'Rust', icon: <SiRust /> },
+  { 
+    id: 'rust', 
+    name: 'Rust', 
+    icon: <div className="w-4 h-4 flex items-center justify-center">
+            <Image src="/images/logos/rust.svg" alt="Rust" width={16} height={16} />
+          </div>
+  },
 ];
 
 // Constantes para IDs de planos
@@ -41,7 +46,7 @@ const GAME_PLANS = {
         'Kit básico a cada wipe',
       ],
       isPopular: false,
-      badgeIcon: '/badges/vip-bronze.svg', // Exemplo, substituir pelo caminho real
+      badgeIcon: '/badges/badge_basic.svg', // Atualizado para o novo caminho
     },
     {
       id: 'vip-plus',
@@ -62,7 +67,7 @@ const GAME_PLANS = {
         'Kit avançado a cada wipe',
       ],
       isPopular: true,
-      badgeIcon: '/badges/vip-prata.svg', // Exemplo, substituir pelo caminho real
+      badgeIcon: '/badges/badge_plus.svg', // Atualizado para o novo caminho
     },
   ],
 };
