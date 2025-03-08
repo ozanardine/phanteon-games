@@ -15,7 +15,8 @@ import {
   FaChevronRight,
   FaCrown,
   FaSteam,
-  FaArrowRight
+  FaArrowRight,
+  FaCheck
 } from 'react-icons/fa';
 import { SiRust } from 'react-icons/si';
 import { toast } from 'react-hot-toast';
