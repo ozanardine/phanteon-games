@@ -6,9 +6,9 @@ import Button from '../ui/Button';
 // Define the fixed map URLs object with known seed-to-URL mappings
 const fixedMapUrls = {
   // Format: 'seedNumber': 'URL to map image'
-  '1708110947': 'https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png',
-  '1708110948': 'https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png',
-  '1708110949': 'https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png'
+  '328564061': 'https://content.rustmaps.com/maps/265/f888cf9ea6454502a6816893b82dbac6/map_icons.png',
+  '328564061': 'https://content.rustmaps.com/maps/265/f888cf9ea6454502a6816893b82dbac6/map_icons.png',
+  '328564061': 'https://content.rustmaps.com/maps/265/f888cf9ea6454502a6816893b82dbac6/map_icons.png'
   // Add more seed mappings as needed
 };
 
@@ -72,7 +72,7 @@ const RustMapPreview = ({ seed, worldSize }) => {
   const handleImageError = (e) => {
     console.error('Failed to load map image, trying fallback');
     // If the generated URL fails, try the fallback
-    const fallbackUrl = "https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png";
+    const fallbackUrl = "https://content.rustmaps.com/maps/265/f888cf9ea6454502a6816893b82dbac6/map_icons.png";
     
     if (mapUrl !== fallbackUrl) {
       setMapUrl(fallbackUrl);
@@ -155,7 +155,6 @@ const RustMapPreview = ({ seed, worldSize }) => {
                 {/* Zoom button overlay */}
                 <button 
                   onClick={toggleZoom}
-                  className="absolute top-3 right-3 bg-dark-400/60 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm hover:bg-dark-300"
                 >
                   {isZoomed ? <FiZoomIn className="rotate-45" /> : <FiZoomIn />}
                 </button>

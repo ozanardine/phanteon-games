@@ -11,94 +11,29 @@ const serversDetails = {
     maxPlayers: 60,
     address: "Unknown",
     map: "Unknown",
-    seed: "1708110947",
-    worldSize: "4500",
+    seed: "328564061",
+    worldSize: "4000",
     description: "Servidor focado em te proporcionar a melhor experiência de sobrevivência e aproveitar todos os recursos do jogo. Regras balanceadas, economia sustentável e comunidade ativa te esperam.",
-    logo: "/images/rust_survival.jpg",
+    logo: "/images/logo.png",
     wipeSchedule: "Primeira quinta-feira do mês",
-    features: ["PVP", "Base Building", "Trading", "Events"],
+    features: ["Casual", "Survival", "2x", "Events"],
     modded: false,
     rules: [
       "Não é permitido usar cheats ou exploits",
       "Respeite outros jogadores no chat",
-      "Raid apenas após 48h de wipe",
       "Construções tóxicas serão removidas",
-      "Clans limitados a 8 membros"
+      "Times limitados a 5 membros"
     ],
     discordUrl: "https://discord.gg/v8575VMgPW",
     connectCommand: "client.connect 82.29.62.21:28015",
     nextWipe: "2025-04-07T12:00:00Z",
-    adminContacts: ["Phanteon#1234", "Rust_Admin#5678"],
-    bannerImage: "/images/rust_banner3.png"
-  },
-  "32225313": {
-    id: "32225313", 
-    name: "Rust PVP Arena",
-    game: "rust",
-    status: "online",
-    players: 0,
-    maxPlayers: 40,
-    address: "Unknown",
-    map: "Unknown",
-    seed: "1708110948",
-    worldSize: "3000",
-    description: "Arena de PVP com eventos constantes e combates intensos. Ideal para quem busca ação. Servidor com mods que aumentam a frequência de PVP e tornam os combates mais dinâmicos.",
-    logo: "/images/rust_pvp.jpg",
-    wipeSchedule: "Quinzenalmente",
-    features: ["PVP", "Arena", "Events", "Weekly Tournaments"],
-    modded: true,
-    rules: [
-      "Sem toxicidade no chat",
-      "Proibido uso de cheats",
-      "Áreas demarcadas para eventos são zonas neutras",
-      "Regras específicas durante torneios",
-      "Respeito aos admins e moderadores"
-    ],
-    discordUrl: "https://discord.gg/v8575VMgPW",
-    connectCommand: "client.connect 82.29.62.21:28016",
-    nextWipe: "2025-03-21T12:00:00Z",
-    adminContacts: ["PVP_Admin#1234", "Arena_Mod#5678"],
-    bannerImage: "/images/rust_banner3.png",
+    adminContacts: ["Discord: thezanardine"],
+    bannerImage: "/images/rust_banner.png",
     mods: [
       "PVP Enhancement",
       "Better Loot",
       "Arena Framework",
       "Advanced Combat"
-    ]
-  },
-  "32225314": {
-    id: "32225314", 
-    name: "Rust Creative",
-    game: "rust",
-    status: "online",
-    players: 0,
-    maxPlayers: 30,
-    address: "Unknown",
-    map: "Unknown",
-    seed: "1708110949",
-    worldSize: "5000",
-    description: "Servidor criativo para construção e experimentação. Recursos infinitos e sem raid. Ideal para testar novas construções e designs de base antes de implementar em servidores survival.",
-    logo: "/images/rust_creative.jpg",
-    wipeSchedule: "Mensalmente",
-    features: ["Creative", "Building", "No Raid", "Unlimited Resources"],
-    modded: true,
-    rules: [
-      "Proibido destruir construções de outros jogadores",
-      "Eventos de construção todas as sextas",
-      "Recursos são infinitos para todos",
-      "Áreas reservadas para builds comunitárias",
-      "Use /help para comandos específicos"
-    ],
-    discordUrl: "https://discord.gg/v8575VMgPW",
-    connectCommand: "client.connect 82.29.62.21:28017",
-    nextWipe: "2025-04-01T12:00:00Z",
-    adminContacts: ["Creative_Admin#1234"],
-    bannerImage: "/images/rust_banner3.png",
-    mods: [
-      "Creative Mode",
-      "Building Plus",
-      "Copy/Paste Tool",
-      "Unlimited Resources"
     ]
   }
 };
@@ -132,20 +67,6 @@ const mockEvents = {
       description: "Reset completo do servidor, incluindo itens, construções e blueprints.", 
       date: "2025-03-20T12:00:00Z",
       image: "/images/events/wipe.jpg"
-    },
-    { 
-      id: "2", 
-      title: "Evento PVP Arena", 
-      description: "Competição PVP com premiações para os melhores jogadores. Local: Monument X.", 
-      date: "2025-03-22T18:00:00Z",
-      image: "/images/events/pvp.jpg"
-    },
-    { 
-      id: "3", 
-      title: "Raid Boss Challenge", 
-      description: "Derrote o boss e ganhe recompensas exclusivas!", 
-      date: "2025-03-25T20:00:00Z",
-      image: "/images/events/boss.jpg"
     }
   ]
 };

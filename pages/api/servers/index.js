@@ -11,47 +11,13 @@ const servers = [
     maxPlayers: 60,
     address: "Unknown", // Será preenchido pela API
     map: "Unknown", // Será preenchido pela API
-    seed: "1708110947",
-    worldSize: "4500",
+    seed: "328564061",
+    worldSize: "4000",
     description: "Servidor focado em te proporcionar a melhor experiência de sobrevivência e aproveitar todos os recursos do jogo.",
-    logo: "/images/rust_survival.jpg", // Updated to use local path for reliability
+    logo: "/images/logo.png", // Updated to use local path for reliability
     wipeSchedule: "Primeira quinta-feira do mês",
-    features: ["PVP", "Base Building", "Trading", "Events"],
+    features: ["Casual", "Survival", "2x", "Events"],
     modded: false
-  },
-  {
-    id: "32225313", // Example additional server
-    name: "Rust PVP Arena",
-    game: "rust",
-    status: "online",
-    players: 0,
-    maxPlayers: 40,
-    address: "Unknown", // Será preenchido pela API
-    map: "Unknown", // Será preenchido pela API
-    seed: "1708110948",
-    worldSize: "3000",
-    description: "Arena de PVP com eventos constantes e combates intensos. Ideal para quem busca ação.",
-    logo: "/images/rust_pvp.jpg", // Updated to use local path for reliability
-    wipeSchedule: "Quinzenalmente",
-    features: ["PVP", "Arena", "Events", "Weekly Tournaments"],
-    modded: true
-  },
-  {
-    id: "32225314", // Example additional server
-    name: "Rust Creative",
-    game: "rust",
-    status: "online",
-    players: 0,
-    maxPlayers: 30,
-    address: "Unknown", // Será preenchido pela API
-    map: "Unknown", // Será preenchido pela API
-    seed: "1708110949",
-    worldSize: "5000",
-    description: "Servidor criativo para construção e experimentação. Recursos infinitos e sem raid.",
-    logo: "/images/rust_creative.jpg", // Updated to use local path for reliability
-    wipeSchedule: "Mensalmente",
-    features: ["Creative", "Building", "No Raid", "Unlimited Resources"],
-    modded: true
   }
 ];
 
