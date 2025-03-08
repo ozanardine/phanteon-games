@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-// Import icons individually to avoid barrel imports that cause issues with Vercel optimization
-import { FiChevronDown } from 'react-icons/fi/FiChevronDown';
-import { FiClock } from 'react-icons/fi/FiClock';
-import { FiCrosshair } from 'react-icons/fi/FiCrosshair';
-import { FiFilter } from 'react-icons/fi/FiFilter';
-import { FiUser } from 'react-icons/fi/FiUser';
-// Fix problematic imports by using direct imports
-import { FaTrophy } from 'react-icons/fa/FaTrophy';
-import { FaSkull } from 'react-icons/fa/FaSkull';
+// Import icons individually to avoid barrel imports
+import { FiChevronDown } from 'react-icons/fi';
+import { FiClock } from 'react-icons/fi';
+import { FiCrosshair } from 'react-icons/fi';
+import { FiFilter } from 'react-icons/fi';
+import { FiUser } from 'react-icons/fi';
+// Import FA icons separately
+import { FaTrophy } from 'react-icons/fa';
+import { FaSkull } from 'react-icons/fa';
 import Card from '../ui/Card';
 
 // Definir funções utilitárias para formatação
