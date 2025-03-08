@@ -1,8 +1,8 @@
-// pages/api/server-stats.js
+// pages/api/server-events.js
 import { getApiUrl, getDefaultHeaders } from '../../lib/api-config';
 
 /**
- * API route for getting server statistics
+ * API route for getting server events
  * Proxies requests to the Node.js server
  */
 export default async function handler(req, res) {
@@ -11,8 +11,13 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Extract query parameters
+    const { limit = 20, serverId, eventType } = req.query;
+    
     // Construct the URL for the Node.js server
-    const url = getApiUrl('/api/public/serverstats');
+    let url = `${getApiUrl('/api/public/events')}?limit=${limit}`;
+    if (serverId) url += `&serverId=${serverId}`;
+    if (eventType) url += `&eventType=${eventType}`;
     
     // Forward the request to the Node.js server
     const response = await fetch(url, {
@@ -22,7 +27,7 @@ export default async function handler(req, res) {
     
     // If the response is not OK, throw an error
     if (!response.ok) {
-      throw new Error(`Failed to fetch server stats (Status: ${response.status})`);
+      throw new Error(`Failed to fetch server events (Status: ${response.status})`);
     }
     
     // Parse the response and return it
@@ -30,9 +35,9 @@ export default async function handler(req, res) {
     
     return res.status(200).json(data);
   } catch (error) {
-    console.error('Error fetching server stats:', error);
+    console.error('Error fetching server events:', error);
     return res.status(500).json({ 
-      error: 'Failed to fetch server data',
+      error: 'Failed to fetch server events',
       message: error.message 
     });
   }
