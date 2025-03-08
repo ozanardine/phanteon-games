@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { FiCrosshair, FiSkull, FiClock, FiFilter, FiChevronDown, FiTrophy, FiUser } from 'react-icons/fi';
+// Import icons individually to avoid barrel imports that cause issues with Vercel optimization
+import { FiChevronDown } from 'react-icons/fi/FiChevronDown';
+import { FiClock } from 'react-icons/fi/FiClock';
+import { FiCrosshair } from 'react-icons/fi/FiCrosshair';
+import { FiFilter } from 'react-icons/fi/FiFilter';
+import { FiUser } from 'react-icons/fi/FiUser';
+// Fix problematic imports by using direct imports
+import { FaTrophy } from 'react-icons/fa/FaTrophy';
+import { FaSkull } from 'react-icons/fa/FaSkull';
 import Card from '../ui/Card';
 
 // Definir funções utilitárias para formatação
@@ -69,7 +77,7 @@ function LeaderboardPodium({ players }) {
                     
                     {/* Medalha */}
                     <div className="absolute -bottom-1 -right-1 bg-gradient-to-br from-dark-100 to-dark-400 rounded-full p-1 border border-dark-100/40">
-                      <FiTrophy className={`w-4 h-4 ${
+                      <FaTrophy className={`w-4 h-4 ${
                         position.medal === 'gold' ? 'text-yellow-400' : 
                         position.medal === 'silver' ? 'text-gray-300' : 'text-amber-700'
                       }`} />
@@ -90,7 +98,7 @@ function LeaderboardPodium({ players }) {
                     <FiCrosshair className="mr-1" /> {player.kills}
                   </span>
                   <span className="text-red-400 flex items-center" title="Mortes">
-                    <FiSkull className="mr-1" /> {player.deaths}
+                    <FaSkull className="mr-1" /> {player.deaths}
                   </span>
                 </div>
                 
@@ -131,7 +139,7 @@ function LeaderboardTable({ players, formatPlaytime, formatDate }) {
               <FiCrosshair className="inline mr-1" /> Kills
             </th>
             <th className="px-4 py-3 text-center text-sm font-semibold text-gray-300">
-              <FiSkull className="inline mr-1" /> Mortes
+              <FaSkull className="inline mr-1" /> Mortes
             </th>
             <th className="px-4 py-3 text-center text-sm font-semibold text-gray-300">
               <FiClock className="inline mr-1" /> Tempo de Jogo
@@ -224,6 +232,8 @@ export default function Leaderboard({ leaderboard, formatPlaytime, formatDate })
           <button
             onClick={() => setFilterOpen(!filterOpen)}
             className="flex items-center space-x-1 bg-dark-400 hover:bg-dark-300 rounded-lg px-4 py-2 text-gray-300 transition-colors"
+            aria-expanded={filterOpen}
+            aria-haspopup="true"
           >
             <FiFilter className="mr-2" />
             <span>Ordenar por</span>
@@ -246,6 +256,7 @@ export default function Leaderboard({ leaderboard, formatPlaytime, formatDate })
                   className={`block px-4 py-2 text-sm w-full text-left ${
                     sortBy === 'kills' ? 'bg-primary/10 text-primary' : 'text-gray-300 hover:bg-dark-300'
                   }`}
+                  role="menuitem"
                 >
                   <FiCrosshair className="inline mr-2" /> Por Kills
                 </button>
@@ -257,8 +268,9 @@ export default function Leaderboard({ leaderboard, formatPlaytime, formatDate })
                   className={`block px-4 py-2 text-sm w-full text-left ${
                     sortBy === 'deaths' ? 'bg-primary/10 text-primary' : 'text-gray-300 hover:bg-dark-300'
                   }`}
+                  role="menuitem"
                 >
-                  <FiSkull className="inline mr-2" /> Por Mortes (menos)
+                  <FaSkull className="inline mr-2" /> Por Mortes (menos)
                 </button>
                 <button
                   onClick={() => {
@@ -268,6 +280,7 @@ export default function Leaderboard({ leaderboard, formatPlaytime, formatDate })
                   className={`block px-4 py-2 text-sm w-full text-left ${
                     sortBy === 'playtime' ? 'bg-primary/10 text-primary' : 'text-gray-300 hover:bg-dark-300'
                   }`}
+                  role="menuitem"
                 >
                   <FiClock className="inline mr-2" /> Por Tempo de Jogo
                 </button>
@@ -305,7 +318,7 @@ export default function Leaderboard({ leaderboard, formatPlaytime, formatDate })
               </p>
             </div>
             <div className="rounded-full bg-red-400/10 p-3">
-              <FiSkull className="text-red-400 text-xl" />
+              <FaSkull className="text-red-400 text-xl" />
             </div>
           </div>
         </Card>

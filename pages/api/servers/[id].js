@@ -1,22 +1,107 @@
-// src/pages/api/servers/[id].js
+// pages/api/servers/[id].js
 
-// Lista de servidores para busca rápida
-const servers = [
-  {
-    id: "32225312", // ID do servidor no BattleMetrics
+// Server details with expanded information
+const serversDetails = {
+  "32225312": {
+    id: "32225312", 
     name: "Rust Survival",
     game: "rust",
     status: "online",
     players: 0,
     maxPlayers: 60,
-    address: "Unknown", // Será preenchido pela API
-    map: "Unknown", // Será preenchido pela API
+    address: "Unknown",
+    map: "Unknown",
     seed: "1708110947",
     worldSize: "4500",
-    description: "Servidor focado em te proporcionar a melhor experiência de sobrevivência e aproveitar todos os recursos do jogo.",
-    logo: "https://i.imgur.com/PFUYbUz.png"
+    description: "Servidor focado em te proporcionar a melhor experiência de sobrevivência e aproveitar todos os recursos do jogo. Regras balanceadas, economia sustentável e comunidade ativa te esperam.",
+    logo: "/images/rust_survival.jpg",
+    wipeSchedule: "Primeira quinta-feira do mês",
+    features: ["PVP", "Base Building", "Trading", "Events"],
+    modded: false,
+    rules: [
+      "Não é permitido usar cheats ou exploits",
+      "Respeite outros jogadores no chat",
+      "Raid apenas após 48h de wipe",
+      "Construções tóxicas serão removidas",
+      "Clans limitados a 8 membros"
+    ],
+    discordUrl: "https://discord.gg/v8575VMgPW",
+    connectCommand: "client.connect 82.29.62.21:28015",
+    nextWipe: "2025-04-07T12:00:00Z",
+    adminContacts: ["Phanteon#1234", "Rust_Admin#5678"],
+    bannerImage: "/images/rust_banner3.png"
+  },
+  "32225313": {
+    id: "32225313", 
+    name: "Rust PVP Arena",
+    game: "rust",
+    status: "online",
+    players: 0,
+    maxPlayers: 40,
+    address: "Unknown",
+    map: "Unknown",
+    seed: "1708110948",
+    worldSize: "3000",
+    description: "Arena de PVP com eventos constantes e combates intensos. Ideal para quem busca ação. Servidor com mods que aumentam a frequência de PVP e tornam os combates mais dinâmicos.",
+    logo: "/images/rust_pvp.jpg",
+    wipeSchedule: "Quinzenalmente",
+    features: ["PVP", "Arena", "Events", "Weekly Tournaments"],
+    modded: true,
+    rules: [
+      "Sem toxicidade no chat",
+      "Proibido uso de cheats",
+      "Áreas demarcadas para eventos são zonas neutras",
+      "Regras específicas durante torneios",
+      "Respeito aos admins e moderadores"
+    ],
+    discordUrl: "https://discord.gg/v8575VMgPW",
+    connectCommand: "client.connect 82.29.62.21:28016",
+    nextWipe: "2025-03-21T12:00:00Z",
+    adminContacts: ["PVP_Admin#1234", "Arena_Mod#5678"],
+    bannerImage: "/images/rust_banner3.png",
+    mods: [
+      "PVP Enhancement",
+      "Better Loot",
+      "Arena Framework",
+      "Advanced Combat"
+    ]
+  },
+  "32225314": {
+    id: "32225314", 
+    name: "Rust Creative",
+    game: "rust",
+    status: "online",
+    players: 0,
+    maxPlayers: 30,
+    address: "Unknown",
+    map: "Unknown",
+    seed: "1708110949",
+    worldSize: "5000",
+    description: "Servidor criativo para construção e experimentação. Recursos infinitos e sem raid. Ideal para testar novas construções e designs de base antes de implementar em servidores survival.",
+    logo: "/images/rust_creative.jpg",
+    wipeSchedule: "Mensalmente",
+    features: ["Creative", "Building", "No Raid", "Unlimited Resources"],
+    modded: true,
+    rules: [
+      "Proibido destruir construções de outros jogadores",
+      "Eventos de construção todas as sextas",
+      "Recursos são infinitos para todos",
+      "Áreas reservadas para builds comunitárias",
+      "Use /help para comandos específicos"
+    ],
+    discordUrl: "https://discord.gg/v8575VMgPW",
+    connectCommand: "client.connect 82.29.62.21:28017",
+    nextWipe: "2025-04-01T12:00:00Z",
+    adminContacts: ["Creative_Admin#1234"],
+    bannerImage: "/images/rust_banner3.png",
+    mods: [
+      "Creative Mode",
+      "Building Plus",
+      "Copy/Paste Tool",
+      "Unlimited Resources"
+    ]
   }
-];
+};
 
 // Dados mockados para o leaderboard e eventos
 const mockLeaderboard = {
@@ -45,20 +130,22 @@ const mockEvents = {
       id: "1", 
       title: "Wipe Semanal", 
       description: "Reset completo do servidor, incluindo itens, construções e blueprints.", 
-      date: "2023-03-10T12:00:00Z" 
+      date: "2025-03-20T12:00:00Z",
+      image: "/images/events/wipe.jpg"
     },
     { 
       id: "2", 
       title: "Evento PVP Arena", 
       description: "Competição PVP com premiações para os melhores jogadores. Local: Monument X.", 
-      date: "2023-03-12T18:00:00Z",
-      image: "https://cdn.discordapp.com/attachments/1088543257835413549/1214690097329176746/pvpeventmarch.png"
+      date: "2025-03-22T18:00:00Z",
+      image: "/images/events/pvp.jpg"
     },
     { 
       id: "3", 
       title: "Raid Boss Challenge", 
       description: "Derrote o boss e ganhe recompensas exclusivas!", 
-      date: "2023-03-15T20:00:00Z" 
+      date: "2025-03-25T20:00:00Z",
+      image: "/images/events/boss.jpg"
     }
   ]
 };
@@ -75,55 +162,63 @@ export default async function handler(req, res) {
   }
   
   try {
-    // Encontrar o servidor pelo ID
-    const serverData = servers.find(s => s.id === id);
+    // Get the cached server details
+    const serverData = serversDetails[id];
     
     if (!serverData) {
       return res.status(404).json({ error: 'Server not found' });
     }
     
-    let updatedServer = { ...serverData };
+    let updatedServer = JSON.parse(JSON.stringify(serverData));
     
-    // Buscar dados atualizados do BattleMetrics para servidores Rust
+    // Update data from BattleMetrics for Rust servers
     if (serverData.game === 'rust') {
       try {
+        console.log(`Fetching BattleMetrics data for server ${id}`);
         const response = await fetch(`https://api.battlemetrics.com/servers/${id}`);
         
         if (response.ok) {
           const data = await response.json();
           
           if (data && data.data) {
+            console.log(`Successfully fetched BattleMetrics data for server ${id}`);
             const serverInfo = data.data;
             const attributes = serverInfo.attributes;
             const details = attributes.details || {};
             
-            // O PROBLEMA ESTAVA AQUI: Não preservava a descrição original
-            // Atualização: Mantém todos os dados originais e atualiza apenas os específicos da API
-            updatedServer = {
-              ...serverData, // Preserva todos os dados originais (incluindo description)
-              status: attributes.status || serverData.status || 'unknown',
-              players: attributes.players || serverData.players || 0,
-              maxPlayers: attributes.maxPlayers || serverData.maxPlayers || 100,
-              address: `${attributes.ip}:${attributes.port}` || serverData.address || 'Unknown',
-              map: details.map || serverData.map || 'Unknown',
-              // seed e worldSize não são atualizados da API
-              lastWipe: details.rust_last_wipe || serverData.lastWipe
-            };
+            // Update server with live data from BattleMetrics
+            updatedServer.status = attributes.status || updatedServer.status;
+            updatedServer.players = attributes.players || 0;
+            updatedServer.maxPlayers = attributes.maxPlayers || updatedServer.maxPlayers;
+            updatedServer.address = `${attributes.ip}:${attributes.port}` || updatedServer.address;
+            updatedServer.map = details.map || updatedServer.map;
+            updatedServer.seed = details.rust_seed || updatedServer.seed;
+            updatedServer.worldSize = details.rust_world_size || updatedServer.worldSize;
+            updatedServer.lastWipe = details.rust_last_wipe || updatedServer.lastWipe;
             
-            // Log para debug
-            console.log(`Servidor Rust atualizado - Preservando descrição: "${updatedServer.description}"`);
+            // Log values for debugging
+            console.log("Updated server data:", {
+              status: updatedServer.status,
+              players: updatedServer.players,
+              map: updatedServer.map,
+              seed: updatedServer.seed
+            });
+          } else {
+            console.warn(`Invalid data structure from BattleMetrics for server ${id}`);
           }
+        } else {
+          console.warn(`BattleMetrics API returned status ${response.status} for server ${id}`);
         }
       } catch (error) {
         console.error(`Error fetching BattleMetrics data for server ${id}:`, error);
-        // Continua com os dados existentes em caso de erro
       }
     }
     
-    // Buscar leaderboard e eventos (dados mockados por enquanto)
+    // Get leaderboard and events data
     const leaderboard = mockLeaderboard[id] || [];
     const events = mockEvents[id] || [];
     
+    // Return complete server data
     return res.status(200).json({
       server: updatedServer,
       leaderboard,

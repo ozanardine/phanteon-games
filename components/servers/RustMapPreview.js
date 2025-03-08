@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { FiMap, FiAlertCircle, FiLoader, FiExternalLink } from 'react-icons/fi';
+import { FiMap, FiAlertCircle, FiLoader, FiExternalLink, FiZoomIn, FiSearch } from 'react-icons/fi';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 
-// Define the missing fixedMapUrls object with known seed-to-URL mappings
+// Define the fixed map URLs object with known seed-to-URL mappings
 const fixedMapUrls = {
   // Format: 'seedNumber': 'URL to map image'
-  '1708110947': 'https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png'
+  '1708110947': 'https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png',
+  '1708110948': 'https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png',
+  '1708110949': 'https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png'
   // Add more seed mappings as needed
 };
 
@@ -15,10 +17,11 @@ const RustMapPreview = ({ seed, worldSize }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_RUSTMAPS_API_KEY;
 
   useEffect(() => {
-    // Apenas carregue se tivermos seed e worldSize
+    // Only load if we have seed and worldSize
     if (seed && worldSize) {
       // Use fixed map URL for known seeds
       if (fixedMapUrls[seed]) {
@@ -79,6 +82,10 @@ const RustMapPreview = ({ seed, worldSize }) => {
     }
   };
 
+  const toggleZoom = () => {
+    setIsZoomed(prev => !prev);
+  };
+
   if (!seed || !worldSize) {
     return (
       <Card variant="darker" className="p-4 text-center text-gray-400">
@@ -102,18 +109,13 @@ const RustMapPreview = ({ seed, worldSize }) => {
         </div>
       </div>
 
-      <div className="relative bg-dark-300 rounded-lg overflow-hidden border border-dark-200">
+      <div className="relative bg-dark-300 rounded-lg overflow-hidden border border-dark-200 group">
         {isLoading && !imageLoaded ? (
           <div className="flex flex-col items-center justify-center h-64">
             <FiLoader className="text-primary text-3xl animate-spin mb-2" />
             <p className="text-gray-300">
               Carregando pré-visualização...
             </p>
-            {mapUrl && (
-              <p className="text-xs text-gray-400 mt-2">
-                URL: {mapUrl.substring(0, 50)}...
-              </p>
-            )}
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-64">
@@ -123,7 +125,7 @@ const RustMapPreview = ({ seed, worldSize }) => {
               href={`https://rustmaps.com/map/${worldSize}/${seed}`} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="px-4 py-2 bg-primary text-white rounded hover:bg-primary-600 transition-colors flex items-center"
+              className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition-colors flex items-center"
             >
               <FiExternalLink className="mr-2" /> Ver no RustMaps.com
             </a>
@@ -131,7 +133,7 @@ const RustMapPreview = ({ seed, worldSize }) => {
         ) : (
           <>
             {mapUrl && (
-              <div className="aspect-w-16 aspect-h-9 relative">
+              <div className={`relative overflow-hidden ${isZoomed ? 'h-[600px]' : 'aspect-w-16 aspect-h-9'} transition-all duration-300`}>
                 {!imageLoaded && (
                   <div className="absolute inset-0 flex items-center justify-center bg-dark-300">
                     <FiLoader className="text-primary text-3xl animate-spin" />
@@ -140,24 +142,34 @@ const RustMapPreview = ({ seed, worldSize }) => {
                 <img 
                   src={mapUrl} 
                   alt={`Mapa do servidor com seed ${seed}`}
-                  className={`object-cover w-full h-full ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  className={`object-contain w-full h-full ${imageLoaded ? 'opacity-100' : 'opacity-0'} ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'} transition-all duration-300`}
                   onLoad={() => {
                     setImageLoaded(true);
                     setIsLoading(false);
                   }}
                   onError={handleImageError}
+                  onClick={toggleZoom}
                   style={{ transition: 'opacity 0.3s ease' }}
                 />
+                
+                {/* Zoom button overlay */}
+                <button 
+                  onClick={toggleZoom}
+                  className="absolute top-3 right-3 bg-dark-400/60 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm hover:bg-dark-300"
+                >
+                  {isZoomed ? <FiZoomIn className="rotate-45" /> : <FiZoomIn />}
+                </button>
               </div>
             )}
             {imageLoaded && (
-              <div className="absolute bottom-2 right-2">
+              <div className="absolute bottom-3 right-3 z-10">
                 <a 
                   href={`https://rustmaps.com/map/${worldSize}/${seed}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-xs bg-dark-100/80 hover:bg-dark-100 py-1 px-2 rounded text-primary hover:text-white transition-colors duration-200"
+                  className="text-xs bg-dark-300/80 hover:bg-dark-300 py-1.5 px-3 rounded text-primary hover:text-white transition-colors duration-200 backdrop-blur-sm flex items-center"
                 >
+                  <FiExternalLink className="mr-1.5" />
                   Ver no RustMaps.com
                 </a>
               </div>
@@ -166,12 +178,25 @@ const RustMapPreview = ({ seed, worldSize }) => {
         )}
       </div>
       
-      <p className="mt-2 text-xs text-gray-400">
-        Pré-visualização fornecida por RustMaps.com
-        {!apiKey && (
-          <span className="text-amber-400 ml-2">(API Key não configurada)</span>
+      <div className="mt-2 flex justify-between items-center">
+        <p className="text-xs text-gray-400">
+          Pré-visualização fornecida por RustMaps.com
+          {!apiKey && (
+            <span className="text-amber-400 ml-2">(API Key não configurada)</span>
+          )}
+        </p>
+        
+        {imageLoaded && (
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={toggleZoom}
+            className="text-gray-400 hover:text-primary"
+          >
+            {isZoomed ? 'Reduzir mapa' : 'Expandir mapa'}
+          </Button>
         )}
-      </p>
+      </div>
     </Card>
   );
 };
