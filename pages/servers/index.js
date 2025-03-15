@@ -114,8 +114,8 @@ export default function ServersPage() {
                   size="lg"
                   href="/planos"
                   className="group"
+                  icon={<FiShield />}
                 >
-                  <FiShield className="mr-2" />
                   Ver Planos VIP
                 </Button>
                 <Button
@@ -124,8 +124,8 @@ export default function ServersPage() {
                   href="https://discord.gg/v8575VMgPW"
                   target="_blank"
                   rel="noopener noreferrer"
+                  icon={<FiUsers />}
                 >
-                  <FiUsers className="mr-2" />
                   Comunidade
                 </Button>
               </div>
@@ -309,6 +309,7 @@ export default function ServersPage() {
                     variant="primary"
                     size="lg"
                     href="/planos"
+                    icon={<FiShield />}
                   >
                     Ver Planos VIP
                   </Button>
@@ -318,6 +319,7 @@ export default function ServersPage() {
                     href="https://discord.gg/v8575VMgPW"
                     target="_blank"
                     rel="noopener noreferrer"
+                    icon={<FiUsers />}
                   >
                     Entrar no Discord
                   </Button>
