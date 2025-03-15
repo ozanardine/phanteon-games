@@ -95,6 +95,54 @@ export const generateBenefitsList = (planId) => {
   return planType === 'plus' ? plusBenefits : basicBenefits;
 };
 
+/**
+ * Gera a lista de itens resgatáveis com base no ID do plano
+ */
+export const generateItemsList = (planId) => {
+  // VIP Básico
+  const basicItems = [
+    { shortName: 'hatchet', amount: 1, name: 'Machado' },
+    { shortName: 'pickaxe', amount: 1, name: 'Picareta' },
+    { shortName: 'wood', amount: 5000, name: 'Madeira' },
+    { shortName: 'stones', amount: 5000, name: 'Pedras' },
+    { shortName: 'smallbackpack', amount: 1, name: 'Mochila Pequena' },
+    { shortName: 'lowgradefuel', amount: 100, name: 'Combustível' },
+    { shortName: 'furnace', amount: 1, name: 'Fornalha' },
+    { shortName: 'bearmeat.cooked', amount: 10, name: 'Carne de Urso Cozida' },
+    { shortName: 'woodtea.advanced', amount: 5, name: 'Chá de Madeira Avançado' },
+    { shortName: 'oretea.advanced', amount: 5, name: 'Chá de Minério Avançado' },
+    { shortName: 'scraptea.advanced', amount: 3, name: 'Chá de Sucata Avançado' }
+  ];
+  
+  // VIP Plus (inclui itens diferentes e melhores)
+  const plusItems = [
+    { shortName: 'largebackpack', amount: 1, name: 'Mochila Grande' },
+    { shortName: 'lowgradefuel', amount: 200, name: 'Combustível' },
+    { shortName: 'jackhammer', amount: 1, name: 'Britadeira' },
+    { shortName: 'wood', amount: 15000, name: 'Madeira' },
+    { shortName: 'stones', amount: 15000, name: 'Pedras' },
+    { shortName: 'metal.fragments', amount: 1000, name: 'Fragmentos de Metal' },
+    { shortName: 'lock.code', amount: 2, name: 'Cadeado com Código' },
+    { shortName: 'syringe.medical', amount: 2, name: 'Seringa Médica' },
+    { shortName: 'woodtea.advanced', amount: 10, name: 'Chá de Madeira Avançado' },
+    { shortName: 'oretea.advanced', amount: 10, name: 'Chá de Minério Avançado' },
+    { shortName: 'scraptea.advanced', amount: 6, name: 'Chá de Sucata Avançado' },
+    { shortName: 'pumpkin', amount: 15, name: 'Abóbora' }
+  ];
+  
+  // Mapeamento de UUIDs para identificadores de planos
+  const planIdToType = {
+    '0b81cf06-ed81-49ce-8680-8f9d9edc932e': 'basic', // VIP Basic
+    '3994ff53-f110-4c8f-a492-ad988528006f': 'plus',  // VIP Plus
+    'vip-basic': 'basic',
+    'vip-plus': 'plus'
+  };
+  
+  const planType = planIdToType[planId] || 'basic';
+  
+  return planType === 'plus' ? plusItems : basicItems;
+};
+
 // Componentes de ícones SVG
 export const FaCheck = ({ className }) => {
   return (

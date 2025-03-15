@@ -1,9 +1,9 @@
 // components/profile/tabs/VipManagementTab.js
 import React, { useMemo } from 'react';
-import { FaCrown, FaClock, FaChevronRight, FaArrowUp, FaHistory, FaInfoCircle, FaShieldAlt } from 'react-icons/fa';
+import { FaCrown, FaClock, FaChevronRight, FaArrowUp, FaHistory, FaInfoCircle, FaShieldAlt, FaGift } from 'react-icons/fa';
 import Card from '../../ui/Card';
 import Button from '../../ui/Button';
-import { formatDate, calculateTimeUntilExpiration, generateBenefitsList, FaCheck } from '../utils';
+import { formatDate, calculateTimeUntilExpiration, generateBenefitsList, generateItemsList, FaCheck } from '../utils';
 
 const VipManagementTab = ({ subscriptionData, subscriptionHistory = [], onRenew, onUpgrade }) => {
   const hasActiveSubscription = subscriptionData && subscriptionData.status === 'active';
@@ -158,6 +158,41 @@ const VipManagementTab = ({ subscriptionData, subscriptionHistory = [], onRenew,
                   do jogo para ver todas as opções disponíveis para o seu plano.
                 </p>
               </div>
+            </div>
+          </Card.Body>
+        </Card>
+      )}
+
+      {/* Itens Resgatáveis */}
+      {hasActiveSubscription && (
+        <Card>
+          <Card.Header>
+            <Card.Title className="flex items-center">
+              <FaGift className="text-primary mr-2" />
+              Itens que você receberá ao usar /resgatar
+            </Card.Title>
+          </Card.Header>
+          <Card.Body>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {generateItemsList(subscriptionData.plan_id).map((item, index) => (
+                <div key={index} className="flex items-center p-3 bg-dark-400/30 rounded-lg">
+                  <div className="w-10 h-10 mr-3 flex-shrink-0">
+                    <img 
+                      src={`https://cdn.rusthelp.com/images/source/${item.shortName}.png`} 
+                      alt={item.name}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/images/items/placeholder.png';
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-white font-medium">{item.name}</div>
+                    <div className="text-gray-400 text-sm">Quantidade: {item.amount}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </Card.Body>
         </Card>
