@@ -1,3 +1,4 @@
+// pages/perfil.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
@@ -8,7 +9,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import SubscriptionStatus from '../components/subscriptions/SubscriptionStatus';
 import Modal from '../components/ui/Modal';
-import { FaDiscord, FaSteam, FaUser, FaHistory } from 'react-icons/fa';
+import { FaDiscord, FaSteam, FaUser, FaHistory, FiClock, FiCalendar, FiGift, FiPackage, FiChevronRight } from 'react-icons/fa';
 import { getUserByDiscordId, getUserSubscription, supabase } from '../lib/supabase';
 import { requireAuth, syncUserData } from '../lib/auth';
 
@@ -34,6 +35,234 @@ const validateSteamId = (steamId) => {
 // ==========================================
 // MODULAR COMPONENTS - Separated for better maintainability
 // ==========================================
+
+// Novo componente para exibir recompensas diárias
+const DailyRewards = () => {
+  const [rewardsData, setRewardsData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [claimingDay, setClaimingDay] = useState(null);
+
+  useEffect(() => {
+    fetchDailyRewards();
+  }, []);
+
+  const fetchDailyRewards = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/rewards/daily');
+      
+      if (!response.ok) {
+        throw new Error(`Erro (${response.status}): ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      setRewardsData(data);
+      setError(null);
+    } catch (err) {
+      console.error('Erro ao buscar recompensas diárias:', err);
+      setError(err.message || 'Falha ao buscar recompensas');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClaimReward = async (day) => {
+    if (claimingDay) return; // Evitar cliques duplos
+    
+    try {
+      setClaimingDay(day);
+      const response = await fetch('/api/rewards/claim', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ day }),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || `Erro ao reivindicar recompensa (${response.status})`);
+      }
+      
+      const data = await response.json();
+      
+      // Atualizar os dados locais
+      setRewardsData(prevData => ({
+        ...prevData,
+        status: data.status,
+        rewards: data.rewards,
+      }));
+      
+      // Exibir mensagem de sucesso
+      toast.success(`Recompensas do dia ${day} reivindicadas com sucesso!`);
+      
+      // Atualizar para ver recompensas pendentes
+      fetchDailyRewards();
+    } catch (err) {
+      console.error('Erro ao reivindicar recompensa:', err);
+      toast.error(err.message || 'Falha ao reivindicar recompensa');
+    } finally {
+      setClaimingDay(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <Card.Body>
+          <div className="flex justify-center py-6">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <Card.Header>
+          <Card.Title>Recompensas Diárias</Card.Title>
+        </Card.Header>
+        <Card.Body>
+          <p className="text-center text-red-400">{error}</p>
+          <Button 
+            variant="primary" 
+            onClick={fetchDailyRewards} 
+            className="mt-4 mx-auto block"
+          >
+            Tentar Novamente
+          </Button>
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  if (!rewardsData || !rewardsData.rewards) {
+    return (
+      <Card>
+        <Card.Header>
+          <Card.Title>Recompensas Diárias</Card.Title>
+        </Card.Header>
+        <Card.Body>
+          <p className="text-center text-gray-400">Nenhuma recompensa disponível no momento.</p>
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mt-8">
+      <Card.Header>
+        <Card.Title>Recompensas Diárias</Card.Title>
+      </Card.Header>
+      <Card.Body>
+        {/* Status do jogador */}
+        <div className="mb-6 bg-dark-400/50 p-4 rounded-lg border border-dark-300">
+          <div className="flex justify-between items-center mb-2">
+            <div>
+              <h4 className="text-white font-medium">Progresso Diário</h4>
+              <p className="text-gray-400 text-sm">
+                Dias consecutivos: <span className="text-primary font-bold">{rewardsData.status.consecutive_days}</span>
+              </p>
+            </div>
+            {rewardsData.status.vip_status !== 'none' && (
+              <div className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-medium">
+                Status VIP: {rewardsData.status.vip_status}
+              </div>
+            )}
+          </div>
+          <div className="bg-dark-300 h-2 rounded-full mt-2">
+            <div 
+              className="bg-primary h-2 rounded-full" 
+              style={{ width: `${(rewardsData.status.consecutive_days / 7) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Visualização das recompensas */}
+        <div className="grid grid-cols-7 gap-2">
+          {rewardsData.rewards.map((reward, idx) => (
+            <div 
+              key={idx} 
+              className={`relative border rounded-lg overflow-hidden ${
+                reward.claimed 
+                  ? 'border-green-500 bg-green-500/10' 
+                  : reward.available 
+                  ? 'border-primary bg-primary/10 animate-pulse' 
+                  : 'border-dark-300 bg-dark-400/50'
+              }`}
+            >
+              <div className="p-3 text-center">
+                <div className="text-white font-medium mb-1">Dia {reward.day}</div>
+                <div className="space-y-2">
+                  {reward.items.map((item, itemIdx) => (
+                    <div 
+                      key={itemIdx}
+                      className={`text-sm ${item.isVip ? 'text-primary' : 'text-gray-300'}`}
+                    >
+                      {item.name} x{item.amount}
+                    </div>
+                  ))}
+                </div>
+                
+                {reward.available && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleClaimReward(reward.day)}
+                    className="w-full mt-4"
+                    loading={claimingDay === reward.day}
+                    disabled={claimingDay !== null}
+                  >
+                    Resgatar
+                  </Button>
+                )}
+                
+                {reward.claimed && (
+                  <div className="mt-4 text-green-500 font-medium text-sm">
+                    Resgatado ✓
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Histórico de recompensas */}
+        {rewardsData.history && rewardsData.history.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-white font-medium mb-3">Histórico de Recompensas</h4>
+            <div className="bg-dark-400/50 p-3 rounded-lg border border-dark-300 max-h-40 overflow-y-auto">
+              {rewardsData.history.map((reward, idx) => (
+                <div key={idx} className="flex justify-between py-2 border-b border-dark-300 last:border-0">
+                  <div className="text-gray-300">
+                    {reward.reward_item} x{reward.reward_amount}
+                    <span className="text-xs ml-2 text-gray-400">Dia {reward.day}</span>
+                  </div>
+                  <div className="text-gray-400 text-sm">
+                    {new Date(reward.claimed_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Recompensas pendentes */}
+        <div className="mt-6 text-center p-3 bg-dark-400/70 rounded-lg border border-dark-300">
+          <p className="text-gray-300 text-sm">
+            Entre no servidor para receber suas recompensas pendentes. Use o comando:
+          </p>
+          <div className="bg-dark-300 p-2 mt-2 rounded font-mono text-primary text-sm">
+            /recompensas
+          </div>
+        </div>
+      </Card.Body>
+    </Card>
+  );
+};
 
 // User Profile Card Component
 const UserProfileCard = ({ userData, session, steamId, onEditSteamId, onViewHistory }) => {
@@ -223,12 +452,12 @@ const SteamIdModal = ({ isOpen, onClose, steamId, setSteamId, onSave, loading, i
             <div>
               <p className="text-gray-300 text-sm">
                 Para encontrar seu Steam ID, acesse{' '}
-                <a
+                
                   href="https://steamid.io/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary hover:underline font-medium"
-                >
+                <a>
                   steamid.io
                 </a>{' '}
                 e insira o link do seu perfil.
@@ -521,6 +750,9 @@ export default function PerfilPage({ userData, subscriptionData, errorMessage, n
 
             {/* Instruções para VIP - Componentizado */}
             {hasActiveSubscription && <VipInstructions />}
+            
+            {/* Adicionar seção de recompensas diárias */}
+            {userData?.steam_id && <DailyRewards />}
           </div>
         </div>
       </div>

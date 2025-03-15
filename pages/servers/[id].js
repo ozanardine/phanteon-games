@@ -47,25 +47,34 @@ export default function ServerDetailPage() {
     
     try {
       setIsLoading(true);
-      // Add timestamp to prevent caching
+      // Adicionar timestamp para evitar cache
       const response = await fetch(`/api/servers/${id}?t=${Date.now()}`);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch server details (Status: ${response.status})`);
+        throw new Error(`Falha ao buscar detalhes do servidor (Status: ${response.status})`);
       }
       
       const data = await response.json();
       
-      // Preserve description from previous data if missing in the new data
+      // Validar estrutura dos dados
+      if (!data.server) {
+        throw new Error('Estrutura de dados inválida: server não encontrado na resposta');
+      }
+      
+      // Preservar description do servidor anterior se estiver faltando
       if (data.server && !data.server.description && serverData?.server?.description) {
         data.server.description = serverData.server.description;
       }
+      
+      // Garantir que leaderboard e events sejam arrays
+      data.leaderboard = Array.isArray(data.leaderboard) ? data.leaderboard : [];
+      data.events = Array.isArray(data.events) ? data.events : [];
       
       setServerData(data);
       setError(null);
     } catch (err) {
       console.error('Error fetching server details:', err);
-      setError(err.message || 'Failed to fetch server details');
+      setError(err.message || 'Falha ao buscar detalhes do servidor');
     } finally {
       setIsLoading(false);
       setRefreshing(false);

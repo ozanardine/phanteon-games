@@ -35,18 +35,26 @@ export default function ServersPage() {
         ? '/api/servers' 
         : `/api/servers?game=${activeTab}`;
       
-      const response = await fetch(endpoint);
+      const response = await fetch(`${endpoint}${refreshing ? `&t=${Date.now()}` : ''}`);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch server data');
+        throw new Error(`Erro ao buscar dados (${response.status}): ${response.statusText}`);
       }
       
       const data = await response.json();
-      setServers(data);
+      
+      // Verificar se o retorno é uma array
+      if (!Array.isArray(data)) {
+        console.warn('Resposta da API não é um array:', data);
+        setServers(data.servers || []);
+      } else {
+        setServers(data);
+      }
+      
       setError(null);
     } catch (err) {
       console.error('Error fetching server data:', err);
-      setError(err.message || 'Failed to fetch server data');
+      setError(err.message || 'Falha ao buscar dados dos servidores');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
