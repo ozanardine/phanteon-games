@@ -1,10 +1,9 @@
 // components/profile/tabs/DailyRewardsTab.js
 import React, { useState, useEffect } from 'react';
-import { FaGift, FaHistory, FaExclamationTriangle } from 'react-icons/fa';
+import { FaGift, FaHistory, FaExclamationTriangle, FaInbox, FaClipboard } from 'react-icons/fa';
 import Card from '../../ui/Card';
 import Button from '../../ui/Button';
 import LoadingSpinner from '../../ui/LoadingSpinner';
-import { FaInbox, FaClipboard } from '../utils';
 import { toast } from 'react-hot-toast';
 
 const DailyRewardsTab = ({ userData, onEditSteamId }) => {

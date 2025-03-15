@@ -226,13 +226,13 @@ const SubscriptionStatus = ({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {items.map((item, index) => (
                   <div key={index} className="flex items-center p-3 bg-dark-400/30 rounded-lg">
-                    <div className="relative" style={{ width: 36, height: 36 }}>
-                      <img
+                    <div className="relative mr-3" style={{ width: 36, height: 36 }}>
+                      <Image
                         src={`https://cdn.rusthelp.com/images/source/${formatItemShortName(item.shortName)}.png`}
                         alt={`Item: ${item.name}`}
                         width={36}
                         height={36}
-                        className="object-contain mr-3"
+                        className="object-contain"
                         onError={(e) => {
                           e.target.onerror = null;
                           e.target.src = '/images/items/placeholder.png';

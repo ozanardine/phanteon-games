@@ -1,9 +1,9 @@
 // components/profile/tabs/VipManagementTab.js
 import React, { useMemo } from 'react';
-import { FaCrown, FaClock, FaChevronRight, FaArrowUp, FaHistory, FaInfoCircle, FaShieldAlt, FaGift } from 'react-icons/fa';
+import { FaCrown, FaClock, FaChevronRight, FaArrowUp, FaHistory, FaInfoCircle, FaShieldAlt, FaGift, FaCheck } from 'react-icons/fa';
 import Card from '../../ui/Card';
 import Button from '../../ui/Button';
-import { formatDate, calculateTimeUntilExpiration, generateBenefitsList, generateItemsList, FaCheck } from '../utils';
+import { formatDate, calculateTimeUntilExpiration, generateBenefitsList, generateItemsList } from '../utils';
 import { formatItemShortName } from '../utils/formatters';
 
 const VipManagementTab = ({ subscriptionData, subscriptionHistory = [], onRenew, onUpgrade }) => {
