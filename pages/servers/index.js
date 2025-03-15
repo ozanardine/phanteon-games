@@ -70,6 +70,7 @@ export default function ServersPage() {
 
   const fetchCommunityStats = async () => {
     try {
+      setStatsLoading(true);
       const response = await fetch('/api/community-stats');
       
       if (!response.ok) {

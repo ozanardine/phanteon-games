@@ -15,26 +15,38 @@ export default async function handler(req, res) {
       vipSubscriptions: 0
     };
 
-    // 1. Contar jogadores registrados
-    const { count: playersCount, error: playersError } = await supabaseAdmin
-      .from('players')
+    // 1. Contar jogadores registrados (usuários do sistema)
+    const { count: usersCount, error: usersError } = await supabaseAdmin
+      .from('users')
       .select('*', { count: 'exact', head: true });
 
-    if (playersError) throw playersError;
-    stats.registeredPlayers = playersCount || 0;
+    if (usersError) throw usersError;
+    stats.registeredPlayers = usersCount || 0;
 
-    // 2. Contar servidores ativos
-    const { data: servers, error: serversError } = await supabaseAdmin
-      .from('servers')
-      .select('status');
+    // 2. Contar servidores ativos a partir da tabela server_stats
+    const { data: serverStats, error: serversError } = await supabaseAdmin
+      .from('server_stats')
+      .select('server_id, status')
+      .order('timestamp', { ascending: false });
 
     if (serversError) throw serversError;
-    stats.activeServers = servers?.filter(server => server.status === 'online').length || 0;
+    
+    // Agrupar por server_id para ter apenas o registro mais recente de cada servidor
+    const uniqueServers = {};
+    serverStats?.forEach(stat => {
+      if (!uniqueServers[stat.server_id]) {
+        uniqueServers[stat.server_id] = stat;
+      }
+    });
+    
+    // Contar servidores com status 'online'
+    stats.activeServers = Object.values(uniqueServers).filter(server => server.status === 'online').length || 0;
 
-    // 3. Contar eventos realizados
+    // 3. Contar eventos realizados (eventos com status 'completed')
     const { count: eventsCount, error: eventsError } = await supabaseAdmin
       .from('server_events')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'completed');
 
     if (eventsError) throw eventsError;
     stats.completedEvents = eventsCount || 0;
