@@ -51,7 +51,7 @@ export function ServerCard({
         <div className="absolute top-4 right-4 z-10">
           <Card.Badge 
             variant={status === 'online' ? 'success' : 'danger'}
-            className="h-6 flex items-center justify-center"
+            className="h-6 flex items-center justify-center min-w-[60px] text-center"
           >
             {status === 'online' ? 'Online' : 'Offline'}
           </Card.Badge>
