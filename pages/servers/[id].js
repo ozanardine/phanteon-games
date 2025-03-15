@@ -600,53 +600,103 @@ export default function ServerDetailPage() {
               {/* Events Tab Panel */}
               {activeTab === 'events' && (
                 <div className="p-6">
-                  <div className="mb-6 flex items-center">
+                  <div className="mb-6 flex items-center justify-between">
                     <h3 className="text-xl font-semibold text-white flex items-center">
                       <FiCalendar className="text-primary mr-3" />
-                      Próximos Eventos
+                      Eventos do Servidor
                     </h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleRefresh}
+                      disabled={refreshing}
+                      icon={<FiRefreshCw className={refreshing ? "animate-spin" : ""} />}
+                    >
+                      {refreshing ? "Atualizando..." : "Atualizar"}
+                    </Button>
                   </div>
                   
                   {!events || events.length === 0 ? (
                     <div className="bg-dark-400 rounded-lg p-8 text-center">
-                      <p className="text-gray-300">Nenhum evento programado no momento.</p>
-                      <p className="text-gray-400 text-sm mt-2">Fique de olho no nosso Discord para anúncios de eventos.</p>
+                      <p className="text-gray-300">Nenhum evento detectado no momento.</p>
+                      <p className="text-gray-400 text-sm mt-2">Os eventos são atualizados automaticamente quando ocorrem no servidor.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {events.map(event => (
-                        <Card key={event.id} variant="darker" padding="none" className="overflow-hidden border border-dark-200 hover:border-primary/30 transition-all duration-300">
-                          {event.image && (
-                            <div className="h-48 overflow-hidden">
-                              <Image 
-                                src={event.image} 
-                                alt={event.title}
-                                width={500}
-                                height={300}
-                                className="w-full h-full object-cover" 
-                              />
-                            </div>
-                          )}
-                          
-                          <div className="p-5">
-                            <h4 className="text-lg font-semibold text-white mb-2">{event.title}</h4>
-                            
-                            <div className="flex items-center text-primary mb-3">
-                              <FiCalendar className="mr-2" />
-                              <span>{formatDateTime(event.date)}</span>
-                            </div>
-                            
-                            <p className="text-gray-300 mb-3">{event.description}</p>
-                            
-                            {event.location && (
-                              <div className="flex items-center text-gray-400 text-sm">
-                                <FiMap className="mr-2" />
-                                <span>{event.location}</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {events.map(event => {
+                        // Determinar se o evento está ativo com base no timestamp
+                        // Consideramos eventos das últimas 2 horas como ativos
+                        const eventTime = new Date(event.date);
+                        const now = new Date();
+                        const timeDiff = now - eventTime; // diferença em milissegundos
+                        const isActive = timeDiff < 7200000; // 2 horas em milissegundos
+                        
+                        // Determinar ícone com base no tipo de evento
+                        let EventIcon = FiCalendar;
+                        if (event.eventType === 'helicopter') EventIcon = FiServer;
+                        if (event.eventType === 'bradley') EventIcon = FiServer;
+                        if (event.eventType === 'cargo_ship') EventIcon = FiServer;
+                        if (event.eventType === 'raid') EventIcon = FiAlertTriangle;
+                        if (event.eventType === 'server_wipe') EventIcon = FiRefreshCw;
+                        if (event.eventType === 'server_restart') EventIcon = FiRefreshCw;
+                        if (event.eventType === 'server_update') EventIcon = FiServer;
+                        
+                        return (
+                          <Card 
+                            key={event.id} 
+                            variant="darker" 
+                            className={`overflow-hidden border ${isActive ? 'border-primary' : 'border-dark-200'} hover:border-primary/70 transition-all duration-300`}
+                          >
+                            <div className="p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                  <h4 className="text-lg font-semibold text-white">{event.title}</h4>
+                                  <div className="flex items-center text-gray-400 text-sm mt-1">
+                                    <FiClock className="mr-1" />
+                                    <span>{formatDateTime(event.date)}</span>
+                                  </div>
+                                </div>
+                                <div className={`p-2 rounded-full ${isActive ? 'bg-primary/20' : 'bg-dark-300'}`}>
+                                  <EventIcon className={`text-xl ${isActive ? 'text-primary' : 'text-gray-400'}`} />
+                                </div>
                               </div>
-                            )}
-                          </div>
-                        </Card>
-                      ))}
+                              
+                              <Card.Divider className="my-3" />
+                              
+                              <p className="text-gray-300 text-sm mb-3">{event.description}</p>
+                              
+                              <div className="flex items-center justify-between">
+                                {event.location && (
+                                  <div className="flex items-center text-gray-400 text-sm">
+                                    <FiMap className="mr-1" />
+                                    <span>{event.location}</span>
+                                  </div>
+                                )}
+                                
+                                <Card.Badge 
+                                  variant={isActive ? 'success' : 'primary'}
+                                  className="ml-auto"
+                                >
+                                  {isActive ? 'Ativo' : 'Concluído'}
+                                </Card.Badge>
+                              </div>
+                              
+                              {isActive && event.eventType !== 'server_wipe' && event.eventType !== 'server_restart' && event.eventType !== 'server_update' && (
+                                <div className="mt-4">
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    fullWidth
+                                    onClick={() => copyToClipboard(server.connectCommand)}
+                                  >
+                                    Entrar no Servidor
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

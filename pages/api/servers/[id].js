@@ -29,13 +29,13 @@ export default async function handler(req, res) {
       .order('kills', { ascending: false })
       .limit(15);
 
-    // 3. Buscar eventos do servidor
+    // 3. Buscar eventos do servidor (recentes e agendados)
     const { data: eventsData, error: eventsError } = await supabaseAdmin
       .from('server_events')
       .select('*')
       .eq('server_id', id)
       .order('timestamp', { ascending: false })
-      .limit(5);
+      .limit(10);
 
     // Se não temos dados do Supabase, tentar BattleMetrics + dados mockados
     if (serverError || !serverStats) {
@@ -90,13 +90,48 @@ export default async function handler(req, res) {
       const payload = event.payload || {};
       return {
         id: event.id.toString(),
-        title: payload.title || "Evento do Servidor",
+        title: payload.title || getDefaultTitle(event.event_type),
         description: payload.description || "Detalhes indisponíveis",
         date: event.timestamp || new Date().toISOString(),
-        image: payload.image || "/images/events/wipe.jpg",
-        location: payload.location
+        image: payload.image || getDefaultImage(event.event_type),
+        location: payload.location || "Servidor completo",
+        eventType: event.event_type,
+        status: payload.status || "completed"
       };
     }) || [];
+    
+    // Funções auxiliares para gerar título e imagem padrão com base no tipo de evento
+    function getDefaultTitle(eventType) {
+      const eventTitles = {
+        'server_wipe': 'Wipe do Servidor',
+        'server_restart': 'Reinício do Servidor',
+        'server_update': 'Atualização do Servidor',
+        'raid': 'Raid Detectado',
+        'helicopter': 'Helicóptero Derrubado',
+        'bradley': 'Bradley Destruído',
+        'cargo_ship': 'Navio de Carga',
+        'player_ban': 'Jogador Banido',
+        'player_achievement': 'Conquista Desbloqueada'
+      };
+      
+      return eventTitles[eventType] || 'Evento do Servidor';
+    }
+    
+    function getDefaultImage(eventType) {
+      const eventImages = {
+        'server_wipe': '/images/events/wipe.jpg',
+        'server_restart': '/images/events/restart.jpg',
+        'server_update': '/images/events/update.jpg',
+        'raid': '/images/events/raid.jpg',
+        'helicopter': '/images/events/helicopter.jpg',
+        'bradley': '/images/events/bradley.jpg',
+        'cargo_ship': '/images/events/cargo_ship.jpg',
+        'player_ban': '/images/events/ban.jpg',
+        'player_achievement': '/images/events/achievement.jpg'
+      };
+      
+      return eventImages[eventType] || '/images/events/default.jpg';
+    }
 
     // Retornar dados completos
     return res.status(200).json({
