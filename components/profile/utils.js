@@ -72,12 +72,15 @@ export const generateBenefitsList = (planId) => {
     'Coleta 1.5x de dia e 1.8x de noite'
   ];
   
-  // VIP Plus (inclui todos os benefícios do VIP Básico + extras)
+  // VIP Plus (lista independente, sem repetição direta do Basic)
   const plusBenefits = [
-    ...basicBenefits,
+    'Acesso ao plugin Furnace Splitter',
     'Acesso ao plugin QuickSmelt',
     'Prioridade máxima na fila do servidor',
+    'Acesso a eventos exclusivos para vip (em breve)',
     'Sorteios mensais de skins do jogo (em breve)',
+    'Badge exclusiva no Discord',
+    'Cargo exclusivo no Discord',
     'Acesso a salas exclusivas no Discord',
     'Suporte prioritário',
     'Kit avançado a cada wipe',
