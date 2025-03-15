@@ -9,7 +9,9 @@ export default async function handler(req, res) {
 
   try {
     // Redirecionando para a nova API de servidores
-    const internalRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/servers/${serverId}`);
+    // Construir URL absoluta para evitar erro de parsing
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXTAUTH_URL || 'https://www.phanteongames.com';
+    const internalRes = await fetch(`${baseUrl}/api/servers/${serverId}`);
     
     if (internalRes.ok) {
       const data = await internalRes.json();
