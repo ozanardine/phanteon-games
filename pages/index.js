@@ -567,7 +567,7 @@ export default function Home() {
               variant="outline"
               size="lg"
               href="/planos"
-              className="group inline-flex items-center justify-center"
+              className="group flex items-center justify-center"
             >
               <span>Ver Todos os Planos</span>
               <FaArrowRight className="ml-2 transition-transform group-hover:translate-x-1" />
