@@ -232,13 +232,11 @@ export default function Home() {
   const [serverData, setServerData] = useState(null);
   const [communityStats, setCommunityStats] = useState({
     playerCount: 0,
-    serverCount: 0,
-    plansCount: 0
+    serverCount: 0
   });
   
-  const playerCount = useCounter(communityStats.playerCount || 7, 0, 1500, 200);
-  const serverCount = useCounter(communityStats.serverCount || 1, 0, 1000, 200);
-  const plansCount = useCounter(communityStats.plansCount || 2, 0, 2000, 200);
+  const playerCount = useCounter(communityStats.playerCount || 0, 0, 1500, 200);
+  const serverCount = useCounter(communityStats.serverCount || 0, 0, 1000, 200);
 
   // Buscar dados do servidor e estatísticas da comunidade
   useEffect(() => {
@@ -271,8 +269,8 @@ export default function Home() {
           if (data) {
             setCommunityStats(prev => ({
               ...prev,
-              playerCount: Math.max(data.players * 10, 7), // Estimativa baseada nos jogadores atuais
-              plansCount: Math.floor(Math.random() * 10) + 20 // Valor temporário até termos uma API real
+              playerCount: data.players || 0, // Usar o número real de jogadores
+              serverCount: data.onlineServers || 0 // Usar o número real de servidores online
             }));
           }
         }
@@ -453,20 +451,15 @@ export default function Home() {
       <section id="stats-section" className="py-12 bg-gradient-to-r from-dark-400 to-dark-300 relative">
         <div className="container-custom mx-auto px-4">
           <div className="flex flex-wrap justify-center">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
               <div className="text-center p-6 bg-dark-400/50 rounded-lg border border-dark-200 backdrop-blur-sm">
-                <h2 className="text-4xl font-bold text-primary mb-2">{playerCount.toLocaleString()}+</h2>
+                <h2 className="text-4xl font-bold text-primary mb-2">{playerCount.toLocaleString()}</h2>
                 <p className="text-gray-300">Jogadores Ativos</p>
               </div>
               
               <div className="text-center p-6 bg-dark-400/50 rounded-lg border border-dark-200 backdrop-blur-sm">
                 <h2 className="text-4xl font-bold text-primary mb-2">{serverCount}</h2>
                 <p className="text-gray-300">Servidores Online</p>
-              </div>
-              
-              <div className="text-center p-6 bg-dark-400/50 rounded-lg border border-dark-200 backdrop-blur-sm">
-                <h2 className="text-4xl font-bold text-primary mb-2">{plansCount.toLocaleString()}+</h2>
-                <p className="text-gray-300">Kits Resgatados</p>
               </div>
             </div>
           </div>
@@ -574,9 +567,9 @@ export default function Home() {
               variant="outline"
               size="lg"
               href="/planos"
-              className="group"
+              className="group inline-flex items-center justify-center"
             >
-              Ver Todos os Planos
+              <span>Ver Todos os Planos</span>
               <FaArrowRight className="ml-2 transition-transform group-hover:translate-x-1" />
             </Button>
           </div>
