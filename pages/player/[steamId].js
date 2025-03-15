@@ -5,7 +5,8 @@ import Head from 'next/head';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { FiCrosshair, FaCrosshairs, FaSkull, FiClock, FiCalendar, FiUser, FiArrowLeft } from 'react-icons/all';
+import { FiCrosshair, FiClock, FiCalendar, FiUser, FiArrowLeft } from 'react-icons/fi';
+import { FaCrosshairs, FaSkull } from 'react-icons/fa';
 
 export default function PlayerDetailsPage() {
   const router = useRouter();

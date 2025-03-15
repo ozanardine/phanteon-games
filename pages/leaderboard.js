@@ -6,7 +6,8 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { TabSelector } from '../components/ui/TabSelector';
-import { FiUsers, FiCrosshair, FaSkull, FiClock, FiCalendar, FiSearch } from 'react-icons/all';
+import { FiUsers, FiCrosshair, FiClock, FiCalendar, FiSearch } from 'react-icons/fi';
+import { FaSkull } from 'react-icons/fa';
 
 export default function LeaderboardPage() {
   const router = useRouter();
