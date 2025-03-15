@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Navbar from './Navbar';
 import Footer from './Footer';
 
-const Layout = ({ children, title = 'Phanteon Games - Assinaturas VIP para Rust' }) => {
+const Layout = ({ children, title = 'Phanteon Games' }) => {
   return (
     <>
       <Head>
