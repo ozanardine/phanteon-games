@@ -24,7 +24,7 @@ const Footer = () => {
               <span className="text-xl font-bold text-white">Phanteon Games</span>
             </div>
             <p className="text-gray-400 text-sm mb-4">
-              Servidor Brasileiro de Rust oferecendo a melhor experiência de jogo com planos VIP e benefícios exclusivos.
+              Comunidade gamer Brasileira que se dedica a proporcionar uma experiência de jogo inesquecível.
             </p>
             <div className="flex space-x-4">
               <a 
@@ -105,10 +105,10 @@ const Footer = () => {
                 <span className="text-white">Discord:</span> discord.gg/v8575VMgPW
               </li>
               <li className="text-gray-400">
-                <span className="text-white">Wipe:</span> Primeira quinta do mês
+                <span className="text-white">Wipe:</span> Quinzenal
               </li>
               <li className="text-gray-400">
-                <span className="text-white">Mapa:</span> 4500
+                <span className="text-white">Mapa:</span> 4000
               </li>
             </ul>
           </div>
