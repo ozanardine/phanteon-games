@@ -2,9 +2,9 @@ import React from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { FaCheckCircle, FaTimesCircle, FaClock, FaExclamationCircle, FaGift } from 'react-icons/fa';
-import RustItemIcon from '../ui/RustItemIcon';
 import { formatItemShortName } from '../profile/utils/formatters';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 
 const formatDate = (dateString) => {
   const options = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Sao_Paulo' };
@@ -226,7 +226,19 @@ const SubscriptionStatus = ({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {items.map((item, index) => (
                   <div key={index} className="flex items-center p-3 bg-dark-400/30 rounded-lg">
-                    <RustItemIcon shortName={item.shortName} size={36} className="mr-3" />
+                    <div className="relative" style={{ width: 36, height: 36 }}>
+                      <img
+                        src={`https://cdn.rusthelp.com/images/source/${formatItemShortName(item.shortName)}.png`}
+                        alt={`Item: ${item.name}`}
+                        width={36}
+                        height={36}
+                        className="object-contain mr-3"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '/images/items/placeholder.png';
+                        }}
+                      />
+                    </div>
                     <div className="flex-1">
                       <div className="text-white font-medium">{item.name}</div>
                       <div className="text-gray-400 text-sm">Quantidade: {item.amount}</div>
