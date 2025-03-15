@@ -30,45 +30,7 @@ const AnimatedBackground = () => (
   </div>
 );
 
-// Server status card component
-const ServerStatusCard = ({ name, players, maxPlayers, status }) => (
-  <div className="relative bg-dark-400 rounded-lg overflow-hidden border border-dark-200 shadow-lg hover:shadow-xl transform transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 group">
-    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/50 to-primary"></div>
-    <div className="p-5">
-      <div className="flex justify-between mb-4">
-        <div className="flex items-center">
-          <SiRust className="text-primary mr-2 text-lg" />
-          <h3 className="font-bold text-white">{name}</h3>
-        </div>
-        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-          status === 'online' ? 'bg-green-900/20 text-green-500' : 'bg-red-900/20 text-red-500'
-        }`}>
-          {status === 'online' ? 'Online' : 'Offline'}
-        </span>
-      </div>
-      
-      <div className="space-y-3">
-        <div>
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-gray-400 text-sm">Players</span>
-            <span className="text-white text-sm font-medium">{players}/{maxPlayers}</span>
-          </div>
-          <div className="w-full bg-dark-300 rounded-full h-1.5">
-            <div className="h-1.5 rounded-full bg-primary transition-all duration-500 group-hover:bg-gradient-to-r from-primary to-orange-400" 
-              style={{ width: `${Math.min((players / maxPlayers) * 100, 100)}%` }}></div>
-          </div>
-        </div>
-      </div>
-      
-      <Link 
-        href="/servers" 
-        className="flex items-center justify-center w-full mt-4 py-2 bg-dark-300 rounded text-gray-300 group-hover:text-primary transition-all hover:bg-dark-200"
-      >
-        Ver detalhes <FaChevronRight className="ml-1 text-xs transition-transform group-hover:translate-x-1" />
-      </Link>
-    </div>
-  </div>
-);
+
 
 // Testimonial component
 const Testimonial = ({ name, text, avatar }) => (
@@ -222,7 +184,6 @@ export default function Home() {
   const { data: session } = useSession();
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [serverData, setServerData] = useState(null);
   const [communityStats, setCommunityStats] = useState({
     playerCount: 0,
     serverCount: 0
@@ -231,27 +192,8 @@ export default function Home() {
   const playerCount = useCounter(communityStats.playerCount || 0, 0, 1500, 200);
   const serverCount = useCounter(communityStats.serverCount || 0, 0, 1000, 200);
 
-  // Buscar dados do servidor e estatísticas da comunidade
+  // Buscar estatísticas da comunidade
   useEffect(() => {
-    // Função para buscar dados do servidor
-    const fetchServerData = async () => {
-      try {
-        const response = await fetch('/api/servers');
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.length > 0) {
-            setServerData(data[0]);
-            setCommunityStats(prev => ({
-              ...prev,
-              serverCount: data.length
-            }));
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao buscar dados do servidor:', error);
-      }
-    };
-
     // Função para buscar estatísticas da comunidade
     const fetchCommunityStats = async () => {
       try {
@@ -272,7 +214,6 @@ export default function Home() {
       }
     };
 
-    fetchServerData();
     fetchCommunityStats();
 
     // Verificar se o usuário foi redirecionado para login
@@ -410,35 +351,7 @@ export default function Home() {
         <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-dark-300 to-transparent z-10"></div>
       </section>
 
-      {/* Server Status Section */}
-      <section className="py-16 bg-dark-300 relative">
-        <div className="container-custom mx-auto px-4">
-          <div className="mb-10">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-6 flex items-center">
-              <FaServer className="text-primary mr-3" />
-              Nossos Servidores
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {serverData ? (
-                <ServerStatusCard
-                  name={serverData.name}
-                  players={serverData.players}
-                  maxPlayers={serverData.maxPlayers}
-                  status={serverData.status}
-                />
-              ) : (
-                <ServerStatusCard
-                  name="Rust Survival #1"
-                  players={0}
-                  maxPlayers={60}
-                  status="online"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
+
 
       {/* Stats Section */}
       <section id="stats-section" className="py-12 bg-gradient-to-r from-dark-400 to-dark-300 relative">
