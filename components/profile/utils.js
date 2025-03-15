@@ -65,10 +65,11 @@ export const generateBenefitsList = (planId) => {
   const basicBenefits = [
     'Acesso ao plugin Furnace Splitter',
     'Prioridade na fila do servidor',
-    'Acesso a eventos exclusivos para VIP Basic',
+    'Acesso a eventos exclusivos para vip (em breve)',
     'Badge exclusiva no Discord',
     'Cargo exclusivo no Discord',
     'Kit básico a cada wipe',
+    'Coleta 1.5x de dia e 1.8x de noite'
   ];
   
   // VIP Plus (inclui todos os benefícios do VIP Básico + extras)
@@ -76,10 +77,11 @@ export const generateBenefitsList = (planId) => {
     ...basicBenefits,
     'Acesso ao plugin QuickSmelt',
     'Prioridade máxima na fila do servidor',
-    'Sorteios mensais de skins do jogo',
+    'Sorteios mensais de skins do jogo (em breve)',
     'Acesso a salas exclusivas no Discord',
     'Suporte prioritário',
     'Kit avançado a cada wipe',
+    'Coleta 1.8x de dia e 2.1x de noite'
   ];
   
   // Mapeamento de UUIDs para identificadores de planos

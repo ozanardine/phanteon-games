@@ -16,6 +16,13 @@ export default function ServersPage() {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [communityStats, setCommunityStats] = useState({
+    registeredPlayers: 0,
+    activeServers: 0,
+    completedEvents: 0,
+    vipSubscriptions: 0
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
   
   const tabs = [
     { id: 'all', label: 'Todos', icon: <FiServer /> },
@@ -61,8 +68,27 @@ export default function ServersPage() {
     }
   };
 
+  const fetchCommunityStats = async () => {
+    try {
+      const response = await fetch('/api/community-stats');
+      
+      if (!response.ok) {
+        console.error(`Erro ao buscar estatísticas da comunidade (${response.status}): ${response.statusText}`);
+        return;
+      }
+      
+      const data = await response.json();
+      setCommunityStats(data);
+    } catch (err) {
+      console.error('Error fetching community stats:', err);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchServers();
+    fetchCommunityStats();
     
     // Set up auto-refresh every 60 seconds
     const interval = setInterval(() => {
@@ -259,7 +285,13 @@ export default function ServersPage() {
                 <div className="bg-primary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <FiUsers className="text-primary text-2xl" />
                 </div>
-                <h3 className="text-3xl font-bold text-white mb-2">0</h3>
+                <h3 className="text-3xl font-bold text-white mb-2">
+                  {statsLoading ? (
+                    <span className="text-gray-500">...</span>
+                  ) : (
+                    communityStats.registeredPlayers
+                  )}
+                </h3>
                 <p className="text-gray-400">Jogadores Registrados</p>
               </Card>
               
@@ -267,7 +299,13 @@ export default function ServersPage() {
                 <div className="bg-primary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <FiServer className="text-primary text-2xl" />
                 </div>
-                <h3 className="text-3xl font-bold text-white mb-2">1</h3>
+                <h3 className="text-3xl font-bold text-white mb-2">
+                  {statsLoading ? (
+                    <span className="text-gray-500">...</span>
+                  ) : (
+                    communityStats.activeServers
+                  )}
+                </h3>
                 <p className="text-gray-400">Servidores Ativos</p>
               </Card>
               
@@ -275,7 +313,13 @@ export default function ServersPage() {
                 <div className="bg-primary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <FiCrosshair className="text-primary text-2xl" />
                 </div>
-                <h3 className="text-3xl font-bold text-white mb-2">0</h3>
+                <h3 className="text-3xl font-bold text-white mb-2">
+                  {statsLoading ? (
+                    <span className="text-gray-500">...</span>
+                  ) : (
+                    communityStats.completedEvents
+                  )}
+                </h3>
                 <p className="text-gray-400">Eventos Realizados</p>
               </Card>
               
@@ -283,7 +327,13 @@ export default function ServersPage() {
                 <div className="bg-primary/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
                   <FiShield className="text-primary text-2xl" />
                 </div>
-                <h3 className="text-3xl font-bold text-white mb-2">0</h3>
+                <h3 className="text-3xl font-bold text-white mb-2">
+                  {statsLoading ? (
+                    <span className="text-gray-500">...</span>
+                  ) : (
+                    communityStats.vipSubscriptions
+                  )}
+                </h3>
                 <p className="text-gray-400">Assinaturas VIP</p>
               </Card>
             </div>

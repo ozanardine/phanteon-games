@@ -40,13 +40,14 @@ const GAME_PLANS = {
       features: [
         'Acesso ao plugin Furnace Splitter',
         'Prioridade na fila do servidor',
-        'Acesso a eventos exclusivos para VIP Basic',
+        'Acesso a eventos exclusivos para vip (em breve)',
         'Badge exclusiva no Discord',
         'Cargo exclusivo no Discord',
         'Kit básico a cada wipe',
+        'Coleta 1.5x de dia e 1.8x de noite'
       ],
       isPopular: false,
-      badgeIcon: '/badges/badge_basic.svg', // Atualizado para o novo caminho
+      badgeIcon: '/badges/badge_basic.svg',
     },
     {
       id: 'vip-plus',
@@ -58,16 +59,17 @@ const GAME_PLANS = {
         'Acesso ao plugin Furnace Splitter',
         'Acesso ao plugin QuickSmelt',
         'Prioridade máxima na fila do servidor',
-        'Acesso a eventos exclusivos para VIP Plus',
-        'Sorteios mensais de skins do jogo',
+        'Acesso a eventos exclusivos para vip (em breve)',
+        'Sorteios mensais de skins do jogo (em breve)',
         'Badge exclusiva no Discord',
         'Cargo exclusivo no Discord',
         'Acesso a salas exclusivas no Discord',
         'Suporte prioritário',
         'Kit avançado a cada wipe',
+        'Coleta 1.8x de dia e 2.1x de noite'
       ],
       isPopular: true,
-      badgeIcon: '/badges/badge_plus.svg', // Atualizado para o novo caminho
+      badgeIcon: '/badges/badge_plus.svg',
     },
   ],
 };
