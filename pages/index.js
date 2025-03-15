@@ -229,14 +229,62 @@ export default function Home() {
   const { data: session } = useSession();
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [serverData, setServerData] = useState(null);
+  const [communityStats, setCommunityStats] = useState({
+    playerCount: 0,
+    serverCount: 0,
+    plansCount: 0
+  });
   
-  const playerCount = useCounter(7, 0, 1500, 200);
-  const serverCount = useCounter(1, 0, 1000, 200);
-  const plansCount = useCounter(2, 0, 2000, 200);
-  //                useCounter(end, start, duration, delay)
+  const playerCount = useCounter(communityStats.playerCount || 7, 0, 1500, 200);
+  const serverCount = useCounter(communityStats.serverCount || 1, 0, 1000, 200);
+  const plansCount = useCounter(communityStats.plansCount || 2, 0, 2000, 200);
 
-  // Verifica se o usuário foi redirecionado para login
+  // Buscar dados do servidor e estatísticas da comunidade
   useEffect(() => {
+    // Função para buscar dados do servidor
+    const fetchServerData = async () => {
+      try {
+        const response = await fetch('/api/servers');
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.length > 0) {
+            setServerData(data[0]);
+            setCommunityStats(prev => ({
+              ...prev,
+              serverCount: data.length
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao buscar dados do servidor:', error);
+      }
+    };
+
+    // Função para buscar estatísticas da comunidade
+    const fetchCommunityStats = async () => {
+      try {
+        // Buscar dados de jogadores ativos do servidor
+        const response = await fetch('/api/server-status');
+        if (response.ok) {
+          const data = await response.json();
+          if (data) {
+            setCommunityStats(prev => ({
+              ...prev,
+              playerCount: Math.max(data.players * 10, 7), // Estimativa baseada nos jogadores atuais
+              plansCount: Math.floor(Math.random() * 10) + 20 // Valor temporário até termos uma API real
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao buscar estatísticas da comunidade:', error);
+      }
+    };
+
+    fetchServerData();
+    fetchCommunityStats();
+
+    // Verificar se o usuário foi redirecionado para login
     if (router.query.login === 'true' && !session) {
       toast.error('Faça login para continuar');
     }
@@ -279,22 +327,26 @@ export default function Home() {
                       variant="primary"
                       size="lg"
                       onClick={() => signIn('discord')}
-                      className="group flex items-center justify-center"
+                      className="group"
                     >
-                      <FaDiscord className="mr-2 text-lg" />
-                      Entrar com Discord
-                      <FaArrowRight className="ml-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                      <span className="flex items-center justify-center">
+                        <FaDiscord className="mr-2 text-lg" />
+                        <span>Entrar com Discord</span>
+                        <FaArrowRight className="ml-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                      </span>
                     </Button>
                   ) : (
                     <Button
                       variant="primary"
                       size="lg"
                       href="/planos"
-                      className="group flex items-center justify-center shadow-lg shadow-primary/20"
+                      className="group shadow-lg shadow-primary/20"
                     >
-                      <FaRocket className="mr-2 text-lg" />
-                      Ver Planos VIP
-                      <FaArrowRight className="ml-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                      <span className="flex items-center justify-center">
+                        <FaRocket className="mr-2 text-lg" />
+                        <span>Ver Planos VIP</span>
+                        <FaArrowRight className="ml-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                      </span>
                     </Button>
                   )}
                   <Button
@@ -303,9 +355,11 @@ export default function Home() {
                     href="/servers"
                     className="group"
                   >
-                    <FaServer className="mr-2" />
-                    Servidores
-                    <FaChevronRight className="ml-2 transition-transform group-hover:translate-x-1" />
+                    <span className="flex items-center justify-center">
+                      <FaServer className="mr-2" />
+                      <span>Servidores</span>
+                      <FaChevronRight className="ml-2 transition-transform group-hover:translate-x-1" />
+                    </span>
                   </Button>
                 </div>
                 
@@ -375,12 +429,21 @@ export default function Home() {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <ServerStatusCard
-                name="Rust Survival #1"
-                players={10}
-                maxPlayers={60}
-                status="online"
-              />
+              {serverData ? (
+                <ServerStatusCard
+                  name={serverData.name}
+                  players={serverData.players}
+                  maxPlayers={serverData.maxPlayers}
+                  status={serverData.status}
+                />
+              ) : (
+                <ServerStatusCard
+                  name="Rust Survival #1"
+                  players={0}
+                  maxPlayers={60}
+                  status="online"
+                />
+              )}
             </div>
           </div>
         </div>
@@ -577,8 +640,10 @@ export default function Home() {
                 href="/planos"
                 className="group px-8"
               >
-                Ver Planos VIP
-                <FaArrowRight className="ml-2 transition-transform group-hover:translate-x-1" />
+                <span className="flex items-center justify-center">
+                  <span>Ver Planos VIP</span>
+                  <FaArrowRight className="ml-2 transition-transform group-hover:translate-x-1" />
+                </span>
               </Button>
               
               <Button
@@ -589,8 +654,10 @@ export default function Home() {
                 rel="noopener noreferrer"
                 className="group"
               >
-                <FaDiscord className="mr-2" />
-                Entrar no Discord
+                <span className="flex items-center justify-center">
+                  <FaDiscord className="mr-2" />
+                  <span>Entrar no Discord</span>
+                </span>
               </Button>
             </div>
           </div>

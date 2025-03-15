@@ -34,8 +34,6 @@ export default function Document() {
         <meta name="twitter:description" content="Comunidade Brasileira de servidores de jogos online." />
         <meta name="twitter:image" content="/images/rust_banner3.png" />
 
-        {/* Manifest */}
-        <link rel="manifest" href="/manifest.json" />
       </Head>
       <body>
         <Main />
