@@ -24,7 +24,7 @@ export default function PerfilPage({ userData, subscriptionData, subscriptionHis
   const router = useRouter();
   
   // Estado para gerenciamento de tabs
-  const [activeTab, setActiveTab] = useState('vip');
+  const [activeTab, setActiveTab] = useState('profile');
   
   // Estados para gerenciamento do SteamID
   const [steamId, setSteamId] = useState(userData?.steam_id || '');
@@ -33,8 +33,8 @@ export default function PerfilPage({ userData, subscriptionData, subscriptionHis
 
   // Definição das tabs
   const tabs = [
-    { id: 'vip', label: 'Assinatura VIP', icon: <FaCrown /> },
     { id: 'profile', label: 'Meu Perfil', icon: <FaUser /> },
+    { id: 'vip', label: 'Assinatura VIP', icon: <FaCrown /> },
     { id: 'server', label: 'Estatísticas do Servidor', icon: <FaServer /> },
     { id: 'rewards', label: 'Recompensas Diárias', icon: <FaGift /> },
   ];

@@ -52,11 +52,10 @@ const TabContent = ({
       );
     default:
       return (
-        <VipManagementTab 
-          subscriptionData={subscriptionData} 
-          subscriptionHistory={subscriptionHistory}
-          onRenew={onRenewSubscription}
-          onUpgrade={onUpgradeSubscription}
+        <ProfileTab 
+          userData={userData} 
+          session={session} 
+          onEditSteamId={onEditSteamId} 
         />
       );
   }
