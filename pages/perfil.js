@@ -46,6 +46,23 @@ export default function PerfilPage({ userData, subscriptionData, subscriptionHis
     }
   }, [errorMessage]);
 
+  // Effect para inicializar a tab ativa com base na URL
+  useEffect(() => {
+    // Verificar se há um parâmetro 'tab' na URL
+    const { tab } = router.query;
+    
+    // Se existir e for uma tab válida, definir como ativa
+    if (tab && tabs.some(t => t.id === tab)) {
+      setActiveTab(tab);
+    }
+  }, [router.query]);
+
+  // Effect para atualizar a URL quando a tab mudar
+  useEffect(() => {
+    // Atualizar a URL sem recarregar a página
+    router.push(`/perfil?tab=${activeTab}`, undefined, { shallow: true });
+  }, [activeTab]);
+  
   // Effect para gerenciar o estado do SteamID e o modal
   useEffect(() => {
     if (userData?.steam_id) {
