@@ -40,7 +40,7 @@ const ServerStatusCard = ({ name, players, maxPlayers, status }) => (
           <SiRust className="text-primary mr-2 text-lg" />
           <h3 className="font-bold text-white">{name}</h3>
         </div>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
           status === 'online' ? 'bg-green-900/20 text-green-500' : 'bg-red-900/20 text-red-500'
         }`}>
           {status === 'online' ? 'Online' : 'Offline'}
@@ -57,13 +57,6 @@ const ServerStatusCard = ({ name, players, maxPlayers, status }) => (
             <div className="h-1.5 rounded-full bg-primary transition-all duration-500 group-hover:bg-gradient-to-r from-primary to-orange-400" 
               style={{ width: `${Math.min((players / maxPlayers) * 100, 100)}%` }}></div>
           </div>
-        </div>
-        
-        <div className="flex justify-between items-center text-sm">
-          <span className="text-gray-400">
-            <FaUsers className="inline mr-1 text-primary" /> Comunidade Ativa
-          </span>
-          <span className="text-white font-medium group-hover:text-primary transition-colors">2.854+</span>
         </div>
       </div>
       

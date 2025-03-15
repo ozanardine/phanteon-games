@@ -111,7 +111,7 @@ const ServerStatsTab = ({ userData, serverData, onEditSteamId }) => {
               <div className="flex items-center">
                 <h3 className="text-xl font-bold text-white">{stats.name}</h3>
                 <span 
-                  className={`ml-3 px-2 py-1 text-xs font-medium rounded-full ${
+                  className={`ml-3 px-2 py-0.5 rounded text-xs font-medium ${
                     stats.stats.isConnected 
                       ? 'bg-green-500/20 text-green-500' 
                       : 'bg-gray-500/20 text-gray-400'
