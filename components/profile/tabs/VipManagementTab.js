@@ -4,6 +4,7 @@ import { FaCrown, FaClock, FaChevronRight, FaArrowUp, FaHistory, FaInfoCircle, F
 import Card from '../../ui/Card';
 import Button from '../../ui/Button';
 import { formatDate, calculateTimeUntilExpiration, generateBenefitsList, generateItemsList, FaCheck } from '../utils';
+import { formatItemShortName } from '../utils/formatters';
 
 const VipManagementTab = ({ subscriptionData, subscriptionHistory = [], onRenew, onUpgrade }) => {
   const hasActiveSubscription = subscriptionData && subscriptionData.status === 'active';
@@ -178,7 +179,7 @@ const VipManagementTab = ({ subscriptionData, subscriptionHistory = [], onRenew,
                 <div key={index} className="flex items-center p-3 bg-dark-400/30 rounded-lg">
                   <div className="w-10 h-10 mr-3 flex-shrink-0">
                     <img 
-                      src={`https://cdn.rusthelp.com/images/source/${item.shortName}.png`} 
+                      src={`https://cdn.rusthelp.com/images/source/${formatItemShortName(item.shortName)}.png`} 
                       alt={item.name}
                       className="w-full h-full object-contain"
                       onError={(e) => {

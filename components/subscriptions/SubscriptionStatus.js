@@ -3,6 +3,7 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { FaCheckCircle, FaTimesCircle, FaClock, FaExclamationCircle, FaGift } from 'react-icons/fa';
 import RustItemIcon from '../ui/RustItemIcon';
+import { formatItemShortName } from '../profile/utils/formatters';
 import { useRouter } from 'next/router';
 
 const formatDate = (dateString) => {
