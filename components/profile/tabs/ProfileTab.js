@@ -107,7 +107,7 @@ const ProfileTab = ({ userData, session, onEditSteamId }) => {
           </Card.Title>
         </Card.Header>
         <Card.Body>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {/* Discord */}
             <div className="bg-[#5865F2]/10 p-4 rounded-lg border border-[#5865F2]/20 flex items-center justify-between">
               <div className="flex items-center">
@@ -122,32 +122,6 @@ const ProfileTab = ({ userData, session, onEditSteamId }) => {
               <span className="bg-[#5865F2]/20 text-[#5865F2] text-xs font-medium px-2 py-1 rounded">
                 Conectado
               </span>
-            </div>
-            
-            {/* Steam */}
-            <div className={`${userData?.steam_id ? 'bg-[#1b2838]/10 border-[#1b2838]/20' : 'bg-dark-400/50 border-dark-300'} p-4 rounded-lg border flex items-center justify-between`}>
-              <div className="flex items-center">
-                <FaSteam className={`${userData?.steam_id ? 'text-[#1b2838]' : 'text-gray-400'} text-2xl mr-3`} />
-                <div>
-                  <h4 className="text-white font-medium">Steam</h4>
-                  <p className="text-gray-400 text-sm">
-                    {userData?.steam_id ? 'Conta conectada' : 'Não configurado'}
-                  </p>
-                </div>
-              </div>
-              {userData?.steam_id ? (
-                <span className="bg-[#1b2838]/20 text-[#1b2838] text-xs font-medium px-2 py-1 rounded">
-                  Conectado
-                </span>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={onEditSteamId}
-                >
-                  Conectar
-                </Button>
-              )}
             </div>
           </div>
         </Card.Body>

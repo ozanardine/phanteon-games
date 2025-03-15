@@ -82,21 +82,25 @@ const VipManagementTab = ({ subscriptionData, subscriptionHistory = [], onRenew,
                 <Button
                   variant="outline"
                   onClick={onRenew}
-                  className="group"
+                  className="group flex items-center justify-center"
                 >
-                  <FaClock className="mr-2" />
-                  Renovar Assinatura
-                  <FaChevronRight className="ml-1 transition-transform group-hover:translate-x-1" />
+                  <div className="flex items-center">
+                    <FaClock className="mr-2" />
+                    <span>Renovar Assinatura</span>
+                    <FaChevronRight className="ml-1 transition-transform group-hover:translate-x-1" />
+                  </div>
                 </Button>
                 
                 <Button
                   variant="primary"
                   onClick={onUpgrade}
-                  className="group"
+                  className="group flex items-center justify-center"
                 >
-                  <FaArrowUp className="mr-2" />
-                  Fazer Upgrade
-                  <FaChevronRight className="ml-1 transition-transform group-hover:translate-x-1" />
+                  <div className="flex items-center">
+                    <FaArrowUp className="mr-2" />
+                    <span>Fazer Upgrade</span>
+                    <FaChevronRight className="ml-1 transition-transform group-hover:translate-x-1" />
+                  </div>
                 </Button>
               </div>
             </div>
