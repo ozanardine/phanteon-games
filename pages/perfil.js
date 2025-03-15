@@ -14,7 +14,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { 
   FaDiscord, FaSteam, FaUser, FaHistory, FaChevronRight, FaInfoCircle, 
   FaShieldAlt, FaServer, FaGamepad, FaCrown, FaClock, FaCalendarAlt,
-  FaArrowUp, FaUserCircle, FaChartLine, FaExclamationTriangle 
+  FaArrowUp, FaUserCircle, FaChartLine, FaExclamationTriangle, FaGift
 } from 'react-icons/fa';
 import { getUserByDiscordId, getUserSubscription, supabase } from '../lib/supabase';
 import { requireAuth, syncUserData } from '../lib/auth';
