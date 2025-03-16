@@ -197,61 +197,75 @@ function checkAndUpdateDailyStatus(status) {
 }
 
 // Função para gerar recompensas diárias baseadas no status do jogador
-function generateDailyRewards(status) {
-  // Estrutura básica de recompensas
-  const basicRewards = [
-    { day: 1, items: [{ name: "Scrap", amount: 20, isVip: false }] },
-    { day: 2, items: [{ name: "Wood", amount: 1000, isVip: false }] },
-    { day: 3, items: [{ name: "Stone", amount: 500, isVip: false }] },
-    { day: 4, items: [{ name: "Metal Fragments", amount: 250, isVip: false }] },
-    { day: 5, items: [{ name: "Low Grade Fuel", amount: 100, isVip: false }] },
-    { day: 6, items: [{ name: "Scrap", amount: 50, isVip: false }] },
-    { day: 7, items: [{ name: "Scrap", amount: 100, isVip: false }] }
-  ];
-  
-  // Bônus VIP
-  const vipBonuses = {
-    'vip-basic': [
-      { name: "Scrap", amount: 20, isVip: true },
-      { name: "Small Stash", amount: 1, isVip: true }
-    ],
-    'vip-plus': [
-      { name: "Scrap", amount: 50, isVip: true },
-      { name: "Small Stash", amount: 1, isVip: true },
-      { name: "Supply Signal", amount: 1, isVip: true }
-    ],
-    'vip-premium': [
-      { name: "Scrap", amount: 100, isVip: true },
-      { name: "Small Stash", amount: 2, isVip: true },
-      { name: "Supply Signal", amount: 2, isVip: true },
-      { name: "Timed Explosive", amount: 1, isVip: true }
-    ]
-  };
-  
-  // Adicionar bônus VIP às recompensas
-  const rewards = basicRewards.map(reward => {
-    let rewardCopy = { ...reward };
+async function generateDailyRewards(status) {
+  try {
+    // Buscar recompensas da tabela de configuração
+    const { data: rewardsConfig, error } = await supabaseAdmin
+      .from('rewards_config')
+      .select('*')
+      .order('day', { ascending: true })
+      .order('is_bonus', { ascending: false });
     
-    // Se o jogador tem VIP, adicionar bônus VIP
-    if (status.vip_status !== 'none' && vipBonuses[status.vip_status]) {
-      // Dia 7 tem bônus especial para VIP
-      if (reward.day === 7) {
-        rewardCopy.items = [...rewardCopy.items, ...vipBonuses[status.vip_status]];
-      } else {
-        // Outros dias têm bônus menores
-        rewardCopy.items = [...rewardCopy.items, { name: "Scrap", amount: 10 * reward.day, isVip: true }];
-      }
+    if (error) throw error;
+    
+    // Estruturar as recompensas por dia
+    const rewardsByDay = {};
+    
+    // Inicializar estrutura para 7 dias
+    for (let i = 1; i <= 7; i++) {
+      rewardsByDay[i] = { day: i, items: [] };
     }
     
-    // Marcar como já reivindicado
-    rewardCopy.claimed = (status.claimed_days || []).includes(reward.day);
+    // Preencher com as recompensas da configuração
+    rewardsConfig.forEach(reward => {
+      // Verificar se a recompensa é aplicável ao nível VIP do jogador
+      const isApplicable = 
+        reward.vip_level === 'none' || 
+        (reward.is_bonus && status.vip_status === reward.vip_level) ||
+        (reward.is_bonus && status.vip_status === 'vip-premium' && ['vip-basic', 'vip-plus'].includes(reward.vip_level));
+      
+      if (isApplicable && reward.day >= 1 && reward.day <= 7) {
+        rewardsByDay[reward.day].items.push({
+          name: reward.item_name,
+          amount: reward.amount,
+          isVip: reward.is_bonus
+        });
+      }
+    });
     
-    // Marcar como disponível para reivindicar
-    const nextDay = status.consecutive_days + 1;
-    rewardCopy.available = reward.day === nextDay && !rewardCopy.claimed;
+    // Converter para array e adicionar status
+    const rewards = Object.values(rewardsByDay).map(reward => {
+      // Marcar como já reivindicado
+      reward.claimed = (status.claimed_days || []).includes(reward.day);
+      
+      // Marcar como disponível para reivindicar
+      const nextDay = status.consecutive_days + 1;
+      reward.available = reward.day === nextDay && !reward.claimed;
+      
+      return reward;
+    });
     
-    return rewardCopy;
-  });
-  
-  return rewards;
+    return rewards;
+  } catch (error) {
+    console.error('[API:daily-rewards] Erro ao buscar configuração de recompensas:', error);
+    
+    // Fallback para recompensas padrão em caso de erro
+    const basicRewards = [
+      { day: 1, items: [{ name: "Scrap", amount: 20, isVip: false }] },
+      { day: 2, items: [{ name: "Wood", amount: 1000, isVip: false }] },
+      { day: 3, items: [{ name: "Stone", amount: 500, isVip: false }] },
+      { day: 4, items: [{ name: "Metal Fragments", amount: 250, isVip: false }] },
+      { day: 5, items: [{ name: "Low Grade Fuel", amount: 100, isVip: false }] },
+      { day: 6, items: [{ name: "Scrap", amount: 50, isVip: false }] },
+      { day: 7, items: [{ name: "Scrap", amount: 100, isVip: false }] }
+    ];
+    
+    // Adicionar status
+    return basicRewards.map(reward => {
+      reward.claimed = (status.claimed_days || []).includes(reward.day);
+      const nextDay = status.consecutive_days + 1;
+      reward.available = reward.day === nextDay && !reward.claimed;
+      return reward;
+    });
+  }
 }

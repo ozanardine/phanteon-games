@@ -268,59 +268,119 @@ function checkAndUpdateDailyStatus(status) {
 }
 
 // Função para gerar recompensas para um dia específico
-function generateRewardsForDay(day, vipStatus) {
-  // Recompensa base para o dia
-  let baseReward;
-  
-  switch (day) {
-    case 1:
-      baseReward = { name: "Scrap", amount: 20 };
-      break;
-    case 2:
-      baseReward = { name: "Wood", amount: 1000 };
-      break;
-    case 3:
-      baseReward = { name: "Stone", amount: 500 };
-      break;
-    case 4:
-      baseReward = { name: "Metal Fragments", amount: 250 };
-      break;
-    case 5:
-      baseReward = { name: "Low Grade Fuel", amount: 100 };
-      break;
-    case 6:
-      baseReward = { name: "Scrap", amount: 50 };
-      break;
-    case 7:
-      baseReward = { name: "Scrap", amount: 100 };
-      break;
-    default:
-      baseReward = { name: "Scrap", amount: 10 };
-  }
-  
-  // Lista de recompensas
-  const rewards = [baseReward];
-  
-  // Adicionar bônus VIP
-  if (vipStatus === 'vip-basic') {
-    rewards.push({ name: "Scrap", amount: 20, isVip: true });
-    if (day === 7) rewards.push({ name: "Small Stash", amount: 1, isVip: true });
-  } else if (vipStatus === 'vip-plus') {
-    rewards.push({ name: "Scrap", amount: 50, isVip: true });
-    if (day === 7) {
-      rewards.push({ name: "Small Stash", amount: 1, isVip: true });
-      rewards.push({ name: "Supply Signal", amount: 1, isVip: true });
+async function generateRewardsForDay(day, vipStatus) {
+  try {
+    // Buscar recompensas da tabela de configuração
+    const { data: rewardsConfig, error } = await supabaseAdmin
+      .from('rewards_config')
+      .select('*')
+      .eq('day', day)
+      .order('is_bonus', { ascending: false });
+    
+    if (error) throw error;
+    
+    if (!rewardsConfig || rewardsConfig.length === 0) {
+      throw new Error(`Nenhuma recompensa configurada para o dia ${day}`);
     }
-  } else if (vipStatus === 'vip-premium') {
-    rewards.push({ name: "Scrap", amount: 100, isVip: true });
-    if (day === 7) {
-      rewards.push({ name: "Small Stash", amount: 2, isVip: true });
-      rewards.push({ name: "Supply Signal", amount: 2, isVip: true });
-      rewards.push({ name: "Timed Explosive", amount: 1, isVip: true });
+    
+    // Lista de recompensas
+    const rewards = [];
+    
+    // Adicionar recompensas padrão (não-VIP)
+    const standardRewards = rewardsConfig.filter(r => r.vip_level === 'none');
+    standardRewards.forEach(reward => {
+      rewards.push({
+        name: reward.item_name,
+        amount: reward.amount,
+        isVip: false
+      });
+    });
+    
+    // Adicionar bônus VIP se aplicável
+    if (vipStatus !== 'none') {
+      // Determinar quais níveis VIP aplicar
+      const applicableLevels = [];
+      
+      if (vipStatus === 'vip-basic') {
+        applicableLevels.push('vip-basic');
+      } else if (vipStatus === 'vip-plus') {
+        applicableLevels.push('vip-basic', 'vip-plus');
+      } else if (vipStatus === 'vip-premium') {
+        applicableLevels.push('vip-basic', 'vip-plus', 'vip-premium');
+      }
+      
+      // Filtrar recompensas VIP aplicáveis
+      const vipRewards = rewardsConfig.filter(r => 
+        r.is_bonus && applicableLevels.includes(r.vip_level)
+      );
+      
+      // Adicionar recompensas VIP
+      vipRewards.forEach(reward => {
+        rewards.push({
+          name: reward.item_name,
+          amount: reward.amount,
+          isVip: true
+        });
+      });
     }
+    
+    return rewards;
+  } catch (error) {
+    console.error(`[API:claim-reward] Erro ao buscar recompensas para o dia ${day}:`, error);
+    
+    // Fallback para recompensas padrão em caso de erro
+    let baseReward;
+    
+    switch (day) {
+      case 1:
+        baseReward = { name: "Scrap", amount: 20 };
+        break;
+      case 2:
+        baseReward = { name: "Wood", amount: 1000 };
+        break;
+      case 3:
+        baseReward = { name: "Stone", amount: 500 };
+        break;
+      case 4:
+        baseReward = { name: "Metal Fragments", amount: 250 };
+        break;
+      case 5:
+        baseReward = { name: "Low Grade Fuel", amount: 100 };
+        break;
+      case 6:
+        baseReward = { name: "Scrap", amount: 50 };
+        break;
+      case 7:
+        baseReward = { name: "Scrap", amount: 100 };
+        break;
+      default:
+        baseReward = { name: "Scrap", amount: 10 };
+    }
+    
+    // Lista de recompensas
+    const rewards = [baseReward];
+    
+    // Adicionar bônus VIP
+    if (vipStatus === 'vip-basic') {
+      rewards.push({ name: "Scrap", amount: 20, isVip: true });
+      if (day === 7) rewards.push({ name: "Small Stash", amount: 1, isVip: true });
+    } else if (vipStatus === 'vip-plus') {
+      rewards.push({ name: "Scrap", amount: 50, isVip: true });
+      if (day === 7) {
+        rewards.push({ name: "Small Stash", amount: 1, isVip: true });
+        rewards.push({ name: "Supply Signal", amount: 1, isVip: true });
+      }
+    } else if (vipStatus === 'vip-premium') {
+      rewards.push({ name: "Scrap", amount: 100, isVip: true });
+      if (day === 7) {
+        rewards.push({ name: "Small Stash", amount: 2, isVip: true });
+        rewards.push({ name: "Supply Signal", amount: 2, isVip: true });
+        rewards.push({ name: "Timed Explosive", amount: 1, isVip: true });
+      }
+    }
+    
+    return rewards;
   }
-  
-  return rewards;
 }
 
 // Função para registrar recompensas reivindicadas
