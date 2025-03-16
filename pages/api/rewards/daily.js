@@ -106,9 +106,13 @@ export default async function handler(req, res) {
 
 // Função para determinar o status VIP
 function determineVipStatus(userData) {
-  // Lógica para determinar o status VIP do usuário
-  // Isso poderia verificar a tabela de assinaturas
-  return userData.vip_status || 'none';
+  // Verificar o campo role do usuário para determinar o status VIP
+  if (userData.role === 'vip-plus' || userData.role === 'admin') {
+    return 'vip-plus';
+  } else if (userData.role === 'vip') {
+    return 'vip-basic';
+  }
+  return 'none';
 }
 
 // Função para obter o próximo horário de reset (meia-noite UTC)

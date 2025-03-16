@@ -75,7 +75,7 @@ export default async function handler(req, res) {
         consecutive_days: 1,
         claimed_days: [1],
         last_claim_date: new Date().toISOString(),
-        vip_status: determineVipStatus(userData),
+        vip_status: await determineVipStatus(userData),
         has_missed_day: false,
         is_active: true,
         cycle_start_date: new Date().toISOString(),
@@ -137,7 +137,7 @@ export default async function handler(req, res) {
         consecutive_days: newConsecutiveDays,
         claimed_days: newClaimedDays,
         last_claim_date: new Date().toISOString(),
-        vip_status: determineVipStatus(userData),
+        vip_status: await determineVipStatus(userData),
         has_missed_day: false
       })
       .eq('id', updatedStatus.id);
@@ -176,9 +176,62 @@ export default async function handler(req, res) {
 }
 
 // Função para determinar o status VIP
-function determineVipStatus(userData) {
-  // Lógica para determinar o status VIP do usuário
-  return userData.vip_status || 'none';
+async function determineVipStatus(userData) {
+  try {
+    // Verificar se o usuário é admin (mantém privilégio máximo)
+    if (userData.role === 'admin') {
+      return 'vip-plus';
+    }
+    
+    // Buscar assinatura ativa do usuário
+    const { data: subscription, error } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userData.id)
+      .eq('status', 'active')
+      .gte('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('[API:claim-reward] Erro ao buscar assinatura:', error);
+      // Fallback para o campo role em caso de erro
+      if (userData.role === 'vip-plus') {
+        return 'vip-plus';
+      } else if (userData.role === 'vip') {
+        return 'vip-basic';
+      }
+      return 'none';
+    }
+    
+    if (!subscription) {
+      // Sem assinatura ativa, verificar o campo role como fallback
+      if (userData.role === 'vip-plus') {
+        return 'vip-plus';
+      } else if (userData.role === 'vip') {
+        return 'vip-basic';
+      }
+      return 'none';
+    }
+    
+    // Mapear o plan_id para o tipo de VIP
+    const planIdMapping = {
+      '0b81cf06-ed81-49ce-8680-8f9d9edc932e': 'vip-basic',
+      '3994ff53-f110-4c8f-a492-ad988528006f': 'vip-plus'
+    };
+    
+    return planIdMapping[subscription.plan_id] || 'vip-basic';
+  } catch (error) {
+    console.error('[API:claim-reward] Erro ao determinar status VIP:', error);
+    // Fallback para o campo role em caso de erro
+    if (userData.role === 'vip-plus') {
+      return 'vip-plus';
+    } else if (userData.role === 'vip') {
+      return 'vip-basic';
+    }
+    return 'none';
+  }
 }
 
 // Função para obter o próximo horário de reset (meia-noite UTC)
