@@ -1,16 +1,19 @@
 // components/profile/tabs/DailyRewardsTab.js
 import React, { useState, useEffect } from 'react';
-import { FaGift, FaHistory, FaExclamationTriangle, FaInbox, FaClipboard } from 'react-icons/fa';
+import { FaGift, FaHistory, FaExclamationTriangle, FaInbox, FaClipboard, FaCrown, FaLock } from 'react-icons/fa';
 import Card from '../../ui/Card';
 import Button from '../../ui/Button';
 import LoadingSpinner from '../../ui/LoadingSpinner';
 import { toast } from 'react-hot-toast';
+import VipBadge from '../../ui/VipBadge';
+import { useRouter } from 'next/router';
 
 const DailyRewardsTab = ({ userData, onEditSteamId }) => {
   const [rewardsData, setRewardsData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [claimingDay, setClaimingDay] = useState(null);
+  const router = useRouter();
 
   useEffect(() => {
     fetchDailyRewards();
@@ -75,6 +78,9 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
       setClaimingDay(null);
     }
   };
+
+  // Verificar se o usuário é VIP PLUS
+  const isVipPlus = rewardsData?.status?.vip_status === 'vip-plus' || rewardsData?.status?.vip_status === 'vip-premium';
 
   if (isLoading) {
     return (
@@ -145,13 +151,69 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
     );
   }
 
+  // Exibir mensagem promocional para usuários que não são VIP PLUS
+  if (!isVipPlus) {
+    return (
+      <Card>
+        <Card.Header>
+          <Card.Title className="flex items-center">
+            <FaGift className="text-primary mr-2" />
+            Recompensas Diárias
+          </Card.Title>
+        </Card.Header>
+        <Card.Body>
+          <div className="text-center py-8">
+            <div className="relative inline-block mb-6">
+              <FaLock className="text-gray-600 text-6xl" />
+              <div className="absolute -top-2 -right-2">
+                <VipBadge plan="vip-plus" size={28} />
+              </div>
+            </div>
+            
+            <h3 className="text-xl font-medium text-white mb-3">
+              Recurso Exclusivo para VIP PLUS
+            </h3>
+            
+            <div className="max-w-lg mx-auto">
+              <p className="text-gray-300 mb-4">
+                As recompensas diárias pelo site são um benefício exclusivo para assinantes VIP PLUS.
+              </p>
+              
+              <div className="bg-dark-400/50 p-4 rounded-lg border border-primary/30 mb-6">
+                <h4 className="text-primary font-medium mb-2 flex items-center">
+                  <FaCrown className="mr-2" /> Vantagens do VIP PLUS:
+                </h4>
+                <ul className="text-gray-300 text-sm space-y-2">
+                  <li>• Resgate suas recompensas diárias diretamente pelo site</li>
+                  <li>• Não precisa esperar 30 minutos dentro do jogo</li>
+                  <li>• Recompensas exclusivas e em maior quantidade</li>
+                  <li>• Acesso a todos os outros benefícios VIP</li>
+                </ul>
+              </div>
+            </div>
+            
+            <Button 
+              variant="primary"
+              size="lg"
+              onClick={() => router.push('/planos')}
+              className="mt-2"
+            >
+              Adquirir VIP PLUS
+            </Button>
+          </div>
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  // Exibir recompensas para usuários VIP PLUS
   return (
     <div className="space-y-8">
       <Card>
         <Card.Header>
           <Card.Title className="flex items-center">
             <FaGift className="text-primary mr-2" />
-            Recompensas Diárias
+            Recompensas Diárias <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">Exclusivo VIP PLUS</span>
           </Card.Title>
         </Card.Header>
         <Card.Body>
@@ -165,8 +227,11 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
                 </p>
               </div>
               {rewardsData.status.vip_status !== 'none' && (
-                <div className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-medium">
-                  Status VIP: {rewardsData.status.vip_status}
+                <div className="flex items-center">
+                  <VipBadge plan={rewardsData.status.vip_status} size={24} className="mr-2" />
+                  <div className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-medium">
+                    Status VIP: {rewardsData.status.vip_status}
+                  </div>
                 </div>
               )}
             </div>
