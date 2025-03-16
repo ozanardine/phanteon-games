@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import { FaDiscord, FaBars, FaTimes, FaUserCircle } from 'react-icons/fa';
+import { FaDiscord, FaBars, FaTimes, FaUserCircle, FaGift } from 'react-icons/fa';
 import { useRouter } from 'next/router';
 
 const Navbar = () => {
@@ -63,7 +63,7 @@ const Navbar = () => {
 
   // Função para verificar se estamos na página atual
   const isCurrentPage = (path) => {
-    return router.pathname === path;
+    return router.pathname === path || router.pathname.startsWith(path + '/');
   };
 
   return (
@@ -111,14 +111,24 @@ const Navbar = () => {
               Planos VIP
             </Link>
             {session && (
-              <Link 
-                href="/perfil" 
-                className={`text-white hover:text-primary transition-colors py-2 px-3 rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${isCurrentPage('/perfil') ? 'font-semibold text-primary' : ''}`}
-                role="menuitem"
-                aria-current={isCurrentPage('/perfil') ? 'page' : undefined}
-              >
-                Meu Perfil
-              </Link>
+              <>
+                <Link 
+                  href="/caixas/rust" 
+                  className={`text-white hover:text-primary transition-colors py-2 px-3 rounded-md focus:outline-none focus:ring-2 focus:ring-primary flex items-center ${isCurrentPage('/caixas') ? 'font-semibold text-primary' : ''}`}
+                  role="menuitem"
+                  aria-current={isCurrentPage('/caixas') ? 'page' : undefined}
+                >
+                  <FaGift className="mr-1" /> Caixas Diárias
+                </Link>
+                <Link 
+                  href="/perfil" 
+                  className={`text-white hover:text-primary transition-colors py-2 px-3 rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${isCurrentPage('/perfil') ? 'font-semibold text-primary' : ''}`}
+                  role="menuitem"
+                  aria-current={isCurrentPage('/perfil') ? 'page' : undefined}
+                >
+                  Meu Perfil
+                </Link>
+              </>
             )}
           </div>
 
@@ -216,15 +226,26 @@ const Navbar = () => {
               Planos VIP
             </Link>
             {session && (
-              <Link 
-                href="/perfil" 
-                className={`text-white hover:text-primary px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${isCurrentPage('/perfil') ? 'font-semibold text-primary' : ''}`}
-                onClick={() => setIsMenuOpen(false)}
-                role="menuitem"
-                aria-current={isCurrentPage('/perfil') ? 'page' : undefined}
-              >
-                Meu Perfil
-              </Link>
+              <>
+                <Link 
+                  href="/caixas/rust" 
+                  className={`text-white hover:text-primary px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-primary flex items-center ${isCurrentPage('/caixas') ? 'font-semibold text-primary' : ''}`}
+                  onClick={() => setIsMenuOpen(false)}
+                  role="menuitem"
+                  aria-current={isCurrentPage('/caixas') ? 'page' : undefined}
+                >
+                  <FaGift className="mr-2" /> Caixas Diárias
+                </Link>
+                <Link 
+                  href="/perfil" 
+                  className={`text-white hover:text-primary px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${isCurrentPage('/perfil') ? 'font-semibold text-primary' : ''}`}
+                  onClick={() => setIsMenuOpen(false)}
+                  role="menuitem"
+                  aria-current={isCurrentPage('/perfil') ? 'page' : undefined}
+                >
+                  Meu Perfil
+                </Link>
+              </>
             )}
 
             {/* Mobile Auth */}
@@ -254,14 +275,16 @@ const Navbar = () => {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => signIn('discord')}
-                className="btn btn-primary flex items-center space-x-2 mx-3 mt-4 focus:outline-none focus:ring-2 focus:ring-primary"
-                aria-label="Entrar com Discord"
-              >
-                <FaDiscord className="text-xl" aria-hidden="true" />
-                <span>Entrar com Discord</span>
-              </button>
+              <div className="pt-2 border-t border-dark-200">
+                <button
+                  onClick={() => signIn('discord')}
+                  className="btn btn-primary w-full flex items-center justify-center space-x-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-label="Entrar com Discord"
+                >
+                  <FaDiscord className="text-xl" aria-hidden="true" />
+                  <span>Entrar com Discord</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
