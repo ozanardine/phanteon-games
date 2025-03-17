@@ -18,33 +18,33 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Game type is required' });
     }
     
-    // Verificar se a variável de ambiente está configurada corretamente
-    if (!process.env.NEXT_PUBLIC_API_URL) {
-      console.error('NEXT_PUBLIC_API_URL não está definido!');
+    // Verificar se variáveis de ambiente necessárias estão definidas
+    if (!process.env.RUST_API_KEY) {
+      console.error('RUST_API_KEY não está definida!');
       return res.status(500).json({ 
         success: false, 
-        message: 'API URL não configurada',
+        message: 'API key não configurada',
         errorCode: 'API_CONFIG_ERROR'
       });
     }
     
-    // Chamar a API do servidor com o endpoint correto
+    // Chamar a API externa para obter as caixas do tipo de jogo especificado
     try {
-      const data = await fetchAPI(`/api/cases/${gameType}`);
+      // Não inclua '/api' no caminho, pois fetchAPI já adiciona
+      const data = await fetchAPI(`/cases/${gameType}`);
       
-      if (!data.success) {
-        return res.status(400).json({ success: false, message: data.message });
-      }
-      
-      return res.status(200).json({ success: true, cases: data.cases });
+      // Retornar resposta da API
+      return res.status(200).json(data);
     } catch (apiError) {
-      console.error(`API error for /api/cases/${gameType}:`, apiError.message);
+      console.error(`API error for /cases/${gameType}:`, apiError.message);
       
-      return res.status(503).json({ 
+      const statusCode = apiError.status || 503;
+      
+      return res.status(statusCode).json({ 
         success: false, 
         message: `Erro ao acessar API externa: ${apiError.message}`,
         errorCode: 'API_CONNECTION_ERROR',
-        errorDetail: apiError.stack ? apiError.stack.split('\n')[0] : null
+        errorDetail: apiError.details || null
       });
     }
   } catch (error) {

@@ -3,7 +3,7 @@
  */
 
 /**
- * Fazer uma chamada à API com a URL base adequada ao ambiente
+ * Fazer uma chamada à API externa com a chave de autenticação correta
  * @param {string} endpoint - Endpoint da API (com ou sem a barra inicial)
  * @param {Object} options - Opções para fetch (method, body, etc)
  * @returns {Promise<Object>} - Resposta da API em JSON
@@ -12,22 +12,28 @@ export async function fetchAPI(endpoint, options = {}) {
   // Garantir que o endpoint comece com barra se não for fornecido
   const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   
-  // Determinar URL base baseado no ambiente
-  let baseUrl = '';
+  // Usar a URL da API externa (não a do site)
+  const baseUrl = process.env.RUST_API_URL || 'https://api.phanteongames.com';
   
-  // Em ambiente de produção ou ao executar no servidor, usar a URL completa
-  if (typeof window === 'undefined' || 
-      process.env.NEXT_PUBLIC_API_URL || 
-      (window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1'))) {
-    baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://www.phanteongames.com';
-  }
+  // Remover qualquer segmento /api duplicado se já estiver no endpoint
+  const cleanEndpoint = formattedEndpoint.startsWith('/api/') 
+    ? formattedEndpoint 
+    : `/api${formattedEndpoint}`;
   
   // Construir URL completa
-  const url = `${baseUrl}${formattedEndpoint}`;
+  const url = `${baseUrl}${cleanEndpoint}`;
   
-  // Criar cabeçalhos com padrões de segurança
+  // Obter a chave API
+  const apiKey = process.env.RUST_API_KEY;
+  
+  if (!apiKey) {
+    console.error('[API] RUST_API_KEY não está definida!');
+  }
+  
+  // Criar cabeçalhos com autenticação
   const headers = {
     'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`,
     ...options.headers
   };
   
@@ -42,7 +48,7 @@ export async function fetchAPI(endpoint, options = {}) {
     if (process.env.NODE_ENV === 'development') {
       console.log(`[API] Requisição para: ${url}`, { 
         method: fetchOptions.method || 'GET',
-        headers: { ...headers, Authorization: headers.Authorization ? '[REDACTED]' : undefined }
+        headers: { ...headers, Authorization: '[REDACTED]' }
       });
     }
     
