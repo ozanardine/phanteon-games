@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { useSession, signIn, getSession } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
@@ -138,6 +138,13 @@ const OpenCase = () => {
     const fetchCaseDetails = async () => {
       try {
         setLoading(true);
+        
+        // Verificação extra de autenticação
+        if (!session) {
+          console.log("Sessão não disponível, aguardando...");
+          return; // Não continua se não houver sessão
+        }
+        
         const response = await fetch(`/api/cases/detail/${caseId}`);
         
         if (response.status === 401) {
@@ -181,6 +188,8 @@ const OpenCase = () => {
     // Carregar servidores disponíveis
     const fetchServers = async () => {
       try {
+        if (!session) return; // Não continua se não houver sessão
+        
         const response = await fetch('/api/servers/list');
         const data = await response.json();
         
@@ -195,7 +204,7 @@ const OpenCase = () => {
     
     fetchCaseDetails();
     fetchServers();
-  }, [caseId, status, router]);
+  }, [caseId, status, router, session]);
   
   // Pré-carregar imagens dos itens
   const preloadImages = (items) => {
@@ -330,10 +339,12 @@ const OpenCase = () => {
     if (opening || result) return;
     
     // Verificar autenticação novamente
-    if (!session) {
+    if (!session || status !== 'authenticated') {
       toast.error('Você precisa estar logado para abrir a caixa');
       setError('Sua sessão expirou. Por favor, faça login novamente.');
-      router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href));
+      
+      // Forçar nova autenticação
+      signIn('discord', { callbackUrl: window.location.href });
       return;
     }
     
@@ -356,12 +367,13 @@ const OpenCase = () => {
           steamId: session.user.steamId || '',
           sessionId: sessionId.current,
         }),
-        credentials: 'include', // Importante: enviar cookies
       });
       
       if (response.status === 401) {
         toast.error('Sessão expirada. Faça login novamente.');
-        router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href));
+        
+        // Forçar nova autenticação
+        signIn('discord', { callbackUrl: window.location.href });
         setOpening(false);
         return;
       }
@@ -435,9 +447,11 @@ const OpenCase = () => {
     if (!result || claiming || claimed || !selectedServer) return;
     
     // Verificar autenticação novamente
-    if (!session) {
+    if (!session || status !== 'authenticated') {
       toast.error('Você precisa estar logado para resgatar o item');
-      router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href));
+      
+      // Forçar nova autenticação
+      signIn('discord', { callbackUrl: window.location.href });
       return;
     }
     
@@ -456,12 +470,13 @@ const OpenCase = () => {
           serverId: selectedServer,
           sessionId: sessionId.current,
         }),
-        credentials: 'include', // Importante: enviar cookies
       });
       
       if (response.status === 401) {
         toast.error('Sessão expirada. Faça login novamente.');
-        router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href));
+        
+        // Forçar nova autenticação
+        signIn('discord', { callbackUrl: window.location.href });
         setClaiming(false);
         return;
       }
@@ -509,11 +524,10 @@ const OpenCase = () => {
               onError={(e) => {
                 e.target.onerror = null;
                 e.target.style.display = 'none';
-                e.target.parentNode.innerHTML += `
-                  <div class="w-24 h-24 rounded-full bg-dark-700/50 flex items-center justify-center text-4xl font-bold text-gray-400">
-                    ${item.name.charAt(0)}
-                  </div>
-                `;
+                const placeholder = document.createElement('div');
+                placeholder.className = "w-24 h-24 rounded-full bg-dark-700/50 flex items-center justify-center text-4xl font-bold text-gray-400";
+                placeholder.innerText = item.name.charAt(0);
+                e.target.parentNode.appendChild(placeholder);
               }}
             />
           </div>
@@ -764,11 +778,10 @@ const OpenCase = () => {
                                     // Fallback para placeholder
                                     e.target.onerror = null;
                                     e.target.style.display = 'none';
-                                    e.target.parentNode.innerHTML = `
-                                      <div class="w-16 h-16 rounded-full bg-dark-700/50 flex items-center justify-center text-2xl font-bold text-gray-400">
-                                        ${item.name.charAt(0)}
-                                      </div>
-                                    `;
+                                    const placeholder = document.createElement('div');
+                                    placeholder.className = "w-16 h-16 rounded-full bg-dark-700/50 flex items-center justify-center text-2xl font-bold text-gray-400";
+                                    placeholder.innerText = item.name.charAt(0);
+                                    e.target.parentNode.appendChild(placeholder);
                                   }}
                                 />
                               </div>
@@ -806,11 +819,10 @@ const OpenCase = () => {
                                   // Fallback para placeholder
                                   e.target.onerror = null;
                                   e.target.style.display = 'none';
-                                  e.target.parentNode.innerHTML = `
-                                    <div class="w-16 h-16 rounded-full bg-dark-700/50 flex items-center justify-center text-2xl font-bold text-gray-400">
-                                      ${item.name.charAt(0)}
-                                    </div>
-                                  `;
+                                  const placeholder = document.createElement('div');
+                                  placeholder.className = "w-16 h-16 rounded-full bg-dark-700/50 flex items-center justify-center text-2xl font-bold text-gray-400";
+                                  placeholder.innerText = item.name.charAt(0);
+                                  e.target.parentNode.appendChild(placeholder);
                                 }}
                               />
                             </div>

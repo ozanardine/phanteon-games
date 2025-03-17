@@ -6,10 +6,12 @@ import { v4 as uuidv4 } from 'uuid';
 const inProgressOpenings = new Map();
 // Limpa entradas antigas do cache a cada minuto
 setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of inProgressOpenings.entries()) {
-    if (now - value.timestamp > 60000) { // 1 minuto
-      inProgressOpenings.delete(key);
+  if (typeof window === 'undefined') { // Garantir que só executa no servidor
+    const now = Date.now();
+    for (const [key, value] of inProgressOpenings.entries()) {
+      if (now - value.timestamp > 60000) { // 1 minuto
+        inProgressOpenings.delete(key);
+      }
     }
   }
 }, 60000);
@@ -25,7 +27,8 @@ export default async function handler(req, res) {
     const session = await getSession({ req });
     
     if (!session) {
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
+      console.error('Sessão não disponível ou inválida');
+      return res.status(401).json({ success: false, message: 'Unauthorized - Session not found' });
     }
     
     // Validar dados do corpo da requisição
