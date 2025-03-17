@@ -49,6 +49,9 @@ const GameCases = () => {
             if (errorData.errorCode === 'API_CONNECTION_ERROR') {
               toast.error('Problema ao conectar com o servidor de jogo. Por favor, tente novamente mais tarde.');
               setError('Serviço temporariamente indisponível. Nossa equipe já foi notificada.');
+            } else if (errorData.errorCode === 'ENDPOINT_NOT_FOUND') {
+              toast.error('Este tipo de caixa ainda não está disponível. Tente outro jogo.');
+              setError('Estamos trabalhando para disponibilizar caixas para este jogo em breve!');
             } else {
               toast.error(errorMessage);
               setError(errorMessage);
