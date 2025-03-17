@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 import { FaChevronLeft, FaGift, FaGamepad, FaCheckCircle, FaSadTear, FaServer } from 'react-icons/fa';
 import Button from '../../../components/ui/Button';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
+import { getItemImageUrl, getRarityClass } from '../../../utils/formatters';
 
 // Componente principal
 const OpenCase = () => {
@@ -171,19 +172,53 @@ const OpenCase = () => {
       const imageWrapper = document.createElement('div');
       imageWrapper.className = 'relative h-28 flex items-center justify-center';
       
+      const img = document.createElement('img');
+      
+      // Primeiro tenta usar a URL da imagem do item, se disponível
+      // Se não, usa o shortname para buscar do CDN
       if (item.image_url) {
-        const img = document.createElement('img');
         img.src = item.image_url;
-        img.alt = item.name;
-        img.className = 'max-h-full max-w-full object-contain';
-        imageWrapper.appendChild(img);
+      } else if (item.shortname) {
+        img.src = getItemImageUrl(item.shortname);
       } else {
+        // Fallback para ícone genérico
         const placeholder = document.createElement('div');
         placeholder.className = 'text-4xl text-gray-600';
         placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48"><path d="M21,12c0,1.1-0.9,2-2,2h-3l-2.29,2.29c-0.39,0.39-1.02,0.39-1.41,0L10,14H7c-1.1,0-2-0.9-2-2V5c0-1.1,0.9-2,2-2h12c1.1,0,2,0.9,2,2V12z M7,12h3.83l1.88,1.88c0.39,0.39,1.02,0.39,1.41,0L16,12h3V5H7V12z M3,20h10c0.55,0,1-0.45,1-1v-1H3c-0.55,0-1-0.45-1-1v-7.59c-0.57,0.19-1,0.74-1,1.39v7.4C1,19.1,1.9,20,3,20z"></path></svg>';
         imageWrapper.appendChild(placeholder);
+        itemElement.appendChild(imageWrapper);
+        
+        // Nome do item
+        const nameElement = document.createElement('div');
+        nameElement.className = 'text-white text-center font-medium text-sm truncate';
+        nameElement.textContent = item.name;
+        itemElement.appendChild(nameElement);
+        
+        rouletteItemsRef.current.appendChild(itemElement);
+        return;
       }
       
+      img.alt = item.name;
+      img.className = 'max-h-full max-w-full object-contain';
+      
+      // Handler para erro de carregamento de imagem
+      img.onerror = () => {
+        img.onerror = null; // Evitar loop infinito
+        
+        // Se a imagem original falhar e houver um shortname, tenta buscar do CDN
+        if (item.image_url && item.shortname) {
+          img.src = getItemImageUrl(item.shortname);
+        } else {
+          // Se todas as tentativas falharem, use o placeholder
+          img.style.display = 'none';
+          const placeholder = document.createElement('div');
+          placeholder.className = 'text-4xl text-gray-600';
+          placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48"><path d="M21,12c0,1.1-0.9,2-2,2h-3l-2.29,2.29c-0.39,0.39-1.02,0.39-1.41,0L10,14H7c-1.1,0-2-0.9-2-2V5c0-1.1,0.9-2,2-2h12c1.1,0,2,0.9,2,2V12z M7,12h3.83l1.88,1.88c0.39,0.39,1.02,0.39,1.41,0L16,12h3V5H7V12z M3,20h10c0.55,0,1-0.45,1-1v-1H3c-0.55,0-1-0.45-1-1v-7.59c-0.57,0.19-1,0.74-1,1.39v7.4C1,19.1,1.9,20,3,20z"></path></svg>';
+          imageWrapper.appendChild(placeholder);
+        }
+      };
+      
+      imageWrapper.appendChild(img);
       itemElement.appendChild(imageWrapper);
       
       // Nome do item
@@ -298,6 +333,123 @@ const OpenCase = () => {
     }
   };
   
+  // Quando o usuário ganhou um item
+  const ItemWonView = () => {
+    if (!result || !result.item) return null;
+    
+    const item = result.item;
+    const rarity = item.rarity ? item.rarity.toLowerCase() : 'common';
+    
+    // Determinar a URL da imagem do item
+    const getImageSource = () => {
+      if (item.image_url) return item.image_url;
+      if (item.shortname) return getItemImageUrl(item.shortname);
+      return '/images/items/placeholder.png';
+    };
+    
+    return (
+      <div className="text-center mt-8 mb-12">
+        <h2 className="text-2xl font-bold text-white mb-6">Parabéns! Você ganhou:</h2>
+        
+        <div className={`relative mx-auto w-48 h-48 flex items-center justify-center p-4 rounded-lg border-2 ${getRarityClass(rarity)}`}>
+          <img 
+            src={getImageSource()}
+            alt={item.name}
+            className="max-w-full max-h-full object-contain"
+            onError={(e) => {
+              // Se a imagem original falhar e houver um shortname, tenta o CDN
+              if (item.image_url && item.shortname && e.target.src !== getItemImageUrl(item.shortname)) {
+                e.target.src = getItemImageUrl(item.shortname);
+              } else {
+                // Fallback para placeholder se tudo falhar
+                e.target.src = '/images/items/placeholder.png';
+              }
+            }}
+          />
+        </div>
+        
+        <h3 className="text-xl font-bold text-white mt-4">{item.name}</h3>
+        <p className="text-gray-400 mt-1">{item.description || 'Item do jogo'}</p>
+        
+        {/* Badge de raridade */}
+        <div className="mt-4 inline-block">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium uppercase 
+            ${rarity === 'common' ? 'bg-gray-600/30 text-gray-300' : 
+              rarity === 'uncommon' ? 'bg-green-600/30 text-green-300' :
+              rarity === 'rare' ? 'bg-blue-600/30 text-blue-300' :
+              rarity === 'epic' ? 'bg-purple-600/30 text-purple-300' :
+              'bg-yellow-600/30 text-yellow-300'
+          }`}
+          >
+            {rarity}
+          </span>
+        </div>
+        
+        {!claimed ? (
+          <div className="mt-8">
+            {/* Selecão de servidor, se houver mais de um */}
+            {servers.length > 1 && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Selecione um servidor para receber seu item:
+                </label>
+                <select 
+                  value={selectedServer}
+                  onChange={(e) => setSelectedServer(e.target.value)}
+                  className="w-full bg-dark-400 border border-dark-200 rounded-md px-4 py-2 text-white"
+                >
+                  {servers.map(server => (
+                    <option key={server.id} value={server.id}>
+                      {server.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            <Button
+              onClick={handleClaimItem}
+              disabled={claiming}
+              className="px-8 py-3"
+            >
+              {claiming ? (
+                <>
+                  <LoadingSpinner size="small" className="mr-2" />
+                  Resgatando...
+                </>
+              ) : (
+                <>
+                  <FaCheckCircle className="mr-2" />
+                  Resgatar Item
+                </>
+              )}
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-8 bg-green-800/20 border border-green-700/30 rounded-lg p-4">
+            <p className="text-green-400 flex items-center justify-center">
+              <FaCheckCircle className="mr-2" /> 
+              Item resgatado com sucesso!
+            </p>
+            <p className="text-gray-300 text-sm mt-2">
+              Você receberá seu item no servidor selecionado.
+            </p>
+          </div>
+        )}
+        
+        <div className="mt-6">
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/caixas/${game}`)}
+            className="px-5 py-2"
+          >
+            <FaChevronLeft className="mr-2" /> Voltar para Caixas
+          </Button>
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <>
       <Head>
@@ -307,208 +459,71 @@ const OpenCase = () => {
         <meta name="description" content="Abra caixas e ganhe itens para usar em nossos servidores." />
       </Head>
       
-      <div className="min-h-screen bg-dark-300">
-        {/* Cabeçalho */}
-        <div className="bg-dark-400 py-4">
+      <div className="min-h-screen bg-dark-300 pb-12">
+        {/* Header */}
+        <div className="bg-dark-400 py-6">
           <div className="container mx-auto px-4">
-            <Link 
-              href={game ? `/caixas/${game}` : "/caixas/rust"} 
-              className="flex items-center text-gray-400 hover:text-primary transition"
-            >
-              <FaChevronLeft className="mr-2" /> 
-              Voltar para caixas
+            <Link href={`/caixas/${game}`} className="flex items-center text-gray-400 hover:text-primary mb-4 transition">
+              <FaChevronLeft className="mr-2" /> Voltar
             </Link>
+            <h1 className="text-3xl font-bold text-white">{caseData?.name || 'Abrir Caixa'}</h1>
           </div>
         </div>
         
-        {/* Conteúdo principal */}
         <div className="container mx-auto px-4 py-8">
-          {/* Título da caixa */}
-          {caseData && (
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2">{caseData.name}</h1>
-              <p className="text-gray-400">{caseData.description}</p>
+          {error ? (
+            <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 mb-8 text-white flex items-center">
+              <FaSadTear className="mr-3 text-xl" />
+              <p>{error}</p>
             </div>
-          )}
-          
-          {error && (
-            <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 mb-8 mx-auto max-w-2xl text-white">
-              <div className="flex items-center">
-                <FaSadTear className="mr-3 text-xl" />
-                <p>{error}</p>
-              </div>
-            </div>
-          )}
-          
-          {/* Visualizador de roleta */}
-          <div className="bg-dark-400 rounded-lg p-4 mb-8 mx-auto max-w-2xl">
-            <div 
-              ref={rouletteRef}
-              className="w-full h-40 overflow-hidden relative border-2 border-primary rounded-lg"
-            >
-              {/* Indicador do centro */}
-              <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-primary z-10"></div>
-              
-              {/* Conteúdo da roleta */}
-              <div 
-                ref={rouletteItemsRef}
-                className="flex items-center h-full absolute left-0 top-0"
-              >
-                {/* Os itens serão adicionados dinamicamente via JavaScript */}
-              </div>
-              
-              {/* Gradiente para desvanecer as bordas */}
-              <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-dark-400 to-transparent z-10"></div>
-              <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-dark-400 to-transparent z-10"></div>
-            </div>
-            
-            {/* Botão de abrir caixa */}
-            {!result && (
-              <div className="mt-4 text-center">
-                <Button
-                  onClick={handleOpenCase}
-                  disabled={opening}
-                  className="px-8 py-3"
-                >
-                  {opening ? (
-                    <LoadingSpinner size="small" />
-                  ) : (
-                    <>
-                      <FaGift className="mr-2" /> Abrir Caixa
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-            
-            {/* Resultado da abertura */}
-            {result && (
-              <div className="mt-6 text-center">
-                <h2 className="text-xl font-bold text-white mb-2">
-                  Você ganhou:
-                </h2>
-                
-                <div className={`mx-auto w-48 h-48 p-4 flex flex-col items-center justify-center rounded-lg mb-4 ${getRarityClass(result.item.rarity)}`}>
-                  {result.item.image_url ? (
-                    <div className="relative h-28 w-28 mb-2">
-                      <Image
-                        src={result.item.image_url}
-                        alt={result.item.name}
-                        fill
-                        className="object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <FaGift className="text-5xl text-gray-400 mb-2" />
-                  )}
-                  
-                  <div className="text-white font-bold">{result.item.name}</div>
-                  <div className="text-sm text-gray-300">x{result.item.amount}</div>
-                  <div className="text-xs mt-1 px-2 py-0.5 rounded-full bg-gray-700 text-gray-300">
-                    {getRarityName(result.item.rarity)}
-                  </div>
-                </div>
-                
-                {/* Formulário de resgate */}
-                {!claimed && (
-                  <div className="mt-4 p-4 bg-dark-500 rounded-lg">
-                    <h3 className="text-lg font-semibold text-white mb-3">
-                      Resgatar Item no Servidor
-                    </h3>
-                    
-                    <div className="mb-4">
-                      <label className="block text-gray-400 text-sm mb-2">
-                        Selecione o servidor:
-                      </label>
-                      <select
-                        value={selectedServer}
-                        onChange={(e) => setSelectedServer(e.target.value)}
-                        className="w-full p-2 bg-dark-400 border border-dark-200 rounded-lg text-white"
-                        disabled={claiming}
+          ) : (
+            <>
+              {!result ? (
+                <div className="text-center">
+                  <div className="max-w-2xl mx-auto">
+                    {/* Informação da caixa */}
+                    <div className="mb-8">
+                      <h2 className="text-xl font-bold text-white mb-4">
+                        Abra esta caixa para ganhar um dos seguintes itens:
+                      </h2>
+                      <p className="text-gray-400 mb-6">{caseData?.description}</p>
+                      
+                      {/* Roleta de itens */}
+                      <div className="relative w-full h-36 overflow-hidden bg-dark-400 rounded-lg mb-8" ref={rouletteRef}>
+                        <div className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-primary z-10"></div>
+                        <div className="flex items-center p-0 transition-transform duration-500 ease-in-out" 
+                          ref={rouletteItemsRef}
+                          style={{ transform: 'translateX(0px)' }}
+                        >
+                          {/* Aqui serão inseridos os itens da roleta dinamicamente */}
+                        </div>
+                      </div>
+                      
+                      {/* Botão de abrir */}
+                      <Button
+                        onClick={handleOpenCase}
+                        disabled={opening}
+                        className="px-8 py-3"
                       >
-                        {servers.map(server => (
-                          <option key={server.id} value={server.id}>
-                            {server.name}
-                          </option>
-                        ))}
-                      </select>
+                        {opening ? (
+                          <>
+                            <LoadingSpinner size="small" className="mr-2" />
+                            Abrindo...
+                          </>
+                        ) : (
+                          <>
+                            <FaGift className="mr-2" />
+                            Abrir Caixa
+                          </>
+                        )}
+                      </Button>
                     </div>
-                    
-                    <Button
-                      onClick={handleClaimItem}
-                      disabled={claiming || !selectedServer}
-                      className="w-full py-3"
-                    >
-                      {claiming ? (
-                        <LoadingSpinner size="small" />
-                      ) : (
-                        <>
-                          <FaGamepad className="mr-2" /> Resgatar no Jogo
-                        </>
-                      )}
-                    </Button>
                   </div>
-                )}
-                
-                {/* Mensagem de sucesso */}
-                {claimed && (
-                  <div className="mt-4 p-4 bg-green-900/20 border border-green-500/30 rounded-lg">
-                    <div className="flex items-center justify-center text-green-400 mb-2">
-                      <FaCheckCircle className="mr-2 text-xl" /> 
-                      Item Resgatado com Sucesso!
-                    </div>
-                    <p className="text-gray-300 text-sm">
-                      O item foi enviado para o seu inventário no jogo.
-                    </p>
-                  </div>
-                )}
-                
-                <div className="mt-6">
-                  <Link 
-                    href={game ? `/caixas/${game}` : "/caixas/rust"}
-                    className="text-primary hover:text-primary-light transition"
-                  >
-                    Voltar para caixas
-                  </Link>
                 </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Informações de itens possíveis */}
-          {!result && (
-            <div className="mx-auto max-w-4xl">
-              <h2 className="text-xl font-bold text-white mb-4">
-                Itens Possíveis de Ganhar:
-              </h2>
-              
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {items.map(item => (
-                  <div 
-                    key={item.id} 
-                    className={`p-3 rounded-lg ${getRarityClass(item.rarity)}`}
-                  >
-                    <div className="relative h-20 flex items-center justify-center mb-2">
-                      {item.image_url ? (
-                        <Image
-                          src={item.image_url}
-                          alt={item.name}
-                          width={64}
-                          height={64}
-                          className="object-contain max-h-full"
-                        />
-                      ) : (
-                        <FaGift className="text-3xl text-gray-600" />
-                      )}
-                    </div>
-                    <div className="text-white text-center text-sm font-medium">{item.name}</div>
-                    <div className="text-gray-400 text-center text-xs">
-                      {(item.drop_chance * 100).toFixed(2)}%
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+              ) : (
+                <ItemWonView />
+              )}
+            </>
           )}
         </div>
       </div>

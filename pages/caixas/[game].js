@@ -9,6 +9,7 @@ import { FaInfoCircle, FaGamepad, FaGift, FaChevronLeft, FaClock, FaSadTear, FaC
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import { getItemImageUrl } from '../../utils/formatters';
 
 // Componentes da página
 const GameCases = () => {
@@ -210,6 +211,13 @@ const CaseCard = ({ caseData, userId, gameType }) => {
   const [timeLeft, setTimeLeft] = useState(null);
   const [statusError, setStatusError] = useState(false);
 
+  // Determinar a URL da imagem da caixa
+  const getImageSource = () => {
+    if (caseData.image_url) return caseData.image_url;
+    if (caseData.shortname) return getItemImageUrl(caseData.shortname);
+    return null; // Se não houver imagem, usamos o ícone FaGift
+  };
+
   // Tratamento de casos em que a verificação de status falha
   useEffect(() => {
     // Se não temos como verificar o status, mostramos o botão de abrir por padrão
@@ -322,21 +330,26 @@ const CaseCard = ({ caseData, userId, gameType }) => {
   return (
     <Card className="overflow-hidden hover:border-primary transition-all duration-300">
       <div className="relative h-48 bg-dark-500">
-        {caseData.image_url ? (
+        {getImageSource() ? (
           <Image 
-            src={caseData.image_url} 
+            src={getImageSource()}
             alt={caseData.name}
             fill
             className="object-contain p-4"
             onError={(e) => {
-              // Se a imagem falhar ao carregar, substituímos pelo ícone padrão
-              e.currentTarget.style.display = 'none';
-              const parent = e.currentTarget.parentElement;
-              if (parent) {
-                const fallback = document.createElement('div');
-                fallback.className = "w-full h-full flex items-center justify-center";
-                fallback.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#6c7580" viewBox="0 0 16 16"><path d="M4 .5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-1Zm0 3v1a.5.5 0 0 1 .5.5h7a.5.5 0 0 1 .5-.5v-1a.5.5 0 0 1-.5-.5h-7a.5.5 0 0 1-.5.5Zm0 3.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-1Z"/><path d="M3 6.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0M2 8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1a.5.5 0 0 1 0-1H12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3H4a3 3 0 0 1-3-3V8Z"/></svg>';
-                parent.appendChild(fallback);
+              // Se a imagem original falhar e houver um shortname, tenta o CDN
+              if (caseData.image_url && caseData.shortname && e.target.src !== getItemImageUrl(caseData.shortname)) {
+                e.target.src = getItemImageUrl(caseData.shortname);
+              } else {
+                // Se todas as tentativas falharem, use o ícone padrão
+                e.currentTarget.style.display = 'none';
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  const fallback = document.createElement('div');
+                  fallback.className = "w-full h-full flex items-center justify-center";
+                  fallback.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#6c7580" viewBox="0 0 16 16"><path d="M4 .5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-1Zm0 3v1a.5.5 0 0 1 .5.5h7a.5.5 0 0 1 .5-.5v-1a.5.5 0 0 1-.5-.5h-7a.5.5 0 0 1-.5.5Zm0 3.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-1Z"/><path d="M3 6.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0M2 8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1a.5.5 0 0 1 0-1H12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3H4a3 3 0 0 1-3-3V8Z"/></svg>';
+                  parent.appendChild(fallback);
+                }
               }
             }}
           />
