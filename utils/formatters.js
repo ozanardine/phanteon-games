@@ -2,6 +2,10 @@
  * Utilitários para formatação de dados
  */
 
+// Cache para imagens já verificadas
+const validImageCache = typeof window !== 'undefined' ? new Map() : null;
+const invalidImageCache = typeof window !== 'undefined' ? new Set() : null;
+
 /**
  * Formata o shortName de um item para uso em URLs do CDN
  * Substitui pontos por traços para evitar problemas com URLs
@@ -14,7 +18,38 @@ export const formatItemShortName = (shortName) => {
 };
 
 /**
+ * Verifica se uma imagem existe no CDN
+ * @param {string} url - URL da imagem a verificar
+ * @returns {Promise<boolean>} - Promise que resolve para true se a imagem existe
+ */
+export const checkImageExists = async (url) => {
+  // Verificar cache primeiro
+  if (validImageCache && validImageCache.has(url)) return true;
+  if (invalidImageCache && invalidImageCache.has(url)) return false;
+  
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    const exists = response.ok;
+    
+    // Atualizar cache com o resultado
+    if (exists && validImageCache) {
+      validImageCache.set(url, true);
+    } else if (!exists && invalidImageCache) {
+      invalidImageCache.add(url);
+    }
+    
+    return exists;
+  } catch (error) {
+    console.warn(`Erro ao verificar imagem ${url}:`, error);
+    // Em caso de erro, presumir que a imagem não existe
+    if (invalidImageCache) invalidImageCache.add(url);
+    return false;
+  }
+};
+
+/**
  * Retorna a URL da imagem do item usando o CDN do Rust Help
+ * Inclui fallbacks e cache para melhorar performance
  * @param {string} shortName - Nome curto do item
  * @returns {string} - URL completa da imagem ou SVG base64 para placeholder
  */
@@ -23,7 +58,18 @@ export const getItemImageUrl = (shortName) => {
     // SVG de presente (gift box) codificado em base64 como fallback
     return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
   }
-  return `https://cdn.rusthelp.com/images/source/${formatItemShortName(shortName)}.png`;
+  
+  // Verificar se temos a URL em cache
+  const formattedName = formatItemShortName(shortName);
+  const url = `https://cdn.rusthelp.com/images/source/${formattedName}.png`;
+  
+  // Adicionar uma URL alternativa para item.shortname vs item-shortname
+  // Isso ajuda com inconsistências em como os shortnames são armazenados
+  const altUrl = shortName.includes('.') 
+    ? `https://cdn.rusthelp.com/images/source/${shortName.replace(/\./g, '-')}.png`
+    : `https://cdn.rusthelp.com/images/source/${shortName}.png`;
+  
+  return url;
 };
 
 /**
@@ -66,4 +112,13 @@ export const formatDate = (timestamp) => {
   } catch (e) {
     return timestamp || '';
   }
+};
+
+/**
+ * Limpa o cache de imagens
+ * Útil para testes e quando você quer forçar uma nova verificação
+ */
+export const clearImageCache = () => {
+  if (validImageCache) validImageCache.clear();
+  if (invalidImageCache) invalidImageCache.clear();
 };

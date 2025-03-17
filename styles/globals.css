@@ -288,6 +288,8 @@ body {
   background-image: linear-gradient(to right, var(--color-phanteon-orange), #FF8C42);
 }
 
+/* Estilos específicos para a roleta e animações de caixas */
+
 /* Animação para a roleta */
 @keyframes shine {
   0% {
@@ -332,4 +334,175 @@ body {
   transform: scale(1.1) !important;
   z-index: 10;
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}
+
+/* Efeito de escala suave ao passar o mouse sobre itens */
+.roulette-item:hover {
+  transform: scale(1.05);
+}
+
+/* Animação pulsante para item na roleta */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+
+.pulse-animation {
+  animation: pulse 2s infinite ease-in-out;
+}
+
+/* Efeito de brilho nas bordas da roleta */
+@keyframes borderPulse {
+  0% {
+    border-color: rgba(255, 215, 0, 0.3);
+  }
+  50% {
+    border-color: rgba(255, 215, 0, 0.7);
+  }
+  100% {
+    border-color: rgba(255, 215, 0, 0.3);
+  }
+}
+
+.border-pulse {
+  animation: borderPulse 2s infinite ease-in-out;
+}
+
+/* Efeito de linha central pulsante */
+@keyframes linePulse {
+  0% {
+    opacity: 0.6;
+    width: 1px;
+  }
+  50% {
+    opacity: 1;
+    width: 2px;
+  }
+  100% {
+    opacity: 0.6;
+    width: 1px;
+  }
+}
+
+.line-pulse {
+  animation: linePulse 1s infinite ease-in-out;
+}
+
+/* Efeito de confete para itens raros */
+@keyframes confetti {
+  0% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+}
+
+.confetti-effect {
+  position: relative;
+}
+
+.confetti-effect::before,
+.confetti-effect::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: confetti 1.5s ease-out infinite;
+}
+
+.confetti-effect::before {
+  background-color: #FF5722;
+  left: 10%;
+  top: -5px;
+}
+
+.confetti-effect::after {
+  background-color: #FFC107;
+  right: 10%;
+  top: -5px;
+  animation-delay: 0.5s;
+}
+
+/* Efeito de destaque ao ganhar item */
+.winner-highlight {
+  position: relative;
+  overflow: hidden;
+}
+
+.winner-highlight::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  animation: winnerPulse 2s ease-in-out infinite;
+}
+
+@keyframes winnerPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* Efeito de névoa para caixas (simulando abertura) */
+@keyframes fogEffect {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.7;
+  }
+  70% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.fog-effect {
+  position: relative;
+}
+
+.fog-effect::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.15),
+    transparent 70%
+  );
+  z-index: 5;
+  pointer-events: none;
+  animation: fogEffect 4s ease-out;
 }

@@ -7,20 +7,8 @@ import { toast } from 'react-hot-toast';
 import { FaChevronLeft, FaGift, FaCheckCircle, FaSadTear, FaServer, FaClock, FaLock } from 'react-icons/fa';
 import Button from '../../../components/ui/Button';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
-
-// Função para formatar shortname para URL do CDN Rust Helper
-const formatItemShortName = (shortName) => {
-  if (!shortName) return '';
-  return shortName.replace(/\./g, '-');
-};
-
-// Função para obter URL de imagem do CDN Rust Helper
-const getItemImageUrl = (shortName) => {
-  if (!shortName) {
-    return null;
-  }
-  return `https://cdn.rusthelp.com/images/source/${formatItemShortName(shortName)}.png`;
-};
+import Card from '../../../components/ui/Card';
+import { getItemImageUrl, formatItemShortName } from '../../../utils/formatters';
 
 // Mapeamento de nomes de itens para shortnames do Rust
 const itemShortnames = {
@@ -57,13 +45,18 @@ const OpenCase = () => {
   const [error, setError] = useState(null);
   const [imagesPreloaded, setImagesPreloaded] = useState(false);
   const [sessionToken, setSessionToken] = useState(null);
+  const [isRouletteReady, setIsRouletteReady] = useState(false);
   
   // Refs para a roleta
   const rouletteRef = useRef(null);
   const rouletteItemsRef = useRef(null);
   
-  // Gerar um ID único para segurança da sessão
-  const sessionId = useRef(Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
+  // Gerar um ID único para segurança da sessão usando crypto quando disponível
+  const sessionId = useRef(
+    typeof window !== 'undefined' && window.crypto
+      ? window.crypto.randomUUID()
+      : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+  );
   
   // Obter tokens de sessão de forma mais confiável
   useEffect(() => {
@@ -80,6 +73,13 @@ const OpenCase = () => {
     
     fetchSessionData();
   }, [status]);
+  
+  // Inicializar a roleta quando os itens e a referência do DOM estiverem prontos
+  useEffect(() => {
+    if (items.length > 0 && rouletteItemsRef.current && !isRouletteReady && !result) {
+      initializeRoulette();
+    }
+  }, [items, imagesPreloaded, rouletteItemsRef.current]);
   
   // Carregar dados da caixa
   useEffect(() => {
@@ -156,8 +156,14 @@ const OpenCase = () => {
   
   // Pré-carregar imagens dos itens
   const preloadImages = (items) => {
-    const uniqueShortnames = [...new Set(items.map(item => item.shortname))];
+    const uniqueShortnames = [...new Set(items.map(item => item.shortname).filter(Boolean))];
     let loadedCount = 0;
+    const totalImagesToLoad = uniqueShortnames.length;
+    
+    if (totalImagesToLoad === 0) {
+      setImagesPreloaded(true);
+      return;
+    }
     
     uniqueShortnames.forEach(shortname => {
       if (!shortname) return;
@@ -165,13 +171,14 @@ const OpenCase = () => {
       const img = new Image();
       img.onload = () => {
         loadedCount++;
-        if (loadedCount >= uniqueShortnames.length) {
+        if (loadedCount >= totalImagesToLoad) {
           setImagesPreloaded(true);
         }
       };
       img.onerror = () => {
+        console.warn(`Falha ao carregar imagem: ${shortname}`);
         loadedCount++;
-        if (loadedCount >= uniqueShortnames.length) {
+        if (loadedCount >= totalImagesToLoad) {
           setImagesPreloaded(true);
         }
       };
@@ -180,8 +187,20 @@ const OpenCase = () => {
     
     // Adicionar um timeout para garantir que não ficamos esperando eternamente
     setTimeout(() => {
-      setImagesPreloaded(true);
+      if (!imagesPreloaded) {
+        console.warn('Timeout ao carregar imagens, continuando mesmo assim');
+        setImagesPreloaded(true);
+      }
     }, 3000);
+  };
+  
+  // Inicializar a roleta
+  const initializeRoulette = () => {
+    if (!rouletteItemsRef.current || items.length === 0) return;
+    
+    // Preparar os itens na roleta
+    prepareRouletteItems();
+    setIsRouletteReady(true);
   };
   
   // Preparar itens para a roleta
@@ -240,6 +259,13 @@ const OpenCase = () => {
       
       rouletteItemsRef.current.appendChild(itemElement);
     });
+    
+    // Posicionar a roleta inicialmente
+    if (rouletteItemsRef.current) {
+      // Centralizar a roleta para um visual melhor
+      const initialOffset = (window.innerWidth / 2) - 134; // 134 = itemWidth
+      rouletteItemsRef.current.style.transform = `translateX(${initialOffset}px)`;
+    }
   };
   
   // Iniciar animação de roleta
@@ -276,6 +302,29 @@ const OpenCase = () => {
       const randomIndex = Math.floor(Math.random() * Math.min(itemElements.length - 3, 10)) + 3;
       const targetElement = itemElements[randomIndex];
       
+      if (!targetElement) {
+        console.warn('Elemento alvo não encontrado, usando fallback');
+        // Fallback: usar o primeiro elemento se o randomIndex não existir
+        const fallbackElement = itemElements[0];
+        if (fallbackElement) {
+          applyStopAnimation(fallbackElement);
+        } else {
+          console.error('Nenhum elemento encontrado para o item ganho');
+        }
+        return;
+      }
+      
+      applyStopAnimation(targetElement);
+    } else {
+      console.error('Nenhum elemento encontrado com o ID do item ganho:', wonItem.id);
+    }
+  };
+  
+  // Função auxiliar para aplicar animação de parada
+  const applyStopAnimation = (targetElement) => {
+    if (!targetElement || !rouletteRef.current) return;
+    
+    try {
       // Obter a posição do elemento
       const rect = targetElement.getBoundingClientRect();
       const rouletteRect = rouletteRef.current.getBoundingClientRect();
@@ -294,8 +343,14 @@ const OpenCase = () => {
           targetElement.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8)';
           targetElement.style.transition = 'all 0.5s ease';
           targetElement.style.zIndex = '10';
+          
+          // Adicionar classe para animação de brilho
+          targetElement.classList.add('winner');
+          targetElement.classList.add('glow-effect');
         }
       }, 1000);
+    } catch (err) {
+      console.error('Erro ao aplicar animação de parada:', err);
     }
   };
   
@@ -313,9 +368,6 @@ const OpenCase = () => {
     
     try {
       setOpening(true);
-      
-      // Preparar itens para a roleta
-      prepareRouletteItems();
       
       // Iniciar animação de roleta
       startRouletteAnimation();
@@ -366,8 +418,10 @@ const OpenCase = () => {
           // Criar um pequeno atraso para melhorar a experiência
           setTimeout(() => {
             setResult(data);
+            // Reproduzir som de item ganho (opcional)
+            playWinSound(data.item.rarity);
           }, 1000);
-        }, 3000);
+        }, 5000); // Aumentei para 5s para criar mais suspense
       } else {
         stopRouletteAnimation();
         setError(data.message || 'Erro ao abrir a caixa');
@@ -381,6 +435,30 @@ const OpenCase = () => {
       toast.error('Erro de conexão ao servidor');
       setOpening(false);
     }
+  };
+  
+  // Reproduzir som de vitória baseado na raridade (opcional)
+  const playWinSound = (rarity) => {
+    // Você pode implementar a reprodução de som aqui
+    // Por exemplo:
+    /*
+    if (typeof window !== 'undefined') {
+      const audio = new Audio();
+      
+      switch(rarity?.toLowerCase()) {
+        case 'legendary':
+          audio.src = '/sounds/legendary.mp3';
+          break;
+        case 'epic':
+          audio.src = '/sounds/epic.mp3';
+          break;
+        default:
+          audio.src = '/sounds/win.mp3';
+      }
+      
+      audio.play().catch(e => console.warn('Não foi possível reproduzir o som:', e));
+    }
+    */
   };
   
   // Resgatar o item ganho
@@ -506,7 +584,7 @@ const OpenCase = () => {
         <div className="bg-dark-800 rounded-lg p-6 max-w-md mx-auto">
           <h2 className="text-2xl font-bold text-white mb-6">Parabéns!</h2>
           
-          <div className={`relative mx-auto w-48 h-48 flex items-center justify-center p-4 rounded-lg border-2 ${getRarityBorderClass(rarity)} ${getRarityBackgroundClass(rarity)}`}>
+          <div className={`relative mx-auto w-48 h-48 flex items-center justify-center p-4 rounded-lg border-2 ${getRarityBorderClass(rarity)} ${getRarityBackgroundClass(rarity)} glow-effect`}>
             <img 
               src={getItemImageUrl(item.shortname)}
               alt={item.name}
@@ -667,20 +745,24 @@ const OpenCase = () => {
                           <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[12px] border-transparent border-t-primary"></div>
                         </div>
                         
-                        {/* Itens da roleta */}
+                        {/* Itens da roleta - eles são pré-carregados agora */}
                         <div 
                           className="flex items-center p-2 transition-transform" 
                           ref={rouletteItemsRef}
                           style={{ transform: 'translateX(0px)' }}
                         >
-                          {/* Aqui serão inseridos os itens da roleta dinamicamente */}
+                          {!isRouletteReady && items.length > 0 && (
+                            <div className="flex items-center justify-center w-full">
+                              <LoadingSpinner size="md" text="Preparando itens..." />
+                            </div>
+                          )}
                         </div>
                       </div>
                       
                       {/* Botão de abrir */}
                       <Button
                         onClick={handleOpenCase}
-                        disabled={opening || !imagesPreloaded || status !== 'authenticated'}
+                        disabled={opening || !imagesPreloaded || !isRouletteReady || status !== 'authenticated'}
                         className="px-8 py-3"
                         variant="primary"
                       >
@@ -689,7 +771,7 @@ const OpenCase = () => {
                             <LoadingSpinner size="small" className="mr-2" />
                             Abrindo...
                           </>
-                        ) : !imagesPreloaded ? (
+                        ) : !imagesPreloaded || !isRouletteReady ? (
                           <>
                             <LoadingSpinner size="small" className="mr-2" />
                             Carregando...
