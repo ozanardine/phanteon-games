@@ -1,4 +1,5 @@
 import { getSession } from 'next-auth/react';
+import { fetchAPI } from '../../../utils/api';
 
 export default async function handler(req, res) {
   // Verificar método
@@ -14,47 +15,27 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
     
-    // Obter dados do corpo da requisição
-    const { userId, caseId, steamId } = req.body;
+    // Validar dados do corpo da requisição
+    const { caseId, userId, steamId } = req.body;
     
-    if (!userId || !caseId) {
-      return res.status(400).json({ success: false, message: 'User ID and Case ID are required' });
-    }
-    
-    // Verificar se o usuário está acessando seus próprios dados
-    if (userId !== session.user.id) {
-      return res.status(403).json({ success: false, message: 'Forbidden' });
+    if (!caseId || !userId) {
+      return res.status(400).json({ success: false, message: 'Case ID and user ID are required' });
     }
     
     // Preparar dados para enviar à API
-    const apiRequestData = {
-      userId: userId,
-      caseId: caseId,
-      steamId: steamId || session.user.steamId
+    const payload = {
+      caseId,
+      userId,
+      steamId: steamId || ''
     };
     
     // Chamar a API do servidor para abrir a caixa
-    const apiResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/player/cases/open`, {
+    const data = await fetchAPI('/player/cases/open', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(apiRequestData),
+      body: JSON.stringify(payload)
     });
     
-    const data = await apiResponse.json();
-    
-    if (!data.success) {
-      return res.status(400).json({ success: false, message: data.message });
-    }
-    
-    return res.status(200).json({ 
-      success: true, 
-      opening: data.opening,
-      item: data.item,
-      allItems: data.allItems,
-      case: data.case
-    });
+    return res.status(200).json(data);
   } catch (error) {
     console.error('Error opening case:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });

@@ -1,4 +1,5 @@
 import { getSession } from 'next-auth/react';
+import { fetchAPI } from '../../../utils/api';
 
 export default async function handler(req, res) {
   // Verificar método
@@ -17,9 +18,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Game type is required' });
     }
     
-    // Chamar a API do servidor para obter caixas
-    const apiResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/player/cases/${gameType}`);
-    const data = await apiResponse.json();
+    // Chamar a API do servidor para obter caixas com autenticação
+    const data = await fetchAPI(`/player/cases/${gameType}`);
     
     if (!data.success) {
       return res.status(400).json({ success: false, message: data.message });

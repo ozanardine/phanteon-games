@@ -1,4 +1,5 @@
 import { getSession } from 'next-auth/react';
+import { fetchAPI } from '../../../../utils/api';
 
 export default async function handler(req, res) {
   // Verificar método
@@ -22,8 +23,7 @@ export default async function handler(req, res) {
     }
     
     // Chamar a API do servidor para obter detalhes da caixa
-    const apiResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/player/cases/detail/${id}`);
-    const data = await apiResponse.json();
+    const data = await fetchAPI(`/player/cases/detail/${id}`);
     
     if (!data.success) {
       return res.status(400).json({ success: false, message: data.message });

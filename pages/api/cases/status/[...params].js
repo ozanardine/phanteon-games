@@ -1,4 +1,5 @@
 import { getSession } from 'next-auth/react';
+import { fetchAPI } from '../../../../utils/api';
 
 export default async function handler(req, res) {
   // Verificar método
@@ -14,11 +15,11 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
     
-    // Obter parâmetros da rota (caseId e userId)
+    // Obter parâmetros da rota dinâmica
     const { params } = req.query;
     
     if (!params || params.length < 2) {
-      return res.status(400).json({ success: false, message: 'Case ID and User ID are required' });
+      return res.status(400).json({ success: false, message: 'Case ID and user ID are required' });
     }
     
     const [caseId, userId] = params;
@@ -28,19 +29,10 @@ export default async function handler(req, res) {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
     
-    // Chamar a API do servidor para verificar o status da caixa
-    const apiResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/player/cases/status/${caseId}/${userId}`);
-    const data = await apiResponse.json();
+    // Chamar a API do servidor para verificar status
+    const data = await fetchAPI(`/player/cases/status/${caseId}/${userId}`);
     
-    if (!data.success) {
-      return res.status(400).json({ success: false, message: data.message });
-    }
-    
-    return res.status(200).json({ 
-      success: true, 
-      canOpen: data.canOpen,
-      lastOpening: data.lastOpening
-    });
+    return res.status(200).json(data);
   } catch (error) {
     console.error('Error checking case status:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
