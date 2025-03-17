@@ -26,6 +26,20 @@ export async function fetchAPI(endpoint, options = {}) {
   
   try {
     const response = await fetch(url, fetchOptions);
+    
+    // Verificar o status da resposta
+    if (!response.ok) {
+      console.error(`API request failed with status ${response.status} for endpoint ${endpoint}`);
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+    
+    // Verificar o tipo de conteúdo
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error(`API returned non-JSON response: ${contentType} for endpoint ${endpoint}`);
+      throw new Error(`API returned non-JSON response: ${contentType}`);
+    }
+    
     const data = await response.json();
     return data;
   } catch (error) {

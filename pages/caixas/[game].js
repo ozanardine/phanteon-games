@@ -35,6 +35,35 @@ const GameCases = () => {
       try {
         setLoading(true);
         const response = await fetch(`/api/cases/${game}`);
+        
+        // Verificar o código de status HTTP
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage = 'Erro ao carregar caixas';
+          
+          try {
+            // Tenta fazer o parse do JSON se possível
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || errorMessage;
+            
+            if (errorData.errorCode === 'API_CONNECTION_ERROR') {
+              toast.error('Problema ao conectar com o servidor de jogo. Por favor, tente novamente mais tarde.');
+              setError('Serviço temporariamente indisponível. Nossa equipe já foi notificada.');
+            } else {
+              toast.error(errorMessage);
+              setError(errorMessage);
+            }
+          } catch (e) {
+            // Se não for JSON, use o texto bruto
+            console.error('Erro não-JSON recebido:', errorText);
+            setError('Erro inesperado ao carregar caixas');
+            toast.error('Erro inesperado ao carregar caixas');
+          }
+          
+          setLoading(false);
+          return;
+        }
+        
         const data = await response.json();
 
         if (data.success) {
