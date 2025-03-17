@@ -36,9 +36,9 @@ export const getRarityClass = (rarity) => {
     case 'common':
       return 'border-gray-500/50 bg-gradient-to-b from-gray-700/30 to-gray-800/50';
     case 'uncommon':
-      return 'border-green-500/50 bg-gradient-to-b from-green-700/30 to-green-800/50';
-    case 'rare':
       return 'border-blue-500/50 bg-gradient-to-b from-blue-700/30 to-blue-800/50';
+    case 'rare':
+      return 'border-teal-500/50 bg-gradient-to-b from-teal-700/30 to-teal-800/50';
     case 'epic':
       return 'border-purple-500/50 bg-gradient-to-b from-purple-700/30 to-purple-800/50';
     case 'legendary':
@@ -46,4 +46,24 @@ export const getRarityClass = (rarity) => {
     default:
       return 'border-gray-500/50 bg-gradient-to-b from-gray-700/30 to-gray-800/50';
   }
-}; 
+};
+
+/**
+ * Formata um timestamp em formato legível
+ * @param {string} timestamp - Timestamp ISO
+ * @returns {string} - Data formatada
+ */
+export const formatDate = (timestamp) => {
+  try {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (e) {
+    return timestamp || '';
+  }
+};

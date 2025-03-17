@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     }
     
     // Validar dados do corpo da requisição
-    const { openingId, steamId } = req.body;
+    const { openingId, steamId, serverId } = req.body;
     
     if (!openingId) {
       return res.status(400).json({ success: false, message: 'Opening ID is required' });
@@ -25,7 +25,8 @@ export default async function handler(req, res) {
     // Preparar dados para enviar à API
     const payload = {
       openingId,
-      steamId: steamId || ''
+      steamId: steamId || '',
+      serverId: serverId || ''
     };
     
     // Chamar a API do servidor para reclamar o item
@@ -39,4 +40,4 @@ export default async function handler(req, res) {
     console.error('Error claiming case item:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
-} 
+}

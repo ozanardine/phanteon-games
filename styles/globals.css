@@ -287,3 +287,49 @@ body {
   color: transparent;
   background-image: linear-gradient(to right, var(--color-phanteon-orange), #FF8C42);
 }
+
+/* Animação para a roleta */
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) translateY(-100%);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%);
+  }
+}
+
+.animate-shine {
+  animation: shine 1.5s infinite;
+}
+
+/* Suavizar aparecimento/desaparecimento de elementos */
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Efeito de brilho para itens raros */
+.glow-effect {
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+  animation: glowing 1.5s infinite alternate;
+}
+
+@keyframes glowing {
+  from { box-shadow: 0 0 15px rgba(255, 215, 0, 0.6); }
+  to { box-shadow: 0 0 25px rgba(255, 215, 0, 0.9); }
+}
+
+/* Roleta específica para CSG-style */
+.roulette-item {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.roulette-item.winner {
+  transform: scale(1.1) !important;
+  z-index: 10;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}

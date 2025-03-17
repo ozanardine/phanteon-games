@@ -37,4 +37,4 @@ export default async function handler(req, res) {
     console.error('Error checking case status:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
-} 
+}

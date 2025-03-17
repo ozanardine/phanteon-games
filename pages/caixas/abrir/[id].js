@@ -2,15 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 import Head from 'next/head';
-import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import { FaChevronLeft, FaGift, FaGamepad, FaCheckCircle, FaSadTear, FaServer, FaClock, FaInfoCircle, FaLock } from 'react-icons/fa';
+import { FaChevronLeft, FaGift, FaCheckCircle, FaSadTear, FaServer, FaClock, FaLock } from 'react-icons/fa';
 import Button from '../../../components/ui/Button';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
-import { getItemImageUrl, getRarityClass } from '../../../utils/formatters';
+import { getItemImageUrl } from '../../../utils/formatters';
 
-// Componente principal
 const OpenCase = () => {
   const router = useRouter();
   const { id: caseId, game } = router.query;
@@ -163,7 +161,7 @@ const OpenCase = () => {
           userId: session.user.id,
           caseId: caseId,
           steamId: session.user.steamId,
-          sessionId: sessionId.current, // Enviando ID de sessão para evitar solicitações duplicadas
+          sessionId: sessionId.current,
         }),
       });
       
@@ -171,8 +169,6 @@ const OpenCase = () => {
       
       if (data.success) {
         // Continuar a animação por um tempo para criar suspense
-        // A decisão de qual item o jogador ganhou já foi feita no servidor
-        // A animação é apenas visual
         setTimeout(() => {
           // Parar a animação no item ganho
           stopRouletteAnimation(data.item);
@@ -234,11 +230,9 @@ const OpenCase = () => {
         
         // Handler para erro de carregamento de imagem
         img.onerror = () => {
-          // Se o CDN falhar e houver uma URL de imagem alternativa
           if (item.image_url) {
             img.src = item.image_url;
             
-            // Segunda tentativa de erro - se a URL alternativa também falhar
             img.onerror = () => {
               img.style.display = 'none';
               displayPlaceholder(imageWrapper);
@@ -256,7 +250,6 @@ const OpenCase = () => {
         img.alt = item.name;
         img.className = 'max-h-full max-w-full object-contain drop-shadow-lg';
         
-        // Handler para erro de carregamento de imagem
         img.onerror = () => {
           img.style.display = 'none';
           displayPlaceholder(imageWrapper);
@@ -264,7 +257,6 @@ const OpenCase = () => {
         
         imageWrapper.appendChild(img);
       } else {
-        // Se não houver nem shortname nem image_url, mostra placeholder
         displayPlaceholder(imageWrapper);
       }
       
@@ -296,7 +288,7 @@ const OpenCase = () => {
     rouletteItemsRef.current.style.transition = 'none';
     rouletteItemsRef.current.style.transform = 'translateX(0)';
     
-    // Força reflow para garantir que a transição funcione
+    // Forçar reflow para garantir que a transição funcione
     rouletteItemsRef.current.offsetHeight;
     
     // Calcular quantidade de rolagem para uma experiência mais longa
@@ -356,13 +348,13 @@ const OpenCase = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Session-ID': sessionId.current, // Segurança adicional
+          'X-Session-ID': sessionId.current,
         },
         body: JSON.stringify({
           openingId: result.opening.id,
           steamId: session.user.steamId,
           serverId: selectedServer,
-          sessionId: sessionId.current, // Evita fraudes e duplicações
+          sessionId: sessionId.current,
         }),
       });
       
@@ -414,50 +406,7 @@ const OpenCase = () => {
     }
   };
   
-  // Componente para exibição dos itens possíveis
-  const PossibleItemsList = () => {
-    // SVG placeholder para itens sem imagem
-    const placeholderSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
-    
-    return (
-      <div className="mt-12 bg-dark-800 rounded-lg p-6">
-        <h2 className="text-xl font-bold text-white mb-4 text-center">Conteúdo da caixa</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          {items.map((item) => (
-            <div 
-              key={item.id} 
-              className={`rounded-lg overflow-hidden border ${getRarityBorderClass(item.rarity)}`}
-            >
-              <div className={`p-2 bg-gradient-to-b ${getRarityBackgroundClass(item.rarity)}`}>
-                <div className="relative h-24 flex items-center justify-center mb-2">
-                  <img 
-                    src={item.shortname ? getItemImageUrl(item.shortname) : (item.image_url || placeholderSvg)}
-                    alt={item.name}
-                    className="max-h-full max-w-full object-contain drop-shadow-lg"
-                    onError={(e) => {
-                      // Primeiro tenta usar image_url se o CDN falhou
-                      if (item.shortname && item.image_url && e.target.src !== item.image_url) {
-                        e.target.src = item.image_url;
-                      } else {
-                        // Se tudo falhar, usa o placeholder SVG
-                        e.target.src = placeholderSvg;
-                      }
-                    }}
-                  />
-                </div>
-                <div className="text-center">
-                  <p className="text-white text-sm font-medium truncate">{item.name}</p>
-                  <p className="text-xs text-gray-400">{(item.drop_chance * 100).toFixed(4)}%</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-  
-  // Quando o usuário ganhou um item
+  // Componente para exibição do resultado
   const ItemWonView = () => {
     if (!result || !result.item) return null;
     
@@ -656,6 +605,7 @@ const OpenCase = () => {
                         onClick={handleOpenCase}
                         disabled={opening || !!timeLeft}
                         className={`px-8 py-3 ${timeLeft ? 'bg-gray-700 cursor-not-allowed' : ''}`}
+                        variant="gradient"
                       >
                         {opening ? (
                           <>
@@ -682,36 +632,78 @@ const OpenCase = () => {
                       </div>
                     </div>
                     
-                    {/* Dicas para ganhar caixas extras - Estilo CSGOSKINS */}
-                    <div className="bg-gradient-to-br from-blue-900/20 to-dark-800 rounded-lg p-6 mb-8 border border-blue-900/20 text-left">
-                      <div className="flex items-center mb-4">
-                        <FaGift className="text-primary text-2xl mr-3" />
-                        <h3 className="text-xl font-bold text-white">Abra até 3 caixas grátis!</h3>
+                    {/* Conteúdo da caixa */}
+                    <div className="mt-12 bg-dark-800 rounded-lg p-6">
+                      <h2 className="text-xl font-bold text-white mb-4 text-center">Conteúdo da caixa</h2>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                        {items.map((item) => (
+                          <div 
+                            key={item.id} 
+                            className={`rounded-lg overflow-hidden border ${getRarityBorderClass(item.rarity)}`}
+                          >
+                            <div className={`p-2 bg-gradient-to-b ${getRarityBackgroundClass(item.rarity)}`}>
+                              <div className="relative h-24 flex items-center justify-center mb-2">
+                                <img 
+                                  src={item.shortname ? getItemImageUrl(item.shortname) : (item.image_url || placeholderSvg)}
+                                  alt={item.name}
+                                  className="max-h-full max-w-full object-contain drop-shadow-lg"
+                                  onError={(e) => {
+                                    if (item.shortname && item.image_url && e.target.src !== item.image_url) {
+                                      e.target.src = item.image_url;
+                                    } else {
+                                      e.target.src = placeholderSvg;
+                                    }
+                                  }}
+                                />
+                              </div>
+                              <div className="text-center">
+                                <p className="text-white text-sm font-medium truncate">{item.name}</p>
+                                <p className="text-xs text-gray-400">{(item.drop_chance * 100).toFixed(4)}%</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <ol className="space-y-2 text-gray-300">
-                        <li className="flex items-start">
-                          <span className="bg-primary text-dark-900 w-5 h-5 rounded-full flex items-center justify-center font-bold mr-2 mt-0.5 flex-shrink-0">1</span>
-                          <span>Adicione <strong className="text-primary">PHANTEON</strong> ao seu apelido para abrir esta caixa.</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="bg-primary text-dark-900 w-5 h-5 rounded-full flex items-center justify-center font-bold mr-2 mt-0.5 flex-shrink-0">2</span>
-                          <span>Abra diariamente por <strong>7 dias</strong> para receber uma caixa de bônus.</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="bg-primary text-dark-900 w-5 h-5 rounded-full flex items-center justify-center font-bold mr-2 mt-0.5 flex-shrink-0">3</span>
-                          <span>Configure o <strong>avatar</strong> para receber um <strong>item adicional</strong> no dia do bônus.</span>
-                        </li>
-                      </ol>
                     </div>
-                    
-                    {/* Lista de itens possíveis */}
-                    <PossibleItemsList />
                   </div>
                 </div>
               ) : (
                 <>
                   <ItemWonView />
-                  <PossibleItemsList />
+                  
+                  {/* Lista de itens possíveis */}
+                  <div className="mt-12 bg-dark-800 rounded-lg p-6">
+                    <h2 className="text-xl font-bold text-white mb-4 text-center">Outros itens possíveis</h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                      {items.filter(i => i.id !== result.item.id).map((item) => (
+                        <div 
+                          key={item.id} 
+                          className={`rounded-lg overflow-hidden border ${getRarityBorderClass(item.rarity)}`}
+                        >
+                          <div className={`p-2 bg-gradient-to-b ${getRarityBackgroundClass(item.rarity)}`}>
+                            <div className="relative h-24 flex items-center justify-center mb-2">
+                              <img 
+                                src={item.shortname ? getItemImageUrl(item.shortname) : (item.image_url || placeholderSvg)}
+                                alt={item.name}
+                                className="max-h-full max-w-full object-contain drop-shadow-lg"
+                                onError={(e) => {
+                                  if (item.shortname && item.image_url && e.target.src !== item.image_url) {
+                                    e.target.src = item.image_url;
+                                  } else {
+                                    e.target.src = placeholderSvg;
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-white text-sm font-medium truncate">{item.name}</p>
+                              <p className="text-xs text-gray-400">{(item.drop_chance * 100).toFixed(4)}%</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </>
               )}
             </>
@@ -722,4 +714,4 @@ const OpenCase = () => {
   );
 };
 
-export default OpenCase; 
+export default OpenCase;
