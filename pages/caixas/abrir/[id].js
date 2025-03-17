@@ -7,8 +7,42 @@ import { toast } from 'react-hot-toast';
 import { FaChevronLeft, FaGift, FaCheckCircle, FaSadTear, FaServer, FaClock, FaLock } from 'react-icons/fa';
 import Button from '../../../components/ui/Button';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
-import { getItemImageUrl } from '../../../utils/formatters';
 
+// Função para formatar shortname para URL do CDN Rust Helper
+const formatItemShortName = (shortName) => {
+  if (!shortName) return '';
+  return shortName.replace(/\./g, '-');
+};
+
+// Função para obter URL de imagem do CDN Rust Helper
+const getItemImageUrl = (shortName) => {
+  if (!shortName) {
+    // SVG de presente (gift box) codificado em base64 como fallback
+    return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
+  }
+  return `https://cdn.rusthelp.com/images/source/${formatItemShortName(shortName)}.png`;
+};
+
+// Mapeamento de nomes de itens para seus shortnames
+const itemShortnames = {
+  'Scrap': 'scrap',
+  'Wood': 'wood',
+  'Metal Fragments': 'metal.fragments',
+  'High Quality Metal': 'metal.refined',
+  'Assault Rifle': 'rifle.ak',
+  'Rocket Launcher': 'rocket.launcher',
+  'L96 Rifle': 'rifle.l96',
+  'Supply Signal': 'supply.signal',
+  'Stone': 'stones',
+  'Sulfur': 'sulfur',
+  'Cloth': 'cloth',
+  'Leather': 'leather',
+  'Low Grade Fuel': 'lowgradefuel',
+  'Medical Syringe': 'syringe.medical',
+  'Large Medkit': 'largemedkit'
+};
+
+// Componente principal
 const OpenCase = () => {
   const router = useRouter();
   const { id: caseId, game } = router.query;
@@ -23,7 +57,6 @@ const OpenCase = () => {
   const [servers, setServers] = useState([]);
   const [selectedServer, setSelectedServer] = useState('');
   const [error, setError] = useState(null);
-  const [nextOpeningTime, setNextOpeningTime] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
   
   // Refs para a animação
@@ -44,14 +77,24 @@ const OpenCase = () => {
         const data = await response.json();
         
         if (data.success) {
-          setCaseData(data.case);
-          setItems(data.items);
+          // Certificar-se de que cada item tenha um shortname válido
+          const processedItems = data.items.map(item => {
+            // Se o item já tem um shortname, mantenha-o
+            if (item.shortname) return item;
+            
+            // Caso contrário, tente adivinhar o shortname com base no nome do item
+            const guessedShortname = itemShortnames[item.name] || 
+                                  item.name?.toLowerCase().replace(/\s+/g, '.') || 
+                                  null;
+            
+            return {
+              ...item,
+              shortname: guessedShortname
+            };
+          });
           
-          // Verificar se há restrição de tempo para próxima abertura
-          if (data.nextOpening) {
-            setNextOpeningTime(new Date(data.nextOpening));
-            updateTimeLeft(new Date(data.nextOpening));
-          }
+          setCaseData(data.case);
+          setItems(processedItems);
         } else {
           setError(data.message || 'Erro ao carregar detalhes da caixa');
           toast.error('Não foi possível carregar a caixa');
@@ -83,116 +126,6 @@ const OpenCase = () => {
     fetchServers();
   }, [caseId, status]);
   
-  // Atualizar contador de tempo
-  const updateTimeLeft = (nextTime) => {
-    if (!nextTime) return;
-    
-    const updateTimer = () => {
-      const now = new Date();
-      const difference = nextTime - now;
-      
-      if (difference <= 0) {
-        setTimeLeft(null);
-        return;
-      }
-      
-      const hours = Math.floor(difference / (1000 * 60 * 60));
-      const minutes = Math.floor((difference / (1000 * 60)) % 60);
-      const seconds = Math.floor((difference / 1000) % 60);
-      
-      setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-    };
-    
-    updateTimer();
-    const timerId = setInterval(updateTimer, 1000);
-    
-    return () => clearInterval(timerId);
-  };
-  
-  // Verificar autenticação
-  if (status === 'loading' || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-dark-900">
-        <LoadingSpinner size="large" />
-      </div>
-    );
-  }
-  
-  if (status === 'unauthenticated') {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-dark-900 px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-4">Login Necessário</h1>
-          <p className="text-gray-300 mb-8">
-            Você precisa estar logado para abrir caixas de itens.
-          </p>
-          <Button 
-            onClick={() => router.push('/api/auth/signin')} 
-            className="px-8 py-3"
-          >
-            Fazer Login
-          </Button>
-        </div>
-      </div>
-    );
-  }
-  
-  // Abrir a caixa
-  const handleOpenCase = async () => {
-    if (opening || result || timeLeft) return;
-    
-    try {
-      setOpening(true);
-      
-      // Preparar itens para a roleta
-      prepareRouletteItems();
-      
-      // Iniciar animação de roleta
-      startRouletteAnimation();
-      
-      // Chamar API para abrir a caixa com ID de sessão para segurança
-      const response = await fetch('/api/cases/open', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': sessionId.current,
-        },
-        body: JSON.stringify({
-          userId: session.user.id,
-          caseId: caseId,
-          steamId: session.user.steamId,
-          sessionId: sessionId.current,
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        // Continuar a animação por um tempo para criar suspense
-        setTimeout(() => {
-          // Parar a animação no item ganho
-          stopRouletteAnimation(data.item);
-          
-          // Criar um pequeno atraso para melhorar a experiência
-          setTimeout(() => {
-            setResult(data);
-          }, 1000);
-        }, 3000);
-      } else {
-        stopRouletteAnimation();
-        setError(data.message || 'Erro ao abrir a caixa');
-        toast.error(data.message || 'Não foi possível abrir a caixa');
-        setOpening(false);
-      }
-    } catch (err) {
-      console.error('Erro ao abrir a caixa:', err);
-      stopRouletteAnimation();
-      setError('Erro ao conectar ao servidor');
-      toast.error('Erro de conexão ao servidor');
-      setOpening(false);
-    }
-  };
-  
   // Preparar itens para a roleta
   const prepareRouletteItems = () => {
     if (!rouletteItemsRef.current) return;
@@ -221,45 +154,26 @@ const OpenCase = () => {
       const imageWrapper = document.createElement('div');
       imageWrapper.className = 'relative h-24 flex items-center justify-center';
       
-      // Sempre prioriza o CDN com base no shortname
-      if (item.shortname) {
-        const img = document.createElement('img');
-        img.src = getItemImageUrl(item.shortname);
-        img.alt = item.name;
-        img.className = 'max-h-full max-w-full object-contain drop-shadow-lg';
-        
-        // Handler para erro de carregamento de imagem
-        img.onerror = () => {
-          if (item.image_url) {
-            img.src = item.image_url;
-            
-            img.onerror = () => {
-              img.style.display = 'none';
-              displayPlaceholder(imageWrapper);
-            };
-          } else {
-            img.style.display = 'none';
-            displayPlaceholder(imageWrapper);
-          }
-        };
-        
-        imageWrapper.appendChild(img);
-      } else if (item.image_url) {
-        const img = document.createElement('img');
-        img.src = item.image_url;
-        img.alt = item.name;
-        img.className = 'max-h-full max-w-full object-contain drop-shadow-lg';
-        
-        img.onerror = () => {
-          img.style.display = 'none';
-          displayPlaceholder(imageWrapper);
-        };
-        
-        imageWrapper.appendChild(img);
-      } else {
-        displayPlaceholder(imageWrapper);
-      }
+      // Usar o shortname para obter a imagem do CDN
+      const imgElement = document.createElement('img');
+      // Priorizar o uso do shortname com o CDN Rust Helper
+      imgElement.src = getItemImageUrl(item.shortname);
+      imgElement.alt = item.name;
+      imgElement.className = 'max-h-full max-w-full object-contain drop-shadow-lg';
       
+      // Handler para erro de carregamento de imagem
+      imgElement.onerror = () => {
+        console.warn(`Falha ao carregar imagem para ${item.name} (${item.shortname})`);
+        imgElement.style.display = 'none';
+        
+        // Mostrar placeholder
+        const placeholder = document.createElement('div');
+        placeholder.className = 'text-4xl text-gray-600 h-full w-full flex items-center justify-center';
+        placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48"><path d="M3 2.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0v.006c0 .07 0 .27-.038.494H15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14.5V7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h2.038A2.968 2.968 0 0 1 3 2.506V2.5zm1.068.5H7v-.5a1.5 1.5 0 1 0-3 0c0 .085.002.274.045.43a.522.522 0 0 0 .023.07zM9 3h2.932a.56.56 0 0 0 .023-.07c.043-.156.045-.345.045-.43a1.5 1.5 0 0 0-3 0V3zM1 4v2h6V4H1zm8 0v2h6V4H9zm5 3H9v8h4.5a.5.5 0 0 0 .5-.5V7zm-7 8V7H2v7.5a.5.5 0 0 0 .5.5H7z"></path></svg>';
+        imageWrapper.appendChild(placeholder);
+      };
+      
+      imageWrapper.appendChild(imgElement);
       itemElement.appendChild(imageWrapper);
       
       // Nome do item
@@ -270,14 +184,6 @@ const OpenCase = () => {
       
       rouletteItemsRef.current.appendChild(itemElement);
     });
-  };
-  
-  // Função para exibir o placeholder SVG
-  const displayPlaceholder = (container) => {
-    const placeholder = document.createElement('div');
-    placeholder.className = 'text-4xl text-gray-600 h-full w-full flex items-center justify-center';
-    placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48"><path d="M3 2.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0v.006c0 .07 0 .27-.038.494H15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14.5V7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h2.038A2.968 2.968 0 0 1 3 2.506V2.5zm1.068.5H7v-.5a1.5 1.5 0 1 0-3 0c0 .085.002.274.045.43a.522.522 0 0 0 .023.07zM9 3h2.932a.56.56 0 0 0 .023-.07c.043-.156.045-.345.045-.43a1.5 1.5 0 0 0-3 0V3zM1 4v2h6V4H1zm8 0v2h6V4H9zm5 3H9v8h4.5a.5.5 0 0 0 .5-.5V7zm-7 8V7H2v7.5a.5.5 0 0 0 .5.5H7z"></path></svg>';
-    container.appendChild(placeholder);
   };
   
   // Iniciar animação de roleta
@@ -337,6 +243,93 @@ const OpenCase = () => {
     }
   };
   
+  // Obter classe de raridade para borda
+  const getRarityBorderClass = (rarity) => {
+    switch (rarity?.toLowerCase()) {
+      case 'common': return 'border-gray-500 bg-dark-700';
+      case 'uncommon': return 'border-blue-500 bg-dark-700';
+      case 'rare': return 'border-teal-500 bg-dark-700';
+      case 'epic': return 'border-purple-500 bg-dark-700';
+      case 'legendary': return 'border-yellow-400 bg-dark-700';
+      default: return 'border-gray-500 bg-dark-700';
+    }
+  };
+  
+  // Obter classe de background de raridade 
+  const getRarityBackgroundClass = (rarity) => {
+    switch (rarity?.toLowerCase()) {
+      case 'common': return 'from-gray-800 to-gray-900';
+      case 'uncommon': return 'from-blue-900 to-dark-900';
+      case 'rare': return 'from-teal-900 to-dark-900';
+      case 'epic': return 'from-purple-900 to-dark-900';
+      case 'legendary': return 'from-yellow-900 to-dark-900';
+      default: return 'from-gray-800 to-gray-900';
+    }
+  };
+  
+  // Abrir a caixa
+  const handleOpenCase = async () => {
+    if (opening || result) return;
+    
+    try {
+      setOpening(true);
+      
+      // Preparar itens para a roleta
+      prepareRouletteItems();
+      
+      // Iniciar animação de roleta
+      startRouletteAnimation();
+      
+      // Chamar API para abrir a caixa com ID de sessão para segurança
+      const response = await fetch('/api/cases/open', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': sessionId.current,
+        },
+        body: JSON.stringify({
+          userId: session.user.id,
+          caseId: caseId,
+          steamId: session.user.steamId,
+          sessionId: sessionId.current,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Continuar a animação por um tempo para criar suspense
+        setTimeout(() => {
+          // Garantir que o item tenha um shortname
+          if (data.item) {
+            data.item.shortname = data.item.shortname || 
+                                 itemShortnames[data.item.name] || 
+                                 data.item.name?.toLowerCase().replace(/\s+/g, '.');
+          }
+          
+          // Parar a animação no item ganho
+          stopRouletteAnimation(data.item);
+          
+          // Criar um pequeno atraso para melhorar a experiência
+          setTimeout(() => {
+            setResult(data);
+          }, 1000);
+        }, 3000);
+      } else {
+        stopRouletteAnimation();
+        setError(data.message || 'Erro ao abrir a caixa');
+        toast.error(data.message || 'Não foi possível abrir a caixa');
+        setOpening(false);
+      }
+    } catch (err) {
+      console.error('Erro ao abrir a caixa:', err);
+      stopRouletteAnimation();
+      setError('Erro ao conectar ao servidor');
+      toast.error('Erro de conexão ao servidor');
+      setOpening(false);
+    }
+  };
+  
   // Resgatar o item ganho
   const handleClaimItem = async () => {
     if (!result || claiming || claimed || !selectedServer) return;
@@ -363,12 +356,6 @@ const OpenCase = () => {
       if (data.success) {
         setClaimed(true);
         toast.success('Item resgatado com sucesso!');
-        
-        // Atualizar nextOpeningTime se fornecido na resposta
-        if (data.nextOpening) {
-          setNextOpeningTime(new Date(data.nextOpening));
-          updateTimeLeft(new Date(data.nextOpening));
-        }
       } else {
         setError(data.message || 'Erro ao resgatar item');
         toast.error(data.message || 'Não foi possível resgatar o item');
@@ -382,29 +369,33 @@ const OpenCase = () => {
     }
   };
   
-  // Obter classe de raridade para borda
-  const getRarityBorderClass = (rarity) => {
-    switch (rarity?.toLowerCase()) {
-      case 'common': return 'border-gray-500 bg-dark-700';
-      case 'uncommon': return 'border-blue-500 bg-dark-700';
-      case 'rare': return 'border-teal-500 bg-dark-700';
-      case 'epic': return 'border-purple-500 bg-dark-700';
-      case 'legendary': return 'border-yellow-400 bg-dark-700';
-      default: return 'border-gray-500 bg-dark-700';
-    }
-  };
+  // Verificar autenticação
+  if (status === 'loading' || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-dark-900">
+        <LoadingSpinner size="large" />
+      </div>
+    );
+  }
   
-  // Obter classe de background de raridade 
-  const getRarityBackgroundClass = (rarity) => {
-    switch (rarity?.toLowerCase()) {
-      case 'common': return 'from-gray-800 to-gray-900';
-      case 'uncommon': return 'from-blue-900 to-dark-900';
-      case 'rare': return 'from-teal-900 to-dark-900';
-      case 'epic': return 'from-purple-900 to-dark-900';
-      case 'legendary': return 'from-yellow-900 to-dark-900';
-      default: return 'from-gray-800 to-gray-900';
-    }
-  };
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-dark-900 px-4">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-primary mb-4">Login Necessário</h1>
+          <p className="text-gray-300 mb-8">
+            Você precisa estar logado para abrir caixas de itens.
+          </p>
+          <Button 
+            onClick={() => router.push('/api/auth/signin')} 
+            className="px-8 py-3"
+          >
+            Fazer Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
   
   // Componente para exibição do resultado
   const ItemWonView = () => {
@@ -413,16 +404,6 @@ const OpenCase = () => {
     const item = result.item;
     const rarity = item.rarity ? item.rarity.toLowerCase() : 'common';
     
-    // SVG placeholder para itens sem imagem
-    const placeholderSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
-    
-    // Determinar a URL da imagem do item - prioriza CDN
-    const getImageSource = () => {
-      if (item.shortname) return getItemImageUrl(item.shortname);
-      if (item.image_url) return item.image_url;
-      return placeholderSvg;
-    };
-    
     return (
       <div className="text-center mt-8 mb-12">
         <div className="bg-dark-800 rounded-lg p-6 max-w-md mx-auto">
@@ -430,17 +411,12 @@ const OpenCase = () => {
           
           <div className={`relative mx-auto w-48 h-48 flex items-center justify-center p-4 rounded-lg border-2 ${getRarityBorderClass(rarity)} bg-gradient-to-b ${getRarityBackgroundClass(rarity)}`}>
             <img 
-              src={getImageSource()}
+              src={getItemImageUrl(item.shortname)}
               alt={item.name}
               className="max-w-full max-h-full object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
               onError={(e) => {
-                // Tenta a URL de imagem se o CDN falhar
-                if (item.shortname && item.image_url && e.target.src !== item.image_url) {
-                  e.target.src = item.image_url;
-                } else {
-                  // Se tudo falhar, usa o placeholder SVG
-                  e.target.src = placeholderSvg;
-                }
+                e.target.onerror = null;
+                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
               }}
             />
           </div>
@@ -546,16 +522,6 @@ const OpenCase = () => {
             </Link>
             <div className="flex flex-col md:flex-row md:items-end justify-between">
               <h1 className="text-3xl font-bold text-white">{caseData?.name || 'Abrir Caixa'}</h1>
-              
-              {timeLeft && (
-                <div className="flex items-center mt-4 md:mt-0 bg-dark-800 px-4 py-2 rounded-lg border border-dark-600">
-                  <FaClock className="text-yellow-500 mr-2" />
-                  <div>
-                    <div className="text-xs text-gray-400">Próxima chance em</div>
-                    <div className="text-white font-mono">{timeLeft}</div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -576,7 +542,7 @@ const OpenCase = () => {
                       <h2 className="text-xl font-bold text-white mb-4">
                         Abra esta caixa para ganhar um dos seguintes itens:
                       </h2>
-                      <p className="text-gray-400 mb-6">{caseData?.description}</p>
+                      <p className="text-gray-400 mb-6">Abra esta caixa uma vez por dia para ganhar itens em nosso servidor Rust</p>
                       
                       {/* Roleta de itens - Estilo semelhante ao CSGOSKINS */}
                       <div className="relative w-full h-36 overflow-hidden bg-dark-800 rounded-lg mb-8 border-t border-b border-dark-600" ref={rouletteRef}>
@@ -603,19 +569,14 @@ const OpenCase = () => {
                       {/* Botão de abrir */}
                       <Button
                         onClick={handleOpenCase}
-                        disabled={opening || !!timeLeft}
-                        className={`px-8 py-3 ${timeLeft ? 'bg-gray-700 cursor-not-allowed' : ''}`}
-                        variant="gradient"
+                        disabled={opening}
+                        className="px-8 py-3"
+                        variant="primary"
                       >
                         {opening ? (
                           <>
                             <LoadingSpinner size="small" className="mr-2" />
                             Abrindo...
-                          </>
-                        ) : timeLeft ? (
-                          <>
-                            <FaClock className="mr-2" />
-                            Aguarde {timeLeft}
                           </>
                         ) : (
                           <>
@@ -633,9 +594,9 @@ const OpenCase = () => {
                     </div>
                     
                     {/* Conteúdo da caixa */}
-                    <div className="mt-12 bg-dark-800 rounded-lg p-6">
+                    <div className="mt-12">
                       <h2 className="text-xl font-bold text-white mb-4 text-center">Conteúdo da caixa</h2>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                         {items.map((item) => (
                           <div 
                             key={item.id} 
@@ -644,15 +605,13 @@ const OpenCase = () => {
                             <div className={`p-2 bg-gradient-to-b ${getRarityBackgroundClass(item.rarity)}`}>
                               <div className="relative h-24 flex items-center justify-center mb-2">
                                 <img 
-                                  src={item.shortname ? getItemImageUrl(item.shortname) : (item.image_url || placeholderSvg)}
+                                  src={getItemImageUrl(item.shortname)}
                                   alt={item.name}
                                   className="max-h-full max-w-full object-contain drop-shadow-lg"
                                   onError={(e) => {
-                                    if (item.shortname && item.image_url && e.target.src !== item.image_url) {
-                                      e.target.src = item.image_url;
-                                    } else {
-                                      e.target.src = placeholderSvg;
-                                    }
+                                    // Fallback para imagem de erro
+                                    e.target.onerror = null;
+                                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
                                   }}
                                 />
                               </div>
@@ -674,7 +633,7 @@ const OpenCase = () => {
                   {/* Lista de itens possíveis */}
                   <div className="mt-12 bg-dark-800 rounded-lg p-6">
                     <h2 className="text-xl font-bold text-white mb-4 text-center">Outros itens possíveis</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                       {items.filter(i => i.id !== result.item.id).map((item) => (
                         <div 
                           key={item.id} 
@@ -683,15 +642,13 @@ const OpenCase = () => {
                           <div className={`p-2 bg-gradient-to-b ${getRarityBackgroundClass(item.rarity)}`}>
                             <div className="relative h-24 flex items-center justify-center mb-2">
                               <img 
-                                src={item.shortname ? getItemImageUrl(item.shortname) : (item.image_url || placeholderSvg)}
+                                src={getItemImageUrl(item.shortname)}
                                 alt={item.name}
                                 className="max-h-full max-w-full object-contain drop-shadow-lg"
                                 onError={(e) => {
-                                  if (item.shortname && item.image_url && e.target.src !== item.image_url) {
-                                    e.target.src = item.image_url;
-                                  } else {
-                                    e.target.src = placeholderSvg;
-                                  }
+                                  // Fallback para imagem de erro
+                                  e.target.onerror = null;
+                                  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
                                 }}
                               />
                             </div>
