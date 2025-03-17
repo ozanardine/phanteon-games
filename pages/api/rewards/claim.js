@@ -305,8 +305,7 @@ async function generateRewardsForDay(day, vipStatus) {
         applicableLevels.push('vip-basic');
       } else if (vipStatus === 'vip-plus') {
         applicableLevels.push('vip-basic', 'vip-plus');
-      } else if (vipStatus === 'vip-premium') {
-        applicableLevels.push('vip-basic', 'vip-plus', 'vip-premium');
+
       }
       
       // Filtrar recompensas VIP aplicáveis

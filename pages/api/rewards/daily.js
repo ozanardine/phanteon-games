@@ -221,8 +221,7 @@ async function generateDailyRewards(status) {
       // Verificar se a recompensa é aplicável ao nível VIP do jogador
       const isApplicable = 
         reward.vip_level === 'none' || 
-        (reward.is_bonus && status.vip_status === reward.vip_level) ||
-        (reward.is_bonus && status.vip_status === 'vip-premium' && ['vip-basic', 'vip-plus'].includes(reward.vip_level));
+        (reward.is_bonus && status.vip_status === reward.vip_level);
       
       if (isApplicable && reward.day >= 1 && reward.day <= 7) {
         rewardsByDay[reward.day].items.push({

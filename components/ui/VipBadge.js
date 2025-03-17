@@ -12,11 +12,7 @@ const badgeMapping = {
     alt: 'VIP Prata',
     tooltip: 'Assinante VIP Prata'
   },
-  'vip-premium': {
-    src: '/badges/vip-ouro.svg',
-    alt: 'VIP Ouro',
-    tooltip: 'Assinante VIP Ouro'
-  }
+
 };
 
 const VipBadge = ({

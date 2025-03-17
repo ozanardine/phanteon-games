@@ -80,7 +80,7 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
   };
 
   // Verificar se o usuário é VIP PLUS
-  const isVipPlus = rewardsData?.status?.vip_status === 'vip-plus' || rewardsData?.status?.vip_status === 'vip-premium';
+  const isVipPlus = rewardsData?.status?.vip_status === 'vip-plus';
 
   if (isLoading) {
     return (

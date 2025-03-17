@@ -82,7 +82,7 @@ const PlanCard = ({
         <Card.Header className="pt-14 pb-4 px-6">
           <Card.Title className="text-2xl flex items-center gap-2">
             {name}
-            {id === 'vip-premium' && <FaCrown className="text-yellow-500" />}
+
           </Card.Title>
           <div className="mt-4 flex items-baseline text-white">
             <span className="text-4xl font-extrabold">R$ {price}</span>
