@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { useSession } from 'next-auth/react';
+import { useSession, signIn, getSession } from 'next-auth/react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
@@ -56,6 +56,7 @@ const OpenCase = () => {
   const [selectedServer, setSelectedServer] = useState('');
   const [error, setError] = useState(null);
   const [imagesPreloaded, setImagesPreloaded] = useState(false);
+  const [sessionToken, setSessionToken] = useState(null);
   
   // Refs para a roleta
   const rouletteRef = useRef(null);
@@ -64,14 +65,48 @@ const OpenCase = () => {
   // Gerar um ID único para segurança da sessão
   const sessionId = useRef(Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15));
   
+  // Obter tokens de sessão de forma mais confiável
+  useEffect(() => {
+    const fetchSessionData = async () => {
+      try {
+        const session = await getSession();
+        if (session) {
+          setSessionToken(session);
+        }
+      } catch (err) {
+        console.error("Erro ao obter sessão:", err);
+      }
+    };
+    
+    fetchSessionData();
+  }, [status]);
+  
   // Carregar dados da caixa
   useEffect(() => {
-    if (!caseId || status !== 'authenticated') return;
+    if (!caseId || status === 'loading') return;
+    
+    // Verificar autenticação e redirecionar se necessário
+    if (status === 'unauthenticated') {
+      toast.error('Você precisa estar logado para acessar esta página');
+      router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href));
+      return;
+    }
     
     const fetchCaseDetails = async () => {
       try {
         setLoading(true);
         const response = await fetch(`/api/cases/detail/${caseId}`);
+        
+        if (response.status === 401) {
+          toast.error('Sessão expirada. Faça login novamente.');
+          router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href));
+          return;
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Erro ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
         
         if (data.success) {
@@ -93,7 +128,8 @@ const OpenCase = () => {
         }
       } catch (err) {
         console.error('Erro ao buscar detalhes da caixa:', err);
-        setError('Erro ao conectar ao servidor');
+        setError(`Erro ao conectar ao servidor: ${err.message}`);
+        toast.error('Erro ao carregar a caixa');
       } finally {
         setLoading(false);
       }
@@ -116,7 +152,7 @@ const OpenCase = () => {
     
     fetchCaseDetails();
     fetchServers();
-  }, [caseId, status]);
+  }, [caseId, status, router]);
   
   // Pré-carregar imagens dos itens
   const preloadImages = (items) => {
@@ -267,6 +303,14 @@ const OpenCase = () => {
   const handleOpenCase = async () => {
     if (opening || result) return;
     
+    // Verificar autenticação novamente
+    if (!session) {
+      toast.error('Você precisa estar logado para abrir a caixa');
+      setError('Sua sessão expirou. Por favor, faça login novamente.');
+      router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href));
+      return;
+    }
+    
     try {
       setOpening(true);
       
@@ -286,10 +330,23 @@ const OpenCase = () => {
         body: JSON.stringify({
           userId: session.user.id,
           caseId: caseId,
-          steamId: session.user.steamId,
+          steamId: session.user.steamId || '',
           sessionId: sessionId.current,
         }),
+        credentials: 'include', // Importante: enviar cookies
       });
+      
+      if (response.status === 401) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href));
+        setOpening(false);
+        return;
+      }
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erro ${response.status}: ${errorText}`);
+      }
       
       const data = await response.json();
       
@@ -320,7 +377,7 @@ const OpenCase = () => {
     } catch (err) {
       console.error('Erro ao abrir a caixa:', err);
       stopRouletteAnimation();
-      setError('Erro ao conectar ao servidor');
+      setError(`Erro ao conectar ao servidor: ${err.message}`);
       toast.error('Erro de conexão ao servidor');
       setOpening(false);
     }
@@ -329,6 +386,13 @@ const OpenCase = () => {
   // Resgatar o item ganho
   const handleClaimItem = async () => {
     if (!result || claiming || claimed || !selectedServer) return;
+    
+    // Verificar autenticação novamente
+    if (!session) {
+      toast.error('Você precisa estar logado para resgatar o item');
+      router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href));
+      return;
+    }
     
     try {
       setClaiming(true);
@@ -341,11 +405,24 @@ const OpenCase = () => {
         },
         body: JSON.stringify({
           openingId: result.opening.id,
-          steamId: session.user.steamId,
+          steamId: session.user.steamId || '',
           serverId: selectedServer,
           sessionId: sessionId.current,
         }),
+        credentials: 'include', // Importante: enviar cookies
       });
+      
+      if (response.status === 401) {
+        toast.error('Sessão expirada. Faça login novamente.');
+        router.push('/api/auth/signin?callbackUrl=' + encodeURIComponent(window.location.href));
+        setClaiming(false);
+        return;
+      }
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erro ${response.status}: ${errorText}`);
+      }
       
       const data = await response.json();
       
@@ -358,7 +435,7 @@ const OpenCase = () => {
       }
     } catch (err) {
       console.error('Erro ao resgatar item:', err);
-      setError('Erro ao conectar ao servidor');
+      setError(`Erro ao conectar ao servidor: ${err.message}`);
       toast.error('Erro de conexão ao servidor');
     } finally {
       setClaiming(false);
@@ -407,7 +484,7 @@ const OpenCase = () => {
             Você precisa estar logado para abrir caixas de itens.
           </p>
           <Button 
-            onClick={() => router.push('/api/auth/signin')} 
+            onClick={() => signIn('discord', { callbackUrl: window.location.href })}
             className="px-8 py-3"
           >
             Fazer Login
@@ -556,6 +633,15 @@ const OpenCase = () => {
             <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 mb-8 text-white flex items-center">
               <FaSadTear className="mr-3 text-xl" />
               <p>{error}</p>
+              {status === 'unauthenticated' && (
+                <Button 
+                  variant="primary"
+                  onClick={() => signIn('discord', { callbackUrl: window.location.href })}
+                  className="ml-4 px-4 py-2 text-sm"
+                >
+                  Fazer Login
+                </Button>
+              )}
             </div>
           ) : (
             <>
@@ -594,7 +680,7 @@ const OpenCase = () => {
                       {/* Botão de abrir */}
                       <Button
                         onClick={handleOpenCase}
-                        disabled={opening || !imagesPreloaded}
+                        disabled={opening || !imagesPreloaded || status !== 'authenticated'}
                         className="px-8 py-3"
                         variant="primary"
                       >
@@ -607,6 +693,11 @@ const OpenCase = () => {
                           <>
                             <LoadingSpinner size="small" className="mr-2" />
                             Carregando...
+                          </>
+                        ) : status !== 'authenticated' ? (
+                          <>
+                            <FaLock className="mr-2" />
+                            Login Necessário
                           </>
                         ) : (
                           <>
