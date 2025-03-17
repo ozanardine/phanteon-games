@@ -225,52 +225,49 @@ const OpenCase = () => {
       const imageWrapper = document.createElement('div');
       imageWrapper.className = 'relative h-24 flex items-center justify-center';
       
-      const img = document.createElement('img');
-      
-      // Priorizar o uso do CDN para imagens
+      // Sempre prioriza o CDN com base no shortname
       if (item.shortname) {
+        const img = document.createElement('img');
         img.src = getItemImageUrl(item.shortname);
+        img.alt = item.name;
+        img.className = 'max-h-full max-w-full object-contain drop-shadow-lg';
+        
+        // Handler para erro de carregamento de imagem
+        img.onerror = () => {
+          // Se o CDN falhar e houver uma URL de imagem alternativa
+          if (item.image_url) {
+            img.src = item.image_url;
+            
+            // Segunda tentativa de erro - se a URL alternativa também falhar
+            img.onerror = () => {
+              img.style.display = 'none';
+              displayPlaceholder(imageWrapper);
+            };
+          } else {
+            img.style.display = 'none';
+            displayPlaceholder(imageWrapper);
+          }
+        };
+        
+        imageWrapper.appendChild(img);
       } else if (item.image_url) {
+        const img = document.createElement('img');
         img.src = item.image_url;
+        img.alt = item.name;
+        img.className = 'max-h-full max-w-full object-contain drop-shadow-lg';
+        
+        // Handler para erro de carregamento de imagem
+        img.onerror = () => {
+          img.style.display = 'none';
+          displayPlaceholder(imageWrapper);
+        };
+        
+        imageWrapper.appendChild(img);
       } else {
-        // Fallback para ícone genérico
-        const placeholder = document.createElement('div');
-        placeholder.className = 'text-4xl text-gray-600';
-        placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48"><path d="M21,12c0,1.1-0.9,2-2,2h-3l-2.29,2.29c-0.39,0.39-1.02,0.39-1.41,0L10,14H7c-1.1,0-2-0.9-2-2V5c0-1.1,0.9-2,2-2h12c1.1,0,2,0.9,2,2V12z M7,12h3.83l1.88,1.88c0.39,0.39,1.02,0.39,1.41,0L16,12h3V5H7V12z M3,20h10c0.55,0,1-0.45,1-1v-1H3c-0.55,0-1-0.45-1-1v-7.59c-0.57,0.19-1,0.74-1,1.39v7.4C1,19.1,1.9,20,3,20z"></path></svg>';
-        imageWrapper.appendChild(placeholder);
-        itemElement.appendChild(imageWrapper);
-        
-        // Nome do item
-        const nameElement = document.createElement('div');
-        nameElement.className = 'text-white text-center font-medium text-sm truncate';
-        nameElement.textContent = item.name;
-        itemElement.appendChild(nameElement);
-        
-        rouletteItemsRef.current.appendChild(itemElement);
-        return;
+        // Se não houver nem shortname nem image_url, mostra placeholder
+        displayPlaceholder(imageWrapper);
       }
       
-      img.alt = item.name;
-      img.className = 'max-h-full max-w-full object-contain drop-shadow-lg';
-      
-      // Handler para erro de carregamento de imagem
-      img.onerror = () => {
-        img.onerror = null; // Evitar loop infinito
-        
-        // Se a imagem do CDN falhar e houver uma URL de imagem alternativa
-        if (item.shortname && item.image_url && img.src !== item.image_url) {
-          img.src = item.image_url;
-        } else {
-          // Se todas as tentativas falharem, use o placeholder
-          img.style.display = 'none';
-          const placeholder = document.createElement('div');
-          placeholder.className = 'text-4xl text-gray-600';
-          placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48"><path d="M21,12c0,1.1-0.9,2-2,2h-3l-2.29,2.29c-0.39,0.39-1.02,0.39-1.41,0L10,14H7c-1.1,0-2-0.9-2-2V5c0-1.1,0.9-2,2-2h12c1.1,0,2,0.9,2,2V12z M7,12h3.83l1.88,1.88c0.39,0.39,1.02,0.39,1.41,0L16,12h3V5H7V12z M3,20h10c0.55,0,1-0.45,1-1v-1H3c-0.55,0-1-0.45-1-1v-7.59c-0.57,0.19-1,0.74-1,1.39v7.4C1,19.1,1.9,20,3,20z"></path></svg>';
-          imageWrapper.appendChild(placeholder);
-        }
-      };
-      
-      imageWrapper.appendChild(img);
       itemElement.appendChild(imageWrapper);
       
       // Nome do item
@@ -281,6 +278,14 @@ const OpenCase = () => {
       
       rouletteItemsRef.current.appendChild(itemElement);
     });
+  };
+  
+  // Função para exibir o placeholder SVG
+  const displayPlaceholder = (container) => {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'text-4xl text-gray-600 h-full w-full flex items-center justify-center';
+    placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48"><path d="M3 2.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0v.006c0 .07 0 .27-.038.494H15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14.5V7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h2.038A2.968 2.968 0 0 1 3 2.506V2.5zm1.068.5H7v-.5a1.5 1.5 0 1 0-3 0c0 .085.002.274.045.43a.522.522 0 0 0 .023.07zM9 3h2.932a.56.56 0 0 0 .023-.07c.043-.156.045-.345.045-.43a1.5 1.5 0 0 0-3 0V3zM1 4v2h6V4H1zm8 0v2h6V4H9zm5 3H9v8h4.5a.5.5 0 0 0 .5-.5V7zm-7 8V7H2v7.5a.5.5 0 0 0 .5.5H7z"></path></svg>';
+    container.appendChild(placeholder);
   };
   
   // Iniciar animação de roleta
@@ -411,6 +416,9 @@ const OpenCase = () => {
   
   // Componente para exibição dos itens possíveis
   const PossibleItemsList = () => {
+    // SVG placeholder para itens sem imagem
+    const placeholderSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
+    
     return (
       <div className="mt-12 bg-dark-800 rounded-lg p-6">
         <h2 className="text-xl font-bold text-white mb-4 text-center">Conteúdo da caixa</h2>
@@ -423,14 +431,16 @@ const OpenCase = () => {
               <div className={`p-2 bg-gradient-to-b ${getRarityBackgroundClass(item.rarity)}`}>
                 <div className="relative h-24 flex items-center justify-center mb-2">
                   <img 
-                    src={item.shortname ? getItemImageUrl(item.shortname) : (item.image_url || '/images/items/placeholder.png')}
+                    src={item.shortname ? getItemImageUrl(item.shortname) : (item.image_url || placeholderSvg)}
                     alt={item.name}
                     className="max-h-full max-w-full object-contain drop-shadow-lg"
                     onError={(e) => {
+                      // Primeiro tenta usar image_url se o CDN falhou
                       if (item.shortname && item.image_url && e.target.src !== item.image_url) {
                         e.target.src = item.image_url;
                       } else {
-                        e.target.src = '/images/items/placeholder.png';
+                        // Se tudo falhar, usa o placeholder SVG
+                        e.target.src = placeholderSvg;
                       }
                     }}
                   />
@@ -454,11 +464,14 @@ const OpenCase = () => {
     const item = result.item;
     const rarity = item.rarity ? item.rarity.toLowerCase() : 'common';
     
-    // Determinar a URL da imagem do item
+    // SVG placeholder para itens sem imagem
+    const placeholderSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
+    
+    // Determinar a URL da imagem do item - prioriza CDN
     const getImageSource = () => {
       if (item.shortname) return getItemImageUrl(item.shortname);
       if (item.image_url) return item.image_url;
-      return '/images/items/placeholder.png';
+      return placeholderSvg;
     };
     
     return (
@@ -472,11 +485,12 @@ const OpenCase = () => {
               alt={item.name}
               className="max-w-full max-h-full object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
               onError={(e) => {
-                // Fallback em cascata: primeiro shortname, depois image_url, por fim placeholder
+                // Tenta a URL de imagem se o CDN falhar
                 if (item.shortname && item.image_url && e.target.src !== item.image_url) {
                   e.target.src = item.image_url;
                 } else {
-                  e.target.src = '/images/items/placeholder.png';
+                  // Se tudo falhar, usa o placeholder SVG
+                  e.target.src = placeholderSvg;
                 }
               }}
             />

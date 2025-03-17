@@ -267,12 +267,16 @@ const CaseCard = ({ caseData, userId, gameType }) => {
   const [timeLeft, setTimeLeft] = useState(null);
   const [statusError, setStatusError] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
 
-  // Determinar a URL da imagem da caixa
+  // SVG placeholder para itens sem imagem
+  const placeholderSvg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
+
+  // Determinar a URL da imagem da caixa - prioriza CDN
   const getImageSource = () => {
     if (caseData.shortname) return getItemImageUrl(caseData.shortname);
     if (caseData.image_url) return caseData.image_url;
-    return null; // Se não houver imagem, usamos o ícone FaGift
+    return placeholderSvg;
   };
 
   // Tratamento de casos em que a verificação de status falha
@@ -384,6 +388,20 @@ const CaseCard = ({ caseData, userId, gameType }) => {
     router.push(`/caixas/abrir/${caseData.id}?game=${gameType}`);
   };
 
+  // Handler para erro de imagem
+  const handleImageError = (e) => {
+    // Se a imagem do CDN falhar e houver uma URL alternativa
+    if (caseData.shortname && caseData.image_url && e.target.src !== caseData.image_url) {
+      e.target.src = caseData.image_url;
+      // Segunda chance de falha - se a URL alternativa também falhar
+      e.target.onerror = () => {
+        setImageFailed(true);
+      };
+    } else {
+      setImageFailed(true);
+    }
+  };
+
   return (
     <Card 
       className={`overflow-hidden transform transition-all duration-300 ${hovered ? 'scale-105 shadow-xl' : ''} hover:border-primary bg-gradient-to-b from-dark-800 to-dark-900 border border-dark-700`}
@@ -396,36 +414,23 @@ const CaseCard = ({ caseData, userId, gameType }) => {
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent -translate-x-full animate-shine" />
         )}
         
-        {getImageSource() ? (
+        {!imageFailed && getImageSource() ? (
           <Image 
             src={getImageSource()}
             alt={caseData.name}
             fill
             className="object-contain p-4 drop-shadow-lg transition-transform duration-300"
             style={{ transform: hovered ? 'scale(1.05)' : 'scale(1)' }}
-            onError={(e) => {
-              // Se a imagem do CDN falhar e houver uma URL alternativa
-              if (caseData.shortname && caseData.image_url && e.target.src !== caseData.image_url) {
-                e.target.src = caseData.image_url;
-              } else if (caseData.image_url && !caseData.shortname) {
-                // Se não houver shortname, tenta usar a URL direta
-                e.target.src = caseData.image_url;
-              } else {
-                // Se todas as tentativas falharem, use o ícone padrão
-                e.currentTarget.style.display = 'none';
-                const parent = e.currentTarget.parentElement;
-                if (parent) {
-                  const fallback = document.createElement('div');
-                  fallback.className = "w-full h-full flex items-center justify-center";
-                  fallback.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#6c7580" viewBox="0 0 16 16"><path d="M3 2.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0v.006c0 .07 0 .27-.038.494H15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14.5V7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h2.038A2.968 2.968 0 0 1 3 2.506V2.5zm1.068.5H7v-.5a1.5 1.5 0 1 0-3 0c0 .085.002.274.045.43a.522.522 0 0 0 .023.07zM9 3h2.932a.56.56 0 0 0 .023-.07c.043-.156.045-.345.045-.43a1.5 1.5 0 0 0-3 0V3zM1 4v2h6V4H1zm8 0v2h6V4H9zm5 3H9v8h4.5a.5.5 0 0 0 .5-.5V7zm-7 8V7H2v7.5a.5.5 0 0 0 .5.5H7z"></path></svg>';
-                  parent.appendChild(fallback);
-                }
-              }
-            }}
+            onError={handleImageError}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <FaGift className="text-6xl text-gray-600" />
+            <div 
+              className="text-gray-600" 
+              dangerouslySetInnerHTML={{
+                __html: `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" viewBox="0 0 16 16"><path d="M3 2.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0v.006c0 .07 0 .27-.038.494H15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14.5V7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h2.038A2.968 2.968 0 0 1 3 2.506V2.5zm1.068.5H7v-.5a1.5 1.5 0 1 0-3 0c0 .085.002.274.045.43a.522.522 0 0 0 .023.07zM9 3h2.932a.56.56 0 0 0 .023-.07c.043-.156.045-.345.045-.43a1.5 1.5 0 0 0-3 0V3zM1 4v2h6V4H1zm8 0v2h6V4H9zm5 3H9v8h4.5a.5.5 0 0 0 .5-.5V7zm-7 8V7H2v7.5a.5.5 0 0 0 .5.5H7z"></path></svg>`
+              }}
+            />
           </div>
         )}
         
