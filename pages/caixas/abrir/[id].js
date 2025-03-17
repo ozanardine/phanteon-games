@@ -22,6 +22,30 @@ const getItemImageUrl = (shortName) => {
   return `https://cdn.rusthelp.com/images/source/${formatItemShortName(shortName)}.png`;
 };
 
+// Obter classe de raridade para borda - MOVIDO PARA FORA DO COMPONENTE
+const getRarityBorderClass = (rarity) => {
+  switch (rarity?.toLowerCase()) {
+    case 'common': return 'border-gray-500 bg-dark-700';
+    case 'uncommon': return 'border-blue-500 bg-dark-700';
+    case 'rare': return 'border-teal-500 bg-dark-700';
+    case 'epic': return 'border-purple-500 bg-dark-700';
+    case 'legendary': return 'border-yellow-400 bg-dark-700';
+    default: return 'border-gray-500 bg-dark-700';
+  }
+};
+
+// Obter classe de background de raridade - MOVIDO PARA FORA DO COMPONENTE
+const getRarityBackgroundClass = (rarity) => {
+  switch (rarity?.toLowerCase()) {
+    case 'common': return 'bg-gray-800';
+    case 'uncommon': return 'bg-blue-900';
+    case 'rare': return 'bg-teal-900';
+    case 'epic': return 'bg-purple-900';
+    case 'legendary': return 'bg-amber-900';
+    default: return 'bg-gray-800';
+  }
+};
+
 // Mapeamento de nomes de itens para shortnames do Rust
 const itemShortnames = {
   'Scrap': 'scrap',
@@ -465,58 +489,6 @@ const OpenCase = () => {
     }
   };
   
-  // Obter classe de raridade para borda
-  const getRarityBorderClass = (rarity) => {
-    switch (rarity?.toLowerCase()) {
-      case 'common': return 'border-gray-500 bg-dark-700';
-      case 'uncommon': return 'border-blue-500 bg-dark-700';
-      case 'rare': return 'border-teal-500 bg-dark-700';
-      case 'epic': return 'border-purple-500 bg-dark-700';
-      case 'legendary': return 'border-yellow-400 bg-dark-700';
-      default: return 'border-gray-500 bg-dark-700';
-    }
-  };
-  
-  // Obter classe de background de raridade 
-  const getRarityBackgroundClass = (rarity) => {
-    switch (rarity?.toLowerCase()) {
-      case 'common': return 'bg-gray-800';
-      case 'uncommon': return 'bg-blue-900';
-      case 'rare': return 'bg-teal-900';
-      case 'epic': return 'bg-purple-900';
-      case 'legendary': return 'bg-amber-900';
-      default: return 'bg-gray-800';
-    }
-  };
-
-  // Verificar autenticação
-  if (status === 'loading' || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-dark-900">
-        <LoadingSpinner size="large" />
-      </div>
-    );
-  }
-  
-  if (status === 'unauthenticated') {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-dark-900 px-4">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-4">Login Necessário</h1>
-          <p className="text-gray-300 mb-8">
-            Você precisa estar logado para abrir caixas de itens.
-          </p>
-          <Button 
-            onClick={() => signIn('discord', { callbackUrl: window.location.href })}
-            className="px-8 py-3"
-          >
-            Fazer Login
-          </Button>
-        </div>
-      </div>
-    );
-  }
-  
   // Componente para exibição do resultado
   const ItemWonView = () => {
     if (!result || !result.item) return null;
@@ -628,6 +600,34 @@ const OpenCase = () => {
       </div>
     );
   };
+  
+  // Verificar autenticação
+  if (status === 'loading' || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-dark-900">
+        <LoadingSpinner size="large" />
+      </div>
+    );
+  }
+  
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-dark-900 px-4">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-primary mb-4">Login Necessário</h1>
+          <p className="text-gray-300 mb-8">
+            Você precisa estar logado para abrir caixas de itens.
+          </p>
+          <Button 
+            onClick={() => signIn('discord', { callbackUrl: window.location.href })}
+            className="px-8 py-3"
+          >
+            Fazer Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <>
