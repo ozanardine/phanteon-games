@@ -20,6 +20,21 @@ const GameCases = () => {
   const [error, setError] = useState(null);
   const [gameTitle, setGameTitle] = useState('');
 
+  // Usar useEffect para sair do estado de carregamento se ficar preso
+  useEffect(() => {
+    // Timeout de segurança para evitar carregamento infinito
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+        if (cases.length === 0 && !error) {
+          setError('Tempo limite de carregamento excedido. Por favor, recarregue a página.');
+        }
+      }
+    }, 10000); // 10 segundos máximo de carregamento
+
+    return () => clearTimeout(timeoutId);
+  }, [loading, cases, error]);
+
   useEffect(() => {
     if (!game) return;
 
@@ -34,15 +49,12 @@ const GameCases = () => {
     const fetchCases = async () => {
       try {
         setLoading(true);
-        console.log(`[Debug] Fazendo requisição para /api/cases/${game}`);
         
         const response = await fetch(`/api/cases/${game}`);
-        console.log(`[Debug] Resposta recebida com status: ${response.status}`);
         
         // Verificar o código de status HTTP
         if (!response.ok) {
           const errorText = await response.text();
-          console.log(`[Debug] Erro texto completo: ${errorText}`);
           
           let errorMessage = 'Erro ao carregar caixas';
           let errorDetails = '';
@@ -50,7 +62,6 @@ const GameCases = () => {
           try {
             // Tenta fazer o parse do JSON se possível
             const errorData = JSON.parse(errorText);
-            console.log(`[Debug] Erro JSON parseado:`, errorData);
             
             errorMessage = errorData.message || errorMessage;
             errorDetails = errorData.errorDetail || '';
@@ -70,7 +81,6 @@ const GameCases = () => {
             }
           } catch (e) {
             // Se não for JSON, use o texto bruto
-            console.error('[Debug] Erro ao fazer parse do JSON:', e);
             console.error('Erro não-JSON recebido:', errorText);
             setError(`Erro inesperado ao carregar caixas. Status: ${response.status}`);
             toast.error('Erro inesperado ao carregar caixas');
@@ -81,21 +91,15 @@ const GameCases = () => {
         }
         
         const data = await response.json();
-        console.log(`[Debug] Dados recebidos:`, data);
 
         if (data.success) {
           setCases(data.cases || []);
-          
-          if (data.cases && data.cases.length === 0) {
-            console.log('[Debug] Lista de caixas vazia retornada');
-          }
         } else {
-          console.log('[Debug] API retornou success=false:', data);
           setError(data.message || 'Erro ao carregar caixas');
           toast.error('Não foi possível carregar as caixas');
         }
       } catch (err) {
-        console.error('[Debug] Erro de execução ao buscar caixas:', err);
+        console.error('Erro ao buscar caixas:', err);
         setError(`Erro ao conectar ao servidor: ${err.message}`);
         toast.error('Erro de conexão ao servidor');
       } finally {
@@ -204,30 +208,81 @@ const CaseCard = ({ caseData, userId, gameType }) => {
   const [canOpen, setCanOpen] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(null);
+  const [statusError, setStatusError] = useState(false);
+
+  // Tratamento de casos em que a verificação de status falha
+  useEffect(() => {
+    // Se não temos como verificar o status, mostramos o botão de abrir por padrão
+    if (!userId) {
+      setCanOpen(true);
+      setLoading(false);
+    }
+  }, [userId]);
 
   // Carregar status da caixa para o usuário
   useEffect(() => {
-    if (!userId || !caseData.id) return;
+    if (!userId || !caseData.id) {
+      setLoading(false);
+      return;
+    }
 
+    let isMounted = true;
     const checkStatus = async () => {
       try {
         const response = await fetch(`/api/cases/status/${caseData.id}/${userId}`);
+        
+        // Verificar se o componente ainda está montado
+        if (!isMounted) return;
+
+        if (!response.ok) {
+          // Se houver erro na API, mostramos o botão de abrir por padrão
+          setCanOpen(true);
+          setStatusError(true);
+          setLoading(false);
+          return;
+        }
+
         const data = await response.json();
+        
+        if (!isMounted) return;
 
         if (data.success) {
           setCanOpen(data.canOpen);
           if (!data.canOpen && data.lastOpening) {
             calculateTimeLeft(data.lastOpening);
           }
+        } else {
+          // Em caso de erro, permitimos abrir por padrão
+          setCanOpen(true);
+          setStatusError(true);
         }
       } catch (err) {
         console.error('Erro ao verificar status da caixa:', err);
+        if (isMounted) {
+          setCanOpen(true); // Em caso de erro, permitimos abrir por padrão
+          setStatusError(true);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     checkStatus();
+    
+    // Garantir que o loading seja definido como false após um tempo
+    const timeoutId = setTimeout(() => {
+      if (isMounted && loading) {
+        setLoading(false);
+        setCanOpen(true); // Em caso de timeout, permitimos abrir por padrão
+      }
+    }, 5000); // Timeout de segurança
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
   }, [caseData.id, userId]);
 
   // Calcular tempo restante para próxima abertura
@@ -273,6 +328,17 @@ const CaseCard = ({ caseData, userId, gameType }) => {
             alt={caseData.name}
             fill
             className="object-contain p-4"
+            onError={(e) => {
+              // Se a imagem falhar ao carregar, substituímos pelo ícone padrão
+              e.currentTarget.style.display = 'none';
+              const parent = e.currentTarget.parentElement;
+              if (parent) {
+                const fallback = document.createElement('div');
+                fallback.className = "w-full h-full flex items-center justify-center";
+                fallback.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#6c7580" viewBox="0 0 16 16"><path d="M4 .5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-1Zm0 3v1a.5.5 0 0 1 .5.5h7a.5.5 0 0 1 .5-.5v-1a.5.5 0 0 1-.5-.5h-7a.5.5 0 0 1-.5.5Zm0 3.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-1Z"/><path d="M3 6.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0M2 8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1a.5.5 0 0 1 0-1H12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3H4a3 3 0 0 1-3-3V8Z"/></svg>';
+                parent.appendChild(fallback);
+              }
+            }}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

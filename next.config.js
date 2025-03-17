@@ -2,7 +2,6 @@
 
 // Verificação de ambiente para garantir que as configurações estejam corretas
 const API_URL = process.env.API_URL || 'https://api.phanteongames.com';
-console.log(`[Config] API URL configurada: ${API_URL}`);
 
 // Verificar se a URL da API tem o formato correto (sem barra no final)
 const formattedApiUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
