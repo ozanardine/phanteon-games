@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useSession, signIn, getSession } from 'next-auth/react';
 import Head from 'next/head';
@@ -7,8 +7,20 @@ import { toast } from 'react-hot-toast';
 import { FaChevronLeft, FaGift, FaCheckCircle, FaSadTear, FaServer, FaClock, FaLock } from 'react-icons/fa';
 import Button from '../../../components/ui/Button';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
-import Card from '../../../components/ui/Card';
-import { getItemImageUrl, formatItemShortName } from '../../../utils/formatters';
+
+// Função para formatar shortname para URL do CDN Rust Helper
+const formatItemShortName = (shortName) => {
+  if (!shortName) return '';
+  return shortName.replace(/\./g, '-');
+};
+
+// Função para obter URL de imagem do CDN Rust Helper
+const getItemImageUrl = (shortName) => {
+  if (!shortName) {
+    return null;
+  }
+  return `https://cdn.rusthelp.com/images/source/${formatItemShortName(shortName)}.png`;
+};
 
 // Mapeamento de nomes de itens para shortnames do Rust
 const itemShortnames = {
@@ -28,6 +40,36 @@ const itemShortnames = {
   'Medical Syringe': 'syringe.medical'
 };
 
+// Componente para renderizar um item da roleta
+const RouletteItem = ({ item, className = '' }) => {
+  const [imageError, setImageError] = useState(false);
+  
+  return (
+    <div className={`roulette-item flex-shrink-0 w-32 h-32 relative p-2 m-1 border-2 ${getRarityBorderClass(item.rarity)} ${className}`} data-id={item.id}>
+      {/* Imagem do item */}
+      <div className="relative h-24 flex items-center justify-center">
+        {!imageError ? (
+          <img 
+            src={getItemImageUrl(item.shortname)}
+            alt={item.name}
+            className="max-h-full max-w-full object-contain drop-shadow-lg"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-full bg-dark-700/50 flex items-center justify-center text-2xl font-bold text-gray-400">
+            {item.name.charAt(0)}
+          </div>
+        )}
+      </div>
+      
+      {/* Nome do item */}
+      <div className="text-white text-center font-medium text-xs truncate">
+        {item.name}
+      </div>
+    </div>
+  );
+};
+
 // Componente principal
 const OpenCase = () => {
   const router = useRouter();
@@ -44,42 +86,19 @@ const OpenCase = () => {
   const [selectedServer, setSelectedServer] = useState('');
   const [error, setError] = useState(null);
   const [imagesPreloaded, setImagesPreloaded] = useState(false);
-  const [sessionToken, setSessionToken] = useState(null);
-  const [isRouletteReady, setIsRouletteReady] = useState(false);
+  const [rouletteItems, setRouletteItems] = useState([]);
+  const [rouletteStyle, setRouletteStyle] = useState({});
   
   // Refs para a roleta
   const rouletteRef = useRef(null);
-  const rouletteItemsRef = useRef(null);
+  const rouletteContainerRef = useRef(null);
   
-  // Gerar um ID único para segurança da sessão usando crypto quando disponível
+  // Gerar um ID único para segurança da sessão
   const sessionId = useRef(
     typeof window !== 'undefined' && window.crypto
       ? window.crypto.randomUUID()
       : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
   );
-  
-  // Obter tokens de sessão de forma mais confiável
-  useEffect(() => {
-    const fetchSessionData = async () => {
-      try {
-        const session = await getSession();
-        if (session) {
-          setSessionToken(session);
-        }
-      } catch (err) {
-        console.error("Erro ao obter sessão:", err);
-      }
-    };
-    
-    fetchSessionData();
-  }, [status]);
-  
-  // Inicializar a roleta quando os itens e a referência do DOM estiverem prontos
-  useEffect(() => {
-    if (items.length > 0 && rouletteItemsRef.current && !isRouletteReady && !result) {
-      initializeRoulette();
-    }
-  }, [items, imagesPreloaded, rouletteItemsRef.current]);
   
   // Carregar dados da caixa
   useEffect(() => {
@@ -194,21 +213,9 @@ const OpenCase = () => {
     }, 3000);
   };
   
-  // Inicializar a roleta
-  const initializeRoulette = () => {
-    if (!rouletteItemsRef.current || items.length === 0) return;
-    
-    // Preparar os itens na roleta
-    prepareRouletteItems();
-    setIsRouletteReady(true);
-  };
-  
   // Preparar itens para a roleta
-  const prepareRouletteItems = () => {
-    if (!rouletteItemsRef.current) return;
-    
-    // Limpar qualquer conteúdo anterior
-    rouletteItemsRef.current.innerHTML = '';
+  useEffect(() => {
+    if (items.length === 0 || !imagesPreloaded) return;
     
     // Usar um número maior de itens para uma roleta mais cheia
     const numRepetitions = 5;
@@ -221,138 +228,78 @@ const OpenCase = () => {
       finalItems.push(...shuffledItems);
     }
     
-    // Adicionar os itens à roleta
-    finalItems.forEach(item => {
-      const itemElement = document.createElement('div');
-      itemElement.className = `roulette-item flex-shrink-0 w-32 h-32 relative p-2 m-1 border-2 ${getRarityBorderClass(item.rarity)}`;
-      itemElement.dataset.id = item.id;
-      
-      // Imagem do item
-      const imageWrapper = document.createElement('div');
-      imageWrapper.className = 'relative h-24 flex items-center justify-center';
-      
-      const imgElement = document.createElement('img');
-      imgElement.src = getItemImageUrl(item.shortname);
-      imgElement.alt = item.name;
-      imgElement.className = 'max-h-full max-w-full object-contain drop-shadow-lg';
-      
-      // Handler para erro de carregamento de imagem
-      imgElement.onerror = () => {
-        console.warn(`Falha ao carregar imagem para ${item.name} (${item.shortname})`);
-        imgElement.style.display = 'none';
-        
-        // Mostrar placeholder com a primeira letra do item
-        const placeholder = document.createElement('div');
-        placeholder.className = 'w-16 h-16 rounded-full bg-dark-700/50 flex items-center justify-center text-2xl font-bold text-gray-400';
-        placeholder.textContent = item.name.charAt(0);
-        imageWrapper.appendChild(placeholder);
-      };
-      
-      imageWrapper.appendChild(imgElement);
-      itemElement.appendChild(imageWrapper);
-      
-      // Nome do item
-      const nameElement = document.createElement('div');
-      nameElement.className = 'text-white text-center font-medium text-xs truncate';
-      nameElement.textContent = item.name;
-      itemElement.appendChild(nameElement);
-      
-      rouletteItemsRef.current.appendChild(itemElement);
-    });
+    setRouletteItems(finalItems);
     
-    // Posicionar a roleta inicialmente
-    if (rouletteItemsRef.current) {
-      // Centralizar a roleta para um visual melhor
-      const initialOffset = (window.innerWidth / 2) - 134; // 134 = itemWidth
-      rouletteItemsRef.current.style.transform = `translateX(${initialOffset}px)`;
-    }
-  };
+    // Centralizar a roleta para um visual melhor - feito via CSS agora
+    setRouletteStyle({
+      transform: 'translateX(0px)'
+    });
+  }, [items, imagesPreloaded]);
   
   // Iniciar animação de roleta
-  const startRouletteAnimation = () => {
-    if (!rouletteItemsRef.current) return;
-    
-    // Resetar posição
-    rouletteItemsRef.current.style.transition = 'none';
-    rouletteItemsRef.current.style.transform = 'translateX(0)';
-    
-    // Forçar reflow para garantir que a transição funcione
-    rouletteItemsRef.current.offsetHeight;
-    
+  const startRouletteAnimation = useCallback(() => {
     // Calcular quantidade de rolagem para uma experiência mais longa
     const itemWidth = 134; // Largura do item + margem
     const totalItems = items.length * 5; // Multiplicamos pelo número de repetições
     const randomOffset = Math.floor(Math.random() * itemWidth);
-    const scrollDistance = totalItems * itemWidth - randomOffset;
+    const scrollDistance = (totalItems * itemWidth) - randomOffset;
     
     // Iniciar animação com uma curva de bezier mais natural
-    rouletteItemsRef.current.style.transition = 'transform 6s cubic-bezier(0.15, 0.85, 0.25, 1.0)';
-    rouletteItemsRef.current.style.transform = `translateX(-${scrollDistance}px)`;
-  };
+    setRouletteStyle({
+      transition: 'transform 6s cubic-bezier(0.15, 0.85, 0.25, 1.0)',
+      transform: `translateX(-${scrollDistance}px)`
+    });
+  }, [items]);
   
   // Parar a animação no item ganho
-  const stopRouletteAnimation = (wonItem) => {
-    if (!rouletteItemsRef.current || !wonItem) return;
+  const stopRouletteAnimation = useCallback((wonItem) => {
+    if (!rouletteContainerRef.current || !wonItem || !rouletteRef.current) return;
     
-    // Encontrar todos os elementos com o ID do item ganho
-    const itemElements = rouletteItemsRef.current.querySelectorAll(`[data-id="${wonItem.id}"]`);
-    
-    if (itemElements.length > 0) {
-      // Escolher um elemento aleatório para parar (para variar a posição)
-      const randomIndex = Math.floor(Math.random() * Math.min(itemElements.length - 3, 10)) + 3;
-      const targetElement = itemElements[randomIndex];
+    try {
+      // Encontrar o elemento correspondente ao item ganho
+      const itemElements = rouletteContainerRef.current.querySelectorAll(`[data-id="${wonItem.id}"]`);
       
-      if (!targetElement) {
-        console.warn('Elemento alvo não encontrado, usando fallback');
-        // Fallback: usar o primeiro elemento se o randomIndex não existir
-        const fallbackElement = itemElements[0];
-        if (fallbackElement) {
-          applyStopAnimation(fallbackElement);
-        } else {
-          console.error('Nenhum elemento encontrado para o item ganho');
-        }
+      if (itemElements.length === 0) {
+        console.error('Nenhum elemento correspondente ao item ganho foi encontrado');
         return;
       }
       
-      applyStopAnimation(targetElement);
-    } else {
-      console.error('Nenhum elemento encontrado com o ID do item ganho:', wonItem.id);
-    }
-  };
-  
-  // Função auxiliar para aplicar animação de parada
-  const applyStopAnimation = (targetElement) => {
-    if (!targetElement || !rouletteRef.current) return;
-    
-    try {
+      // Escolher um elemento aleatório para parar (para variar a posição)
+      const randomIndex = Math.min(3, Math.floor(Math.random() * itemElements.length));
+      const targetElement = itemElements[randomIndex];
+      
       // Obter a posição do elemento
-      const rect = targetElement.getBoundingClientRect();
+      const targetRect = targetElement.getBoundingClientRect();
       const rouletteRect = rouletteRef.current.getBoundingClientRect();
       
-      // Calcular a posição para centralizar o item
-      const offset = rect.left - rouletteRect.left - (rouletteRect.width / 2) + (rect.width / 2);
+      // Calcular a posição para centralizar o item (ajuste aqui se necessário)
+      const centerPosition = (rouletteRect.width / 2) - (targetRect.width / 2);
+      const currentOffset = targetRect.left - rouletteRect.left;
+      const scrollNeeded = currentOffset - centerPosition;
       
-      // Aplicar a animação final
-      rouletteItemsRef.current.style.transition = 'transform 1s cubic-bezier(0.1, 0.8, 0.2, 1)';
-      rouletteItemsRef.current.style.transform = `translateX(-${offset}px)`;
+      console.log('Parando roleta no item:', wonItem.name);
+      console.log('Posições:', { targetLeft: targetRect.left, rouletteLeft: rouletteRect.left, centerPos: centerPosition });
       
-      // Adicionar efeito de destaque ao item ganho
+      // Aplicar a animação final com React
+      setRouletteStyle({
+        transition: 'transform 1s cubic-bezier(0.1, 0.8, 0.2, 1.0)',
+        transform: `translateX(-${scrollNeeded}px)`
+      });
+      
+      // Destacar o item ganho após um breve atraso
       setTimeout(() => {
+        // Aplicar classes de destaque via DOM para o item específico
         if (targetElement) {
-          targetElement.style.transform = 'scale(1.1)';
-          targetElement.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8)';
-          targetElement.style.transition = 'all 0.5s ease';
-          targetElement.style.zIndex = '10';
-          
-          // Adicionar classe para animação de brilho
           targetElement.classList.add('winner');
           targetElement.classList.add('glow-effect');
+          targetElement.style.transform = 'scale(1.1)';
+          targetElement.style.zIndex = '10';
         }
       }, 1000);
-    } catch (err) {
-      console.error('Erro ao aplicar animação de parada:', err);
+    } catch (error) {
+      console.error('Erro ao parar animação da roleta:', error);
     }
-  };
+  }, []);
   
   // Abrir a caixa
   const handleOpenCase = async () => {
@@ -423,14 +370,12 @@ const OpenCase = () => {
           }, 1000);
         }, 5000); // Aumentei para 5s para criar mais suspense
       } else {
-        stopRouletteAnimation();
         setError(data.message || 'Erro ao abrir a caixa');
         toast.error(data.message || 'Não foi possível abrir a caixa');
         setOpening(false);
       }
     } catch (err) {
       console.error('Erro ao abrir a caixa:', err);
-      stopRouletteAnimation();
       setError(`Erro ao conectar ao servidor: ${err.message}`);
       toast.error('Erro de conexão ao servidor');
       setOpening(false);
@@ -736,7 +681,7 @@ const OpenCase = () => {
                       {/* Roleta de itens - Estilo semelhante ao CSGOSKINS */}
                       <div className="relative w-full h-36 overflow-hidden bg-dark-800 rounded-lg mb-8 border-t border-b border-dark-600" ref={rouletteRef}>
                         {/* Indicador central */}
-                        <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-primary z-10"></div>
+                        <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-primary z-10 line-pulse"></div>
                         <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-dark-900 to-transparent z-10"></div>
                         <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-dark-900 to-transparent z-10"></div>
                         
@@ -745,24 +690,28 @@ const OpenCase = () => {
                           <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[12px] border-transparent border-t-primary"></div>
                         </div>
                         
-                        {/* Itens da roleta - eles são pré-carregados agora */}
-                        <div 
-                          className="flex items-center p-2 transition-transform" 
-                          ref={rouletteItemsRef}
-                          style={{ transform: 'translateX(0px)' }}
-                        >
-                          {!isRouletteReady && items.length > 0 && (
-                            <div className="flex items-center justify-center w-full">
-                              <LoadingSpinner size="md" text="Preparando itens..." />
-                            </div>
-                          )}
-                        </div>
+                        {/* Itens da roleta - renderizados com React */}
+                        {items.length > 0 && imagesPreloaded ? (
+                          <div 
+                            className="flex items-center p-2" 
+                            ref={rouletteContainerRef}
+                            style={rouletteStyle}
+                          >
+                            {rouletteItems.map((item, index) => (
+                              <RouletteItem key={`${item.id}-${index}`} item={item} />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <LoadingSpinner size="md" text="Carregando itens..." />
+                          </div>
+                        )}
                       </div>
                       
                       {/* Botão de abrir */}
                       <Button
                         onClick={handleOpenCase}
-                        disabled={opening || !imagesPreloaded || !isRouletteReady || status !== 'authenticated'}
+                        disabled={opening || !imagesPreloaded || rouletteItems.length === 0 || status !== 'authenticated'}
                         className="px-8 py-3"
                         variant="primary"
                       >
@@ -771,7 +720,7 @@ const OpenCase = () => {
                             <LoadingSpinner size="small" className="mr-2" />
                             Abrindo...
                           </>
-                        ) : !imagesPreloaded || !isRouletteReady ? (
+                        ) : !imagesPreloaded || rouletteItems.length === 0 ? (
                           <>
                             <LoadingSpinner size="small" className="mr-2" />
                             Carregando...
