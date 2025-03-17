@@ -17,13 +17,12 @@ const formatItemShortName = (shortName) => {
 // Função para obter URL de imagem do CDN Rust Helper
 const getItemImageUrl = (shortName) => {
   if (!shortName) {
-    // SVG de presente (gift box) codificado em base64 como fallback
-    return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
+    return null;
   }
   return `https://cdn.rusthelp.com/images/source/${formatItemShortName(shortName)}.png`;
 };
 
-// Mapeamento de nomes de itens para seus shortnames
+// Mapeamento de nomes de itens para shortnames do Rust
 const itemShortnames = {
   'Scrap': 'scrap',
   'Wood': 'wood',
@@ -38,8 +37,7 @@ const itemShortnames = {
   'Cloth': 'cloth',
   'Leather': 'leather',
   'Low Grade Fuel': 'lowgradefuel',
-  'Medical Syringe': 'syringe.medical',
-  'Large Medkit': 'largemedkit'
+  'Medical Syringe': 'syringe.medical'
 };
 
 // Componente principal
@@ -57,9 +55,9 @@ const OpenCase = () => {
   const [servers, setServers] = useState([]);
   const [selectedServer, setSelectedServer] = useState('');
   const [error, setError] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(null);
+  const [imagesPreloaded, setImagesPreloaded] = useState(false);
   
-  // Refs para a animação
+  // Refs para a roleta
   const rouletteRef = useRef(null);
   const rouletteItemsRef = useRef(null);
   
@@ -77,24 +75,18 @@ const OpenCase = () => {
         const data = await response.json();
         
         if (data.success) {
-          // Certificar-se de que cada item tenha um shortname válido
-          const processedItems = data.items.map(item => {
-            // Se o item já tem um shortname, mantenha-o
-            if (item.shortname) return item;
-            
-            // Caso contrário, tente adivinhar o shortname com base no nome do item
-            const guessedShortname = itemShortnames[item.name] || 
-                                  item.name?.toLowerCase().replace(/\s+/g, '.') || 
-                                  null;
-            
-            return {
-              ...item,
-              shortname: guessedShortname
-            };
-          });
+          // Garantir que cada item tenha um shortname
+          const itemsWithShortnames = data.items.map(item => ({
+            ...item,
+            shortname: item.shortname || itemShortnames[item.name] || 
+                      item.name?.toLowerCase().replace(/\s+/g, '.')
+          }));
           
           setCaseData(data.case);
-          setItems(processedItems);
+          setItems(itemsWithShortnames);
+          
+          // Pré-carregar imagens
+          preloadImages(itemsWithShortnames);
         } else {
           setError(data.message || 'Erro ao carregar detalhes da caixa');
           toast.error('Não foi possível carregar a caixa');
@@ -126,6 +118,36 @@ const OpenCase = () => {
     fetchServers();
   }, [caseId, status]);
   
+  // Pré-carregar imagens dos itens
+  const preloadImages = (items) => {
+    const uniqueShortnames = [...new Set(items.map(item => item.shortname))];
+    let loadedCount = 0;
+    
+    uniqueShortnames.forEach(shortname => {
+      if (!shortname) return;
+      
+      const img = new Image();
+      img.onload = () => {
+        loadedCount++;
+        if (loadedCount >= uniqueShortnames.length) {
+          setImagesPreloaded(true);
+        }
+      };
+      img.onerror = () => {
+        loadedCount++;
+        if (loadedCount >= uniqueShortnames.length) {
+          setImagesPreloaded(true);
+        }
+      };
+      img.src = getItemImageUrl(shortname);
+    });
+    
+    // Adicionar um timeout para garantir que não ficamos esperando eternamente
+    setTimeout(() => {
+      setImagesPreloaded(true);
+    }, 3000);
+  };
+  
   // Preparar itens para a roleta
   const prepareRouletteItems = () => {
     if (!rouletteItemsRef.current) return;
@@ -154,9 +176,7 @@ const OpenCase = () => {
       const imageWrapper = document.createElement('div');
       imageWrapper.className = 'relative h-24 flex items-center justify-center';
       
-      // Usar o shortname para obter a imagem do CDN
       const imgElement = document.createElement('img');
-      // Priorizar o uso do shortname com o CDN Rust Helper
       imgElement.src = getItemImageUrl(item.shortname);
       imgElement.alt = item.name;
       imgElement.className = 'max-h-full max-w-full object-contain drop-shadow-lg';
@@ -166,10 +186,10 @@ const OpenCase = () => {
         console.warn(`Falha ao carregar imagem para ${item.name} (${item.shortname})`);
         imgElement.style.display = 'none';
         
-        // Mostrar placeholder
+        // Mostrar placeholder com a primeira letra do item
         const placeholder = document.createElement('div');
-        placeholder.className = 'text-4xl text-gray-600 h-full w-full flex items-center justify-center';
-        placeholder.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48"><path d="M3 2.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 5 0v.006c0 .07 0 .27-.038.494H15a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14.5V7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h2.038A2.968 2.968 0 0 1 3 2.506V2.5zm1.068.5H7v-.5a1.5 1.5 0 1 0-3 0c0 .085.002.274.045.43a.522.522 0 0 0 .023.07zM9 3h2.932a.56.56 0 0 0 .023-.07c.043-.156.045-.345.045-.43a1.5 1.5 0 0 0-3 0V3zM1 4v2h6V4H1zm8 0v2h6V4H9zm5 3H9v8h4.5a.5.5 0 0 0 .5-.5V7zm-7 8V7H2v7.5a.5.5 0 0 0 .5.5H7z"></path></svg>';
+        placeholder.className = 'w-16 h-16 rounded-full bg-dark-700/50 flex items-center justify-center text-2xl font-bold text-gray-400';
+        placeholder.textContent = item.name.charAt(0);
         imageWrapper.appendChild(placeholder);
       };
       
@@ -243,30 +263,6 @@ const OpenCase = () => {
     }
   };
   
-  // Obter classe de raridade para borda
-  const getRarityBorderClass = (rarity) => {
-    switch (rarity?.toLowerCase()) {
-      case 'common': return 'border-gray-500 bg-dark-700';
-      case 'uncommon': return 'border-blue-500 bg-dark-700';
-      case 'rare': return 'border-teal-500 bg-dark-700';
-      case 'epic': return 'border-purple-500 bg-dark-700';
-      case 'legendary': return 'border-yellow-400 bg-dark-700';
-      default: return 'border-gray-500 bg-dark-700';
-    }
-  };
-  
-  // Obter classe de background de raridade 
-  const getRarityBackgroundClass = (rarity) => {
-    switch (rarity?.toLowerCase()) {
-      case 'common': return 'from-gray-800 to-gray-900';
-      case 'uncommon': return 'from-blue-900 to-dark-900';
-      case 'rare': return 'from-teal-900 to-dark-900';
-      case 'epic': return 'from-purple-900 to-dark-900';
-      case 'legendary': return 'from-yellow-900 to-dark-900';
-      default: return 'from-gray-800 to-gray-900';
-    }
-  };
-  
   // Abrir a caixa
   const handleOpenCase = async () => {
     if (opening || result) return;
@@ -298,15 +294,15 @@ const OpenCase = () => {
       const data = await response.json();
       
       if (data.success) {
+        // Garantir que o item ganho tenha um shortname
+        if (data.item) {
+          data.item.shortname = data.item.shortname || 
+                              itemShortnames[data.item.name] || 
+                              data.item.name?.toLowerCase().replace(/\s+/g, '.');
+        }
+        
         // Continuar a animação por um tempo para criar suspense
         setTimeout(() => {
-          // Garantir que o item tenha um shortname
-          if (data.item) {
-            data.item.shortname = data.item.shortname || 
-                                 itemShortnames[data.item.name] || 
-                                 data.item.name?.toLowerCase().replace(/\s+/g, '.');
-          }
-          
           // Parar a animação no item ganho
           stopRouletteAnimation(data.item);
           
@@ -369,6 +365,30 @@ const OpenCase = () => {
     }
   };
   
+  // Obter classe de raridade para borda
+  const getRarityBorderClass = (rarity) => {
+    switch (rarity?.toLowerCase()) {
+      case 'common': return 'border-gray-500 bg-dark-700';
+      case 'uncommon': return 'border-blue-500 bg-dark-700';
+      case 'rare': return 'border-teal-500 bg-dark-700';
+      case 'epic': return 'border-purple-500 bg-dark-700';
+      case 'legendary': return 'border-yellow-400 bg-dark-700';
+      default: return 'border-gray-500 bg-dark-700';
+    }
+  };
+  
+  // Obter classe de background de raridade 
+  const getRarityBackgroundClass = (rarity) => {
+    switch (rarity?.toLowerCase()) {
+      case 'common': return 'bg-gray-800';
+      case 'uncommon': return 'bg-blue-900';
+      case 'rare': return 'bg-teal-900';
+      case 'epic': return 'bg-purple-900';
+      case 'legendary': return 'bg-amber-900';
+      default: return 'bg-gray-800';
+    }
+  };
+
   // Verificar autenticação
   if (status === 'loading' || loading) {
     return (
@@ -409,14 +429,19 @@ const OpenCase = () => {
         <div className="bg-dark-800 rounded-lg p-6 max-w-md mx-auto">
           <h2 className="text-2xl font-bold text-white mb-6">Parabéns!</h2>
           
-          <div className={`relative mx-auto w-48 h-48 flex items-center justify-center p-4 rounded-lg border-2 ${getRarityBorderClass(rarity)} bg-gradient-to-b ${getRarityBackgroundClass(rarity)}`}>
+          <div className={`relative mx-auto w-48 h-48 flex items-center justify-center p-4 rounded-lg border-2 ${getRarityBorderClass(rarity)} ${getRarityBackgroundClass(rarity)}`}>
             <img 
               src={getItemImageUrl(item.shortname)}
               alt={item.name}
               className="max-w-full max-h-full object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]"
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
+                e.target.style.display = 'none';
+                e.target.parentNode.innerHTML += `
+                  <div class="w-24 h-24 rounded-full bg-dark-700/50 flex items-center justify-center text-4xl font-bold text-gray-400">
+                    ${item.name.charAt(0)}
+                  </div>
+                `;
               }}
             />
           </div>
@@ -569,7 +594,7 @@ const OpenCase = () => {
                       {/* Botão de abrir */}
                       <Button
                         onClick={handleOpenCase}
-                        disabled={opening}
+                        disabled={opening || !imagesPreloaded}
                         className="px-8 py-3"
                         variant="primary"
                       >
@@ -577,6 +602,11 @@ const OpenCase = () => {
                           <>
                             <LoadingSpinner size="small" className="mr-2" />
                             Abrindo...
+                          </>
+                        ) : !imagesPreloaded ? (
+                          <>
+                            <LoadingSpinner size="small" className="mr-2" />
+                            Carregando...
                           </>
                         ) : (
                           <>
@@ -596,22 +626,27 @@ const OpenCase = () => {
                     {/* Conteúdo da caixa */}
                     <div className="mt-12">
                       <h2 className="text-xl font-bold text-white mb-4 text-center">Conteúdo da caixa</h2>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                         {items.map((item) => (
                           <div 
                             key={item.id} 
                             className={`rounded-lg overflow-hidden border ${getRarityBorderClass(item.rarity)}`}
                           >
-                            <div className={`p-2 bg-gradient-to-b ${getRarityBackgroundClass(item.rarity)}`}>
+                            <div className={`p-3 ${getRarityBackgroundClass(item.rarity)}`}>
                               <div className="relative h-24 flex items-center justify-center mb-2">
                                 <img 
                                   src={getItemImageUrl(item.shortname)}
                                   alt={item.name}
                                   className="max-h-full max-w-full object-contain drop-shadow-lg"
                                   onError={(e) => {
-                                    // Fallback para imagem de erro
+                                    // Fallback para placeholder
                                     e.target.onerror = null;
-                                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
+                                    e.target.style.display = 'none';
+                                    e.target.parentNode.innerHTML = `
+                                      <div class="w-16 h-16 rounded-full bg-dark-700/50 flex items-center justify-center text-2xl font-bold text-gray-400">
+                                        ${item.name.charAt(0)}
+                                      </div>
+                                    `;
                                   }}
                                 />
                               </div>
@@ -633,22 +668,27 @@ const OpenCase = () => {
                   {/* Lista de itens possíveis */}
                   <div className="mt-12 bg-dark-800 rounded-lg p-6">
                     <h2 className="text-xl font-bold text-white mb-4 text-center">Outros itens possíveis</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                       {items.filter(i => i.id !== result.item.id).map((item) => (
                         <div 
                           key={item.id} 
                           className={`rounded-lg overflow-hidden border ${getRarityBorderClass(item.rarity)}`}
                         >
-                          <div className={`p-2 bg-gradient-to-b ${getRarityBackgroundClass(item.rarity)}`}>
+                          <div className={`p-3 ${getRarityBackgroundClass(item.rarity)}`}>
                             <div className="relative h-24 flex items-center justify-center mb-2">
                               <img 
                                 src={getItemImageUrl(item.shortname)}
                                 alt={item.name}
                                 className="max-h-full max-w-full object-contain drop-shadow-lg"
                                 onError={(e) => {
-                                  // Fallback para imagem de erro
+                                  // Fallback para placeholder
                                   e.target.onerror = null;
-                                  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzZjNzU4MCI+PHBhdGggZD0iTTMgMi41YTIuNSAyLjUgMCAwIDEgNSAwIDIuNSAyLjUgMCAwIDEgNSAwdi4wMDZjMCAuMDcgMCAuMjctLjAzOC40OTRIMTVhMSAxIDAgMCAxIDEgMXYyYTEgMSAwIDAgMS0xIDF2Ny41YTEuNSAxLjUgMCAwIDEtMS41IDEuNWgtMTFBMS41IDEuNSAwIDAgMSAxIDE0LjVWN2ExIDEgMCAwIDEtMS0xVjRhMSAxIDAgMCAxIDEtMWgyLjAzOEEyLjk2OCAyLjk2OCAwIDAgMSAzIDIuNTA2VjIuNXptMS4wNjguNUg3di0uNWExLjUgMS41IDAgMSAwLTMgMGMwIC4wODUuMDAyLjI3NC4wNDUuNDNhLjUyMi41MjIgMCAwIDAgLjAyMy4wN3pNOSAzaDIuOTMyYS41Ni41NiAwIDAgMCAuMDIzLS4wN2MuMDQzLS4xNTYuMDQ1LS4zNDUuMDQ1LS40M2ExLjUgMS41IDAgMCAwLTMgMFYzek0xIDR2Mmg2VjRIMXptOCAwdjJoNlY0SDl6bTUgM0g5djhoNC41YS41LjUgMCAwIDAgLjUtLjVWN3ptLTcgOFY3SDJ2Ny41YS41LjUgMCAwIDAgLjUuNUg3eiI+PC9wYXRoPjwvc3ZnPg==';
+                                  e.target.style.display = 'none';
+                                  e.target.parentNode.innerHTML = `
+                                    <div class="w-16 h-16 rounded-full bg-dark-700/50 flex items-center justify-center text-2xl font-bold text-gray-400">
+                                      ${item.name.charAt(0)}
+                                    </div>
+                                  `;
                                 }}
                               />
                             </div>
