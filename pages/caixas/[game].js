@@ -34,32 +34,45 @@ const GameCases = () => {
     const fetchCases = async () => {
       try {
         setLoading(true);
+        console.log(`[Debug] Fazendo requisição para /api/cases/${game}`);
+        
         const response = await fetch(`/api/cases/${game}`);
+        console.log(`[Debug] Resposta recebida com status: ${response.status}`);
         
         // Verificar o código de status HTTP
         if (!response.ok) {
           const errorText = await response.text();
+          console.log(`[Debug] Erro texto completo: ${errorText}`);
+          
           let errorMessage = 'Erro ao carregar caixas';
+          let errorDetails = '';
           
           try {
             // Tenta fazer o parse do JSON se possível
             const errorData = JSON.parse(errorText);
+            console.log(`[Debug] Erro JSON parseado:`, errorData);
+            
             errorMessage = errorData.message || errorMessage;
+            errorDetails = errorData.errorDetail || '';
             
             if (errorData.errorCode === 'API_CONNECTION_ERROR') {
               toast.error('Problema ao conectar com o servidor de jogo. Por favor, tente novamente mais tarde.');
-              setError('Serviço temporariamente indisponível. Nossa equipe já foi notificada.');
+              setError(`Serviço temporariamente indisponível. Nossa equipe já foi notificada. ${errorDetails ? `(Detalhes: ${errorDetails})` : ''}`);
             } else if (errorData.errorCode === 'ENDPOINT_NOT_FOUND') {
               toast.error('Este tipo de caixa ainda não está disponível. Tente outro jogo.');
               setError('Estamos trabalhando para disponibilizar caixas para este jogo em breve!');
+            } else if (errorData.errorCode === 'API_CONFIG_ERROR') {
+              toast.error('Erro de configuração no servidor.');
+              setError('Problema de configuração detectado. Por favor, informe a equipe técnica.');
             } else {
               toast.error(errorMessage);
-              setError(errorMessage);
+              setError(`${errorMessage} ${errorDetails ? `(${errorDetails})` : ''}`);
             }
           } catch (e) {
             // Se não for JSON, use o texto bruto
+            console.error('[Debug] Erro ao fazer parse do JSON:', e);
             console.error('Erro não-JSON recebido:', errorText);
-            setError('Erro inesperado ao carregar caixas');
+            setError(`Erro inesperado ao carregar caixas. Status: ${response.status}`);
             toast.error('Erro inesperado ao carregar caixas');
           }
           
@@ -68,16 +81,22 @@ const GameCases = () => {
         }
         
         const data = await response.json();
+        console.log(`[Debug] Dados recebidos:`, data);
 
         if (data.success) {
           setCases(data.cases || []);
+          
+          if (data.cases && data.cases.length === 0) {
+            console.log('[Debug] Lista de caixas vazia retornada');
+          }
         } else {
+          console.log('[Debug] API retornou success=false:', data);
           setError(data.message || 'Erro ao carregar caixas');
           toast.error('Não foi possível carregar as caixas');
         }
       } catch (err) {
-        console.error('Erro ao buscar caixas:', err);
-        setError('Erro ao conectar ao servidor');
+        console.error('[Debug] Erro de execução ao buscar caixas:', err);
+        setError(`Erro ao conectar ao servidor: ${err.message}`);
         toast.error('Erro de conexão ao servidor');
       } finally {
         setLoading(false);

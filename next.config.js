@@ -1,4 +1,12 @@
 /** @type {import('next').NextConfig} */
+
+// Verificação de ambiente para garantir que as configurações estejam corretas
+const API_URL = process.env.API_URL || 'https://api.phanteongames.com';
+console.log(`[Config] API URL configurada: ${API_URL}`);
+
+// Verificar se a URL da API tem o formato correto (sem barra no final)
+const formattedApiUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
+
 const nextConfig = {
   reactStrictMode: true,
   images: {
@@ -21,8 +29,8 @@ const nextConfig = {
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
     NEXT_PUBLIC_BASE_URL: process.env.NEXTAUTH_URL,
     NEXT_PUBLIC_RUSTMAPS_API_KEY: process.env.RUSTMAPS_API_KEY,
-    NEXT_PUBLIC_API_URL: process.env.API_URL,
-    RUST_API_KEY: process.env.RUST_API_KEY,
+    NEXT_PUBLIC_API_URL: formattedApiUrl, // URL da API formatada corretamente
+    RUST_API_KEY: process.env.RUST_API_KEY || 'tpTM35o1Oe57ktRfbLYButef8gMEmRLwVMYTLwnNDZkGoOeLu1Y3o0K6KC0okI8F',
   },
   // Configuração para otimização de performance
   swcMinify: true,
