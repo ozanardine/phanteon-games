@@ -21,6 +21,7 @@ const nextConfig = {
     WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
     NEXT_PUBLIC_BASE_URL: process.env.NEXTAUTH_URL,
     NEXT_PUBLIC_RUSTMAPS_API_KEY: process.env.RUSTMAPS_API_KEY,
+    NEXT_PUBLIC_API_URL: process.env.API_URL || 'https://api.phanteongames.com/api',
   },
   // Configuração para otimização de performance
   swcMinify: true,
