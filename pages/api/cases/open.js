@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     };
     
     // Chamar a API do servidor para abrir a caixa
-    const data = await fetchAPI('/player/cases/open', {
+    const data = await fetchAPI('/api/cases/open', {
       method: 'POST',
       body: JSON.stringify(payload)
     });

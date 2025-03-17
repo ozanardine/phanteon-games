@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     }
     
     // Chamar a API do servidor para obter detalhes da caixa
-    const data = await fetchAPI(`/player/cases/detail/${id}`);
+    const data = await fetchAPI(`/api/cases/detail/${id}`);
     
     if (!data.success) {
       return res.status(400).json({ success: false, message: data.message });

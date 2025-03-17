@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     };
     
     // Chamar a API do servidor para reclamar o item
-    const data = await fetchAPI('/player/cases/claim', {
+    const data = await fetchAPI('/api/cases/claim', {
       method: 'POST',
       body: JSON.stringify(payload)
     });

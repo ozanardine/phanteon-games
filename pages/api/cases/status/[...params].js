@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     }
     
     // Chamar a API do servidor para verificar status
-    const data = await fetchAPI(`/player/cases/status/${caseId}/${userId}`);
+    const data = await fetchAPI(`/api/cases/status/${caseId}/${userId}`);
     
     return res.status(200).json(data);
   } catch (error) {
