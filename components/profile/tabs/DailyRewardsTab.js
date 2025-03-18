@@ -36,7 +36,38 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
       // Garantir que data.rewards seja sempre um array
       if (data && !Array.isArray(data.rewards)) {
         console.warn('API retornou rewards em formato não-array. Convertido para array vazio.');
-        data.rewards = [];
+        
+        // Criar recompensas de fallback caso a API retorne objeto vazio
+        if (typeof data.rewards === 'object' && Object.keys(data.rewards).length === 0) {
+          console.log('Gerando recompensas de fallback para exibição');
+          
+          // Criar array de recompensas de exemplo para os 7 dias
+          data.rewards = Array.from({ length: 7 }, (_, i) => ({
+            day: i + 1,
+            items: [
+              { 
+                name: i === 0 ? 'Revólver' : 
+                      i === 1 ? 'Pistola Semi-Auto' : 
+                      i === 2 ? 'Thompson' : 
+                      i === 3 ? 'MP5' : 
+                      i === 4 ? 'Kit Médico' : 
+                      i === 5 ? 'Rifle AK' : 
+                      'Lançador de Foguetes', 
+                amount: i + 1,
+                isVip: i > 3
+              },
+              {
+                name: 'Sucata',
+                amount: (i + 1) * 100,
+                isVip: false
+              }
+            ],
+            claimed: false,
+            available: i === data.status.consecutive_days
+          }));
+        } else {
+          data.rewards = [];
+        }
       }
       
       // Garantir que cada reward tenha items como array
