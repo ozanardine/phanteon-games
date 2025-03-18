@@ -29,6 +29,13 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
       }
       
       const data = await response.json();
+      
+      // Garantir que data.rewards seja sempre um array
+      if (data && !Array.isArray(data.rewards)) {
+        data.rewards = [];
+        console.warn('Aviso: API retornou rewards em formato não-array. Convertido para array vazio.');
+      }
+      
       setRewardsData(data);
       setError(null);
     } catch (err) {
@@ -58,6 +65,12 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
       }
       
       const data = await response.json();
+      
+      // Garantir que data.rewards seja sempre um array
+      if (data && !Array.isArray(data.rewards)) {
+        data.rewards = [];
+        console.warn('Aviso: API retornou rewards em formato não-array ao reivindicar. Convertido para array vazio.');
+      }
       
       // Atualizar os dados locais
       setRewardsData(prevData => ({
@@ -206,6 +219,9 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
     );
   }
 
+  // Garantir que rewards seja um array antes de renderizar
+  const rewards = Array.isArray(rewardsData.rewards) ? rewardsData.rewards : [];
+
   // Exibir recompensas para usuários VIP PLUS
   return (
     <div className="space-y-8">
@@ -245,7 +261,7 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
 
           {/* Visualização das recompensas */}
           <div className="grid grid-cols-2 md:grid-cols-7 gap-2">
-            {rewardsData.rewards.map((reward, idx) => (
+            {rewards.map((reward, idx) => (
               <div 
                 key={idx} 
                 className={`relative border rounded-lg overflow-hidden ${
