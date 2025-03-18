@@ -30,10 +30,24 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
       
       const data = await response.json();
       
+      // Debug log
+      console.log('Dados recebidos da API:', data);
+      
       // Garantir que data.rewards seja sempre um array
       if (data && !Array.isArray(data.rewards)) {
+        console.warn('API retornou rewards em formato não-array. Convertido para array vazio.');
         data.rewards = [];
-        console.warn('Aviso: API retornou rewards em formato não-array. Convertido para array vazio.');
+      }
+      
+      // Garantir que cada reward tenha items como array
+      if (data && Array.isArray(data.rewards)) {
+        data.rewards = data.rewards.map(reward => {
+          if (!Array.isArray(reward.items)) {
+            console.warn(`Reward ${reward.day} tem items em formato não-array. Convertido para array vazio.`);
+            reward.items = [];
+          }
+          return reward;
+        });
       }
       
       setRewardsData(data);
@@ -66,18 +80,36 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
       
       const data = await response.json();
       
+      // Debug log
+      console.log('Dados recebidos após claim:', data);
+      
       // Garantir que data.rewards seja sempre um array
       if (data && !Array.isArray(data.rewards)) {
+        console.warn('API retornou rewards em formato não-array ao reivindicar. Convertido para array vazio.');
         data.rewards = [];
-        console.warn('Aviso: API retornou rewards em formato não-array ao reivindicar. Convertido para array vazio.');
       }
       
       // Atualizar os dados locais
-      setRewardsData(prevData => ({
-        ...prevData,
-        status: data.status,
-        rewards: data.rewards,
-      }));
+      setRewardsData(prevData => {
+        // Gerar nova estrutura de recompensas com base na resposta
+        let updatedRewards = prevData?.rewards || [];
+        
+        // Se a API retornou novas recompensas, usá-las
+        if (data.rewards && Array.isArray(data.rewards)) {
+          updatedRewards = updatedRewards.map(reward => {
+            if (reward.day === day) {
+              return { ...reward, claimed: true, available: false };
+            }
+            return reward;
+          });
+        }
+        
+        return {
+          ...prevData,
+          status: data.status || prevData?.status,
+          rewards: updatedRewards
+        };
+      });
       
       // Exibir mensagem de sucesso
       toast.success(`Recompensas do dia ${day} reivindicadas com sucesso!`);
@@ -221,6 +253,7 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
 
   // Garantir que rewards seja um array antes de renderizar
   const rewards = Array.isArray(rewardsData.rewards) ? rewardsData.rewards : [];
+  console.log('Rewards para renderização:', rewards);
 
   // Exibir recompensas para usuários VIP PLUS
   return (
@@ -275,14 +308,18 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
                 <div className="p-3 text-center">
                   <div className="text-white font-medium mb-1">Dia {reward.day}</div>
                   <div className="space-y-2">
-                    {reward.items.map((item, itemIdx) => (
-                      <div 
-                        key={itemIdx}
-                        className={`text-sm ${item.isVip ? 'text-primary' : 'text-gray-300'}`}
-                      >
-                        {item.name} x{item.amount}
-                      </div>
-                    ))}
+                    {Array.isArray(reward.items) && reward.items.length > 0 ? (
+                      reward.items.map((item, itemIdx) => (
+                        <div 
+                          key={itemIdx}
+                          className={`text-sm ${item.isVip ? 'text-primary' : 'text-gray-300'}`}
+                        >
+                          {item.name} x{item.amount}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-400">Sem itens definidos</div>
+                    )}
                   </div>
                   
                   {reward.available && (
