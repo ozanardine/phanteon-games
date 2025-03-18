@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import { FaDiscord, FaBars, FaTimes, FaUserCircle, FaGift } from 'react-icons/fa';
+import { FaDiscord, FaBars, FaTimes, FaUserCircle } from 'react-icons/fa';
 import { useRouter } from 'next/router';
 
 const Navbar = () => {
@@ -113,14 +113,6 @@ const Navbar = () => {
             {session && (
               <>
                 <Link 
-                  href="/caixas/rust" 
-                  className={`text-white hover:text-primary transition-colors py-2 px-3 rounded-md focus:outline-none focus:ring-2 focus:ring-primary flex items-center ${isCurrentPage('/caixas') ? 'font-semibold text-primary' : ''}`}
-                  role="menuitem"
-                  aria-current={isCurrentPage('/caixas') ? 'page' : undefined}
-                >
-                  <FaGift className="mr-1" /> Caixas Diárias
-                </Link>
-                <Link 
                   href="/perfil" 
                   className={`text-white hover:text-primary transition-colors py-2 px-3 rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${isCurrentPage('/perfil') ? 'font-semibold text-primary' : ''}`}
                   role="menuitem"
@@ -227,15 +219,6 @@ const Navbar = () => {
             </Link>
             {session && (
               <>
-                <Link 
-                  href="/caixas/rust" 
-                  className={`text-white hover:text-primary px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-primary flex items-center ${isCurrentPage('/caixas') ? 'font-semibold text-primary' : ''}`}
-                  onClick={() => setIsMenuOpen(false)}
-                  role="menuitem"
-                  aria-current={isCurrentPage('/caixas') ? 'page' : undefined}
-                >
-                  <FaGift className="mr-2" /> Caixas Diárias
-                </Link>
                 <Link 
                   href="/perfil" 
                   className={`text-white hover:text-primary px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${isCurrentPage('/perfil') ? 'font-semibold text-primary' : ''}`}
