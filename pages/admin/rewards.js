@@ -40,7 +40,12 @@ export default function RewardsAdminPage({ user }) {
   
   // Verificar se usuário é admin
   useEffect(() => {
-    if (user && user.role !== 'admin') {
+    if (!user) {
+      // Aguardar carregamento do usuário
+      return;
+    }
+    
+    if (user.role !== 'admin') {
       toast.error('Acesso restrito a administradores');
       router.push('/perfil');
     }
@@ -48,7 +53,8 @@ export default function RewardsAdminPage({ user }) {
   
   // Carregar dados das recompensas
   useEffect(() => {
-    if (user?.role !== 'admin') return;
+    // Só carregar se o usuário estiver presente e for admin
+    if (!user || user.role !== 'admin') return;
     
     const fetchRewards = async () => {
       try {
@@ -747,7 +753,7 @@ export async function getServerSideProps(context) {
   if (!session) {
     return {
       redirect: {
-        destination: '/login',
+        destination: '/',
         permanent: false,
       },
     };
