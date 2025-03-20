@@ -1,4 +1,4 @@
-// pages/api/rewards/claim.js
+// pages/api/rewards/claim.js - API para reivindicar recompensas
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]";
 import { supabaseAdmin } from '../../../lib/supabase';
@@ -38,12 +38,21 @@ export default async function handler(req, res) {
     }
 
     // Extrair o dia a ser reivindicado do corpo da requisição
-    const { day } = req.body;
+    const { day, timestamp } = req.body;
 
     if (!day || typeof day !== 'number' || day < 1 || day > 7) {
       return res.status(400).json({ 
         success: false, 
         message: 'Dia inválido. Deve ser um número entre 1 e 7.' 
+      });
+    }
+
+    // Verificar status VIP (apenas VIP Plus pode reivindicar pelo site)
+    const vipStatus = await determineVipStatus(userData);
+    if (vipStatus !== 'vip-plus') {
+      return res.status(403).json({
+        success: false,
+        message: 'Apenas usuários VIP Plus podem reivindicar recompensas pelo site.'
       });
     }
 
@@ -68,46 +77,49 @@ export default async function handler(req, res) {
         });
       }
 
-      // Criar novo status
+      // Criar novo status diário
+      const now = new Date().toISOString();
       const newStatus = {
         user_id: userData.id,
         steam_id: userData.steam_id,
         consecutive_days: 1,
         claimed_days: [1],
-        last_claim_date: new Date().toISOString(),
-        vip_status: await determineVipStatus(userData),
+        last_claim_date: now,
+        vip_status: vipStatus,
         has_missed_day: false,
         is_active: true,
-        cycle_start_date: new Date().toISOString(),
+        cycle_start_date: now,
         next_reset_time: getNextResetTime(),
         has_active_rewards: true
       };
 
       // Inserir novo status
-      const { error: insertError } = await supabaseAdmin
+      const { data: insertedStatus, error: insertError } = await supabaseAdmin
         .from('player_daily_status')
-        .insert([newStatus]);
+        .insert([newStatus])
+        .select()
+        .single();
 
       if (insertError) throw insertError;
 
-      // Gerar recompensas
-      const rewards = generateRewardsForDay(day, newStatus.vip_status);
+      // Gerar recompensas para o dia 1
+      const rewards = await generateRewardsForDay(day, vipStatus);
 
-      // Registrar recompensas reclamadas
+      // Registrar reivindicação no histórico
       await registerClaims(userData, day, rewards);
 
-      // Adicionar à fila de recompensas pendentes
-      await addToPendingRewards(userData, day);
+      // Adicionar recompensas à fila de pendentes
+      await addToPendingRewards(userData, day, timestamp);
 
       return res.status(200).json({
         success: true,
         message: 'Recompensas do dia 1 reivindicadas com sucesso!',
         rewards,
-        status: newStatus
+        status: insertedStatus
       });
     }
 
-    // Verificar se o status está atualizado
+    // Verificar e atualizar status se necessário
     const updatedStatus = checkAndUpdateDailyStatus(dailyStatus);
     
     // Verificar se o dia já foi reivindicado
@@ -127,43 +139,40 @@ export default async function handler(req, res) {
       });
     }
 
-    // Atualizar status
+    // Atualizar status do jogador
+    const now = new Date().toISOString();
     const newClaimedDays = [...(updatedStatus.claimed_days || []), day];
     const newConsecutiveDays = updatedStatus.consecutive_days + 1;
     
-    const { error: updateError } = await supabaseAdmin
+    const { data: updatedRecord, error: updateError } = await supabaseAdmin
       .from('player_daily_status')
       .update({
         consecutive_days: newConsecutiveDays,
         claimed_days: newClaimedDays,
-        last_claim_date: new Date().toISOString(),
-        vip_status: await determineVipStatus(userData),
+        last_claim_date: now,
         has_missed_day: false
       })
-      .eq('id', updatedStatus.id);
+      .eq('id', updatedStatus.id)
+      .select()
+      .single();
 
     if (updateError) throw updateError;
 
-    // Gerar recompensas
-    const rewards = generateRewardsForDay(day, updatedStatus.vip_status);
+    // Gerar recompensas para o dia
+    const rewards = await generateRewardsForDay(day, vipStatus);
 
-    // Registrar recompensas reclamadas
+    // Registrar reivindicação no histórico
     await registerClaims(userData, day, rewards);
 
-    // Adicionar à fila de recompensas pendentes
-    await addToPendingRewards(userData, day);
+    // Adicionar recompensas à fila de pendentes
+    await addToPendingRewards(userData, day, timestamp);
 
-    // Retornar sucesso
+    // Retornar sucesso com as recompensas
     return res.status(200).json({
       success: true,
       message: `Recompensas do dia ${day} reivindicadas com sucesso!`,
       rewards,
-      status: {
-        ...updatedStatus,
-        consecutive_days: newConsecutiveDays,
-        claimed_days: newClaimedDays,
-        last_claim_date: new Date().toISOString()
-      }
+      status: updatedRecord
     });
   } catch (error) {
     console.error('[API:claim-reward] Erro:', error);
@@ -305,7 +314,6 @@ async function generateRewardsForDay(day, vipStatus) {
         applicableLevels.push('vip-basic');
       } else if (vipStatus === 'vip-plus') {
         applicableLevels.push('vip-basic', 'vip-plus');
-
       }
       
       // Filtrar recompensas VIP aplicáveis
@@ -327,7 +335,7 @@ async function generateRewardsForDay(day, vipStatus) {
   } catch (error) {
     console.error(`[API:claim-reward] Erro ao buscar recompensas para o dia ${day}:`, error);
     
-    // Fallback para recompensas padrão em caso de erro
+    // Fallback para recompensas padrão
     let baseReward;
     
     switch (day) {
@@ -356,34 +364,20 @@ async function generateRewardsForDay(day, vipStatus) {
         baseReward = { name: "Scrap", amount: 10 };
     }
     
-    // Lista de recompensas
-    const rewards = [baseReward];
+    const rewards = [{ ...baseReward, isVip: false }];
     
-    // Adicionar bônus VIP
-    if (vipStatus === 'vip-basic') {
-      rewards.push({ name: "Scrap", amount: 20, isVip: true });
-      if (day === 7) rewards.push({ name: "Small Stash", amount: 1, isVip: true });
-    } else if (vipStatus === 'vip-plus') {
+    // Adicionar bônus VIP mínimo
+    if (vipStatus === 'vip-plus') {
       rewards.push({ name: "Scrap", amount: 50, isVip: true });
-      if (day === 7) {
-        rewards.push({ name: "Small Stash", amount: 1, isVip: true });
-        rewards.push({ name: "Supply Signal", amount: 1, isVip: true });
-      }
-    } else if (vipStatus === 'vip-premium') {
-      rewards.push({ name: "Scrap", amount: 100, isVip: true });
-      if (day === 7) {
-        rewards.push({ name: "Small Stash", amount: 2, isVip: true });
-        rewards.push({ name: "Supply Signal", amount: 2, isVip: true });
-        rewards.push({ name: "Timed Explosive", amount: 1, isVip: true });
-      }
     }
     
     return rewards;
   }
 }
 
-// Função para registrar recompensas reivindicadas
+// Função para registrar reivindicações no histórico
 async function registerClaims(userData, day, rewards) {
+  const now = new Date().toISOString();
   const claimEntries = rewards.map(reward => ({
     user_id: userData.id,
     steam_id: userData.steam_id,
@@ -391,9 +385,10 @@ async function registerClaims(userData, day, rewards) {
     reward_item: reward.name,
     reward_amount: reward.amount,
     is_currency: ['Scrap', 'Wood', 'Stone', 'Metal Fragments', 'Low Grade Fuel'].includes(reward.name),
-    vip_status: userData.vip_status || 'none',
-    claimed_at: new Date().toISOString(),
-    server_id: 'main'
+    vip_status: 'vip-plus', // Apenas VIP Plus pode reivindicar pelo site
+    claimed_at: now,
+    server_id: 'main',
+    claim_source: 'website'
   }));
   
   const { error } = await supabaseAdmin
@@ -404,7 +399,9 @@ async function registerClaims(userData, day, rewards) {
 }
 
 // Função para adicionar à fila de recompensas pendentes
-async function addToPendingRewards(userData, day) {
+async function addToPendingRewards(userData, day, timestamp) {
+  const now = timestamp || new Date().toISOString();
+  
   const { error } = await supabaseAdmin
     .from('pending_rewards')
     .insert([{
@@ -413,7 +410,10 @@ async function addToPendingRewards(userData, day) {
       day,
       status: 'pending',
       claim_type: 'website',
-      server_id: 'main'
+      server_id: 'main',
+      requested_at: now,
+      delivered: false,
+      delivered_at: null
     }]);
     
   if (error) throw error;

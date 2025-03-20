@@ -1,4 +1,4 @@
-// pages/api/rewards/pending.js
+// pages/api/rewards/pending.js - API para verificar recompensas pendentes
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]";
 import { supabaseAdmin } from '../../../lib/supabase';
@@ -43,6 +43,7 @@ export default async function handler(req, res) {
       .select('*')
       .eq('steam_id', userData.steam_id)
       .eq('status', 'pending')
+      .eq('delivered', false)
       .order('requested_at', { ascending: false });
 
     if (error) throw error;

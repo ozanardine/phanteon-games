@@ -1,152 +1,172 @@
 // components/profile/tabs/DailyRewardsTab.js
-import React, { useState, useEffect } from 'react';
-import { FaGift, FaHistory, FaExclamationTriangle, FaInbox, FaClipboard, FaCrown, FaLock } from 'react-icons/fa';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FaGift, FaHistory, FaExclamationTriangle, FaInbox, FaClipboard, FaCrown, FaLock, FaCheck, FaCalendarAlt } from 'react-icons/fa';
 import Card from '../../ui/Card';
 import Button from '../../ui/Button';
 import LoadingSpinner from '../../ui/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import VipBadge from '../../ui/VipBadge';
 import { useRouter } from 'next/router';
+import Modal from '../../ui/Modal';
 
 const DailyRewardsTab = ({ userData, onEditSteamId }) => {
   const [rewardsData, setRewardsData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [claimingDay, setClaimingDay] = useState(null);
+  const [pendingRewards, setPendingRewards] = useState([]);
+  const [isShowingClaimModal, setIsShowingClaimModal] = useState(false);
+  const [claimedRewards, setClaimedRewards] = useState(null);
+  const [isFetchingPending, setIsFetchingPending] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchDailyRewards();
-  }, []);
-
-  const fetchDailyRewards = async () => {
+  // Função para carregar recompensas diárias
+  const fetchDailyRewards = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
+      
+      // Fazer requisição para API de recompensas diárias
       const response = await fetch('/api/rewards/daily');
       
       if (!response.ok) {
-        throw new Error(`Erro (${response.status}): ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erro (${response.status}): ${response.statusText}`);
       }
       
       const data = await response.json();
       
-      // Debug log
-      console.log('Dados recebidos da API:', data);
-      
-      // Garantir que data.rewards seja sempre um array
-      if (data && !Array.isArray(data.rewards)) {
-        console.warn('API retornou rewards em formato não-array. Convertido para array vazio.');
-        
-        // Criar recompensas de fallback caso a API retorne objeto vazio
-        if (typeof data.rewards === 'object' && Object.keys(data.rewards).length === 0) {
-          console.log('Gerando recompensas de fallback para exibição');
-          
-          // Criar array de recompensas de exemplo para os 7 dias
-          data.rewards = Array.from({ length: 7 }, (_, i) => ({
-            day: i + 1,
-            items: [
-              { 
-                name: i === 0 ? 'Revólver' : 
-                      i === 1 ? 'Pistola Semi-Auto' : 
-                      i === 2 ? 'Thompson' : 
-                      i === 3 ? 'MP5' : 
-                      i === 4 ? 'Kit Médico' : 
-                      i === 5 ? 'Rifle AK' : 
-                      'Lançador de Foguetes', 
-                amount: i + 1,
-                isVip: i > 3
-              },
-              {
-                name: 'Sucata',
-                amount: (i + 1) * 100,
-                isVip: false
-              }
-            ],
-            claimed: false,
-            available: i === data.status.consecutive_days
-          }));
-        } else {
+      // Validar e normalizar os dados recebidos
+      if (data.success) {
+        // Garantir que rewards seja um array
+        if (!Array.isArray(data.rewards)) {
+          console.warn('API retornou rewards em formato incorreto. Convertendo para array vazio.');
           data.rewards = [];
         }
-      }
-      
-      // Garantir que cada reward tenha items como array
-      if (data && Array.isArray(data.rewards)) {
+        
+        // Garantir que cada reward tenha items como array
         data.rewards = data.rewards.map(reward => {
           if (!Array.isArray(reward.items)) {
-            console.warn(`Reward ${reward.day} tem items em formato não-array. Convertido para array vazio.`);
             reward.items = [];
           }
           return reward;
         });
+        
+        setRewardsData(data);
+      } else {
+        throw new Error(data.message || 'Falha ao carregar recompensas diárias');
       }
-      
-      setRewardsData(data);
-      setError(null);
     } catch (err) {
       console.error('Erro ao buscar recompensas diárias:', err);
       setError(err.message || 'Falha ao buscar recompensas');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
+  // Função para buscar recompensas pendentes
+  const fetchPendingRewards = useCallback(async () => {
+    try {
+      setIsFetchingPending(true);
+      const response = await fetch('/api/rewards/pending');
+      
+      if (!response.ok) {
+        throw new Error(`Erro ao buscar recompensas pendentes (${response.status})`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setPendingRewards(data.pendingRewards || []);
+      } else {
+        console.warn('Falha ao buscar recompensas pendentes:', data.message);
+        setPendingRewards([]);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar recompensas pendentes:', err);
+      // Não mostrar erro para o usuário, apenas log para debug
+    } finally {
+      setIsFetchingPending(false);
+    }
+  }, []);
+
+  // Efeito para carregar dados na montagem do componente
+  useEffect(() => {
+    fetchDailyRewards();
+    fetchPendingRewards();
+    
+    // Configurar intervalo para atualizar recompensas pendentes a cada 30s
+    const pendingInterval = setInterval(() => {
+      fetchPendingRewards();
+    }, 30000);
+    
+    return () => clearInterval(pendingInterval);
+  }, [fetchDailyRewards, fetchPendingRewards]);
+
+  // Função para reivindicar recompensa
   const handleClaimReward = async (day) => {
     if (claimingDay) return; // Evitar cliques duplos
     
     try {
       setClaimingDay(day);
+      
+      // Requisição para API de reivindicação
       const response = await fetch('/api/rewards/claim', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ day }),
+        body: JSON.stringify({ 
+          day,
+          timestamp: new Date().toISOString() // Adicionar timestamp para tracking
+        }),
       });
       
+      // Processar resposta
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || `Erro ao reivindicar recompensa (${response.status})`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erro ao reivindicar recompensa (${response.status})`);
       }
       
       const data = await response.json();
       
-      // Debug log
-      console.log('Dados recebidos após claim:', data);
-      
-      // Garantir que data.rewards seja sempre um array
-      if (data && !Array.isArray(data.rewards)) {
-        console.warn('API retornou rewards em formato não-array ao reivindicar. Convertido para array vazio.');
-        data.rewards = [];
-      }
-      
-      // Atualizar os dados locais
-      setRewardsData(prevData => {
-        // Gerar nova estrutura de recompensas com base na resposta
-        let updatedRewards = prevData?.rewards || [];
+      if (data.success) {
+        // Mostrar modal com recompensas reivindicadas
+        setClaimedRewards(data.rewards);
+        setIsShowingClaimModal(true);
         
-        // Se a API retornou novas recompensas, usá-las
-        if (data.rewards && Array.isArray(data.rewards)) {
-          updatedRewards = updatedRewards.map(reward => {
+        // Atualizar os dados locais
+        setRewardsData(prevData => {
+          if (!prevData || !Array.isArray(prevData.rewards)) return prevData;
+          
+          // Atualizar status e dados do jogador
+          const updatedStatus = data.status || prevData.status;
+          
+          // Atualizar array de recompensas
+          const updatedRewards = prevData.rewards.map(reward => {
             if (reward.day === day) {
               return { ...reward, claimed: true, available: false };
+            } else if (reward.day === day + 1) {
+              // Tornar o próximo dia disponível
+              return { ...reward, available: true };
             }
             return reward;
           });
-        }
+          
+          return {
+            ...prevData,
+            status: updatedStatus,
+            rewards: updatedRewards
+          };
+        });
         
-        return {
-          ...prevData,
-          status: data.status || prevData?.status,
-          rewards: updatedRewards
-        };
-      });
-      
-      // Exibir mensagem de sucesso
-      toast.success(`Recompensas do dia ${day} reivindicadas com sucesso!`);
-      
-      // Atualizar para ver recompensas pendentes
-      fetchDailyRewards();
+        // Buscar recompensas pendentes após reivindicação
+        setTimeout(() => {
+          fetchPendingRewards();
+        }, 1000);
+      } else {
+        throw new Error(data.message || 'Falha desconhecida ao reivindicar recompensa');
+      }
     } catch (err) {
       console.error('Erro ao reivindicar recompensa:', err);
       toast.error(err.message || 'Falha ao reivindicar recompensa');
@@ -157,7 +177,24 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
 
   // Verificar se o usuário é VIP PLUS
   const isVipPlus = rewardsData?.status?.vip_status === 'vip-plus';
+  
+  // Formatar data para exibição
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Data inválida';
+    }
+  };
 
+  // Renderização condicional para estados de loading e erro
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-16">
@@ -191,6 +228,7 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
     );
   }
 
+  // Verificar se o usuário tem Steam ID configurado
   if (!rewardsData || !rewardsData.rewards || !userData?.steam_id) {
     return (
       <Card>
@@ -227,7 +265,7 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
     );
   }
 
-  // Exibir mensagem promocional para usuários que não são VIP PLUS
+  // Exibir bloqueio para usuários não-VIP Plus
   if (!isVipPlus) {
     return (
       <Card>
@@ -282,13 +320,13 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
     );
   }
 
-  // Garantir que rewards seja um array antes de renderizar
+  // Garantir que rewards seja sempre um array
   const rewards = Array.isArray(rewardsData.rewards) ? rewardsData.rewards : [];
-  console.log('Rewards para renderização:', rewards);
 
-  // Exibir recompensas para usuários VIP PLUS
+  // Componente principal para usuários VIP Plus
   return (
     <div className="space-y-8">
+      {/* Status e progresso do jogador */}
       <Card>
         <Card.Header>
           <Card.Title className="flex items-center">
@@ -299,32 +337,78 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
         <Card.Body>
           {/* Status do jogador */}
           <div className="mb-6 bg-dark-400/50 p-4 rounded-lg border border-dark-300">
-            <div className="flex justify-between items-center mb-2">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
               <div>
                 <h4 className="text-white font-medium">Progresso Diário</h4>
-                <p className="text-gray-400 text-sm">
-                  Dias consecutivos: <span className="text-primary font-bold">{rewardsData.status.consecutive_days}</span>
-                </p>
-              </div>
-              {rewardsData.status.vip_status !== 'none' && (
-                <div className="flex items-center">
-                  <VipBadge plan={rewardsData.status.vip_status} size={24} className="mr-2" />
-                  <div className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-medium">
-                    Status VIP: {rewardsData.status.vip_status}
+                <div className="flex items-center mt-1">
+                  <p className="text-gray-400 text-sm">
+                    Dias consecutivos: <span className="text-primary font-bold">{rewardsData.status.consecutive_days}</span>
+                  </p>
+                  <div className="ml-3 px-3 py-1 bg-dark-400 rounded-full flex items-center">
+                    <FaCalendarAlt className="text-primary mr-1" />
+                    <span className="text-gray-300 text-xs">
+                      Último resgate: {
+                        rewardsData.status.last_claim_date 
+                          ? formatDate(rewardsData.status.last_claim_date)
+                          : 'Nunca'
+                      }
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
+              
+              <div className="mt-2 md:mt-0 flex items-center">
+                <VipBadge plan={rewardsData.status.vip_status} size={24} className="mr-2" />
+                <div className="px-3 py-1 bg-primary/20 text-primary rounded-full text-xs font-medium">
+                  Status VIP: {rewardsData.status.vip_status === 'vip-plus' ? 'VIP PLUS' : 'VIP Básico'}
+                </div>
+              </div>
             </div>
-            <div className="bg-dark-300 h-2 rounded-full mt-2">
-              <div 
-                className="bg-primary h-2 rounded-full" 
-                style={{ width: `${(rewardsData.status.consecutive_days / 7) * 100}%` }}
-              ></div>
+            
+            {/* Barra de progresso */}
+            <div className="mt-2">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
+                <span>Dia 1</span>
+                <span>Dia 7</span>
+              </div>
+              <div className="relative">
+                <div className="bg-dark-300 h-2 rounded-full">
+                  <div 
+                    className="bg-primary h-2 rounded-full" 
+                    style={{ width: `${Math.min(100, (rewardsData.status.consecutive_days / 7) * 100)}%` }}
+                  ></div>
+                </div>
+                
+                {/* Marcadores de dias */}
+                {[1, 2, 3, 4, 5, 6, 7].map(day => (
+                  <div 
+                    key={day}
+                    className={`absolute w-3 h-3 rounded-full -mt-2.5 transform -translate-x-1/2 ${
+                      rewardsData.status.consecutive_days >= day 
+                        ? 'bg-primary' 
+                        : day === rewardsData.status.consecutive_days + 1
+                        ? 'bg-primary animate-pulse' 
+                        : 'bg-dark-200'
+                    }`}
+                    style={{ left: `${((day - 1) / 6) * 100}%` }}
+                  ></div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Explicação e Reset */}
+            <div className="flex flex-col md:flex-row justify-between mt-4 text-xs text-gray-400">
+              <div>
+                Mantenha seus dias consecutivos entrando diariamente para desbloquear recompensas melhores.
+              </div>
+              <div>
+                Próximo reset: {rewardsData.status.next_reset_time ? formatDate(rewardsData.status.next_reset_time) : 'N/A'}
+              </div>
             </div>
           </div>
 
-          {/* Visualização das recompensas */}
-          <div className="grid grid-cols-2 md:grid-cols-7 gap-2">
+          {/* Cards de recompensas */}
+          <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
             {rewards.map((reward, idx) => (
               <div 
                 key={idx} 
@@ -332,20 +416,25 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
                   reward.claimed 
                     ? 'border-green-500 bg-green-500/10' 
                     : reward.available 
-                    ? 'border-primary bg-primary/10 animate-pulse' 
+                    ? 'border-primary bg-primary/10 shadow-lg shadow-primary/10 pulse-animation' 
                     : 'border-dark-300 bg-dark-400/50'
                 }`}
               >
-                <div className="p-3 text-center">
-                  <div className="text-white font-medium mb-1">Dia {reward.day}</div>
-                  <div className="space-y-2">
+                {/* Tag do dia */}
+                <div className="absolute top-0 left-0 bg-dark-300 px-2 py-0.5 text-xs font-medium rounded-br">
+                  Dia {reward.day}
+                </div>
+                
+                <div className="p-3 pt-5 text-center">
+                  {/* Itens da recompensa */}
+                  <div className="space-y-2 min-h-[80px]">
                     {Array.isArray(reward.items) && reward.items.length > 0 ? (
                       reward.items.map((item, itemIdx) => (
                         <div 
                           key={itemIdx}
                           className={`text-sm ${item.isVip ? 'text-primary' : 'text-gray-300'}`}
                         >
-                          {item.name} x{item.amount}
+                          {item.name} <span className="font-bold">x{item.amount}</span>
                         </div>
                       ))
                     ) : (
@@ -353,6 +442,7 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
                     )}
                   </div>
                   
+                  {/* Botão de resgate */}
                   {reward.available && (
                     <Button
                       variant="primary"
@@ -366,15 +456,94 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
                     </Button>
                   )}
                   
+                  {/* Status de resgatado */}
                   {reward.claimed && (
-                    <div className="mt-4 text-green-500 font-medium text-sm">
-                      Resgatado ✓
+                    <div className="flex items-center justify-center mt-4 text-green-500 font-medium text-sm">
+                      <FaCheck className="mr-1" /> Resgatado
+                    </div>
+                  )}
+                  
+                  {/* Indisponível */}
+                  {!reward.available && !reward.claimed && (
+                    <div className="mt-4 text-gray-500 font-medium text-sm px-2 py-1 bg-dark-400 rounded-full">
+                      {rewardsData.status.consecutive_days < reward.day - 1
+                        ? 'Bloqueado'
+                        : 'Aguardando'}
                     </div>
                   )}
                 </div>
               </div>
             ))}
           </div>
+        </Card.Body>
+      </Card>
+
+      {/* Recompensas Pendentes */}
+      <Card>
+        <Card.Header>
+          <Card.Title className="flex items-center">
+            <FaInbox className="text-primary mr-2" />
+            Recompensas Pendentes
+            {pendingRewards.length > 0 && (
+              <span className="ml-2 bg-primary text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                {pendingRewards.length}
+              </span>
+            )}
+          </Card.Title>
+        </Card.Header>
+        <Card.Body>
+          {isFetchingPending ? (
+            <div className="flex justify-center p-4">
+              <LoadingSpinner size="sm" text="Verificando recompensas pendentes..." />
+            </div>
+          ) : pendingRewards.length > 0 ? (
+            <div>
+              <div className="bg-primary/10 border border-primary/30 p-4 mb-4 rounded-lg">
+                <p className="text-white flex items-start">
+                  <FaGift className="text-primary mt-1 mr-2 flex-shrink-0" />
+                  <span>
+                    Você tem <strong>{pendingRewards.length}</strong> recompensa(s) pendente(s) para receber no jogo.
+                    Entre no servidor para recebê-las automaticamente.
+                  </span>
+                </p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {pendingRewards.map((reward, idx) => (
+                  <div key={idx} className="bg-dark-400/70 p-3 rounded-lg border border-dark-300 flex justify-between">
+                    <div>
+                      <div className="text-white font-medium">Recompensa do Dia {reward.day}</div>
+                      <div className="text-gray-400 text-sm">
+                        Resgatada em: {formatDate(reward.requested_at)}
+                      </div>
+                    </div>
+                    <div className="bg-yellow-500/20 text-yellow-500 px-2 py-1 h-fit rounded-full text-xs">
+                      Pendente
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center p-4 bg-dark-400/70 rounded-lg border border-dark-300">
+              <p className="text-gray-300 mb-3">
+                Nenhuma recompensa pendente. Entre no servidor para receber futuras recompensas com o comando:
+              </p>
+              <div className="bg-dark-300 p-3 rounded font-mono text-primary text-sm mb-3">
+                /recompensas
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText('/recompensas');
+                  toast.success('Comando copiado!');
+                }}
+              >
+                <FaClipboard className="mr-2" />
+                Copiar Comando
+              </Button>
+            </div>
+          )}
         </Card.Body>
       </Card>
 
@@ -392,11 +561,11 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
               {rewardsData.history.map((reward, idx) => (
                 <div key={idx} className="flex justify-between py-2 border-b border-dark-300 last:border-0">
                   <div className="text-gray-300">
-                    {reward.reward_item} x{reward.reward_amount}
+                    {reward.reward_item} <span className="font-bold">x{reward.reward_amount}</span>
                     <span className="text-xs ml-2 text-gray-400">Dia {reward.day}</span>
                   </div>
                   <div className="text-gray-400 text-sm">
-                    {new Date(reward.claimed_at).toLocaleDateString()}
+                    {formatDate(reward.claimed_at)}
                   </div>
                 </div>
               ))}
@@ -411,36 +580,54 @@ const DailyRewardsTab = ({ userData, onEditSteamId }) => {
         </Card.Body>
       </Card>
 
-      {/* Recompensas Pendentes */}
-      <Card>
-        <Card.Header>
-          <Card.Title className="flex items-center">
-            <FaInbox className="text-primary mr-2" />
-            Recompensas Pendentes
-          </Card.Title>
-        </Card.Header>
-        <Card.Body>
-          <div className="text-center p-4 bg-dark-400/70 rounded-lg border border-dark-300">
-            <p className="text-gray-300 mb-3">
-              Entre no servidor para receber suas recompensas pendentes. Use o comando:
-            </p>
-            <div className="bg-dark-300 p-3 rounded font-mono text-primary text-sm mb-3">
-              /recompensas
+      {/* Modal de confirmação de resgate */}
+      <Modal
+        isOpen={isShowingClaimModal}
+        onClose={() => setIsShowingClaimModal(false)}
+        title="Recompensa Resgatada com Sucesso!"
+        footer={
+          <Button
+            variant="primary"
+            onClick={() => setIsShowingClaimModal(false)}
+          >
+            Entendi
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-center">
+            <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center">
+              <FaGift className="text-primary text-3xl" />
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => {
-                navigator.clipboard.writeText('/recompensas');
-                toast.success('Comando copiado!');
-              }}
-            >
-              <FaClipboard className="mr-2" />
-              Copiar Comando
-            </Button>
           </div>
-        </Card.Body>
-      </Card>
+          
+          <p className="text-center text-white">
+            Parabéns! Você resgatou as seguintes recompensas:
+          </p>
+          
+          <div className="bg-dark-400/70 p-4 rounded-lg">
+            <h4 className="text-primary font-medium mb-2">Itens Resgatados:</h4>
+            <div className="space-y-2">
+              {claimedRewards && claimedRewards.map((item, index) => (
+                <div key={index} className="flex justify-between">
+                  <span className="text-gray-300">{item.name}</span>
+                  <span className="text-white font-bold">x{item.amount}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <div className="bg-yellow-500/20 text-yellow-500 p-3 rounded-lg text-sm">
+            <p className="flex items-start">
+              <FaExclamationTriangle className="mt-1 mr-2 flex-shrink-0" />
+              <span>
+                Para receber estes itens, você precisa entrar no servidor de Rust. 
+                Os itens serão entregues automaticamente quando você conectar.
+              </span>
+            </p>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-// pages/api/rewards/daily.js
+// pages/api/rewards/daily.js - API para obter status atual de recompensas
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]";
 import { supabaseAdmin } from '../../../lib/supabase';
@@ -6,7 +6,7 @@ import { getUserByDiscordId } from '../../../lib/supabase';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ success: false, message: 'Método não permitido' });
   }
 
   try {
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       .select('*')
       .eq('steam_id', userData.steam_id)
       .order('claimed_at', { ascending: false })
-      .limit(10);
+      .limit(20);
 
     if (historyError) throw historyError;
 
@@ -75,25 +75,72 @@ export default async function handler(req, res) {
         has_active_rewards: true
       };
 
-      // Retornar com recompensas disponíveis
-      return res.status(200).json({
-        success: true,
-        status: defaultStatus,
-        rewards: generateDailyRewards(defaultStatus),
-        history: rewardHistory || []
-      });
+      // Verificar se é VIP Plus para enviar as recompensas
+      if (defaultStatus.vip_status === 'vip-plus') {
+        // Buscar configuração de recompensas
+        const { data: rewardsConfig, error: configError } = await supabaseAdmin
+          .from('rewards_config')
+          .select('*')
+          .order('day', { ascending: true })
+          .order('is_bonus', { ascending: false });
+          
+        if (configError) throw configError;
+        
+        // Estruturar recompensas por dia
+        const rewardsByDay = await formatRewardsData(rewardsConfig, defaultStatus);
+        
+        return res.status(200).json({
+          success: true,
+          status: defaultStatus,
+          rewards: rewardsByDay,
+          history: rewardHistory || []
+        });
+      } else {
+        // Usuário não é VIP Plus, retornar status sem recompensas
+        return res.status(200).json({
+          success: true,
+          status: defaultStatus,
+          rewards: [],
+          history: rewardHistory || [],
+          message: 'Recurso disponível apenas para VIP Plus'
+        });
+      }
     }
 
     // Verificar se o status está atualizado
     const updatedStatus = checkAndUpdateDailyStatus(dailyStatus);
     
-    // Retornar os dados
-    return res.status(200).json({
-      success: true,
-      status: updatedStatus,
-      rewards: generateDailyRewards(updatedStatus),
-      history: rewardHistory || []
-    });
+    // Verificar se é VIP Plus para enviar as recompensas
+    if (updatedStatus.vip_status === 'vip-plus') {
+      // Buscar configuração de recompensas
+      const { data: rewardsConfig, error: configError } = await supabaseAdmin
+        .from('rewards_config')
+        .select('*')
+        .order('day', { ascending: true })
+        .order('is_bonus', { ascending: false });
+        
+      if (configError) throw configError;
+      
+      // Estruturar recompensas por dia
+      const rewardsByDay = await formatRewardsData(rewardsConfig, updatedStatus);
+      
+      // Retornar os dados completos
+      return res.status(200).json({
+        success: true,
+        status: updatedStatus,
+        rewards: rewardsByDay,
+        history: rewardHistory || []
+      });
+    } else {
+      // Usuário não é VIP Plus, retornar status sem recompensas
+      return res.status(200).json({
+        success: true,
+        status: updatedStatus,
+        rewards: [],
+        history: rewardHistory || [],
+        message: 'Recurso disponível apenas para VIP Plus'
+      });
+    }
   } catch (error) {
     console.error('[API:daily-rewards] Erro:', error);
     return res.status(500).json({ 
@@ -196,75 +243,74 @@ function checkAndUpdateDailyStatus(status) {
   return status;
 }
 
-// Função para gerar recompensas diárias baseadas no status do jogador
-async function generateDailyRewards(status) {
+// Função para estruturar recompensas por dia
+async function formatRewardsData(rewardsConfig, status) {
   try {
-    // Buscar recompensas da tabela de configuração
-    const { data: rewardsConfig, error } = await supabaseAdmin
-      .from('rewards_config')
-      .select('*')
-      .order('day', { ascending: true })
-      .order('is_bonus', { ascending: false });
-    
-    if (error) throw error;
-    
-    // Estruturar as recompensas por dia
-    const rewardsByDay = {};
-    
     // Inicializar estrutura para 7 dias
-    for (let i = 1; i <= 7; i++) {
-      rewardsByDay[i] = { day: i, items: [] };
-    }
+    const rewardsByDay = [];
     
-    // Preencher com as recompensas da configuração
-    rewardsConfig.forEach(reward => {
-      // Verificar se a recompensa é aplicável ao nível VIP do jogador
-      const isApplicable = 
-        reward.vip_level === 'none' || 
-        (reward.is_bonus && status.vip_status === reward.vip_level);
+    // Para cada dia (1-7)
+    for (let day = 1; day <= 7; day++) {
+      const dayConfig = rewardsConfig.filter(r => r.day === day);
       
-      if (isApplicable && reward.day >= 1 && reward.day <= 7) {
-        rewardsByDay[reward.day].items.push({
-          name: reward.item_name,
-          amount: reward.amount,
-          isVip: reward.is_bonus
+      // Itens do dia atual
+      const items = [];
+      
+      // Adicionar itens regulares (não-VIP)
+      const regularItems = dayConfig.filter(r => r.vip_level === 'none');
+      regularItems.forEach(item => {
+        items.push({
+          name: item.item_name,
+          amount: item.amount,
+          isVip: false
+        });
+      });
+      
+      // Adicionar bônus VIP
+      if (status.vip_status !== 'none') {
+        // Determinar quais níveis VIP aplicar
+        const applicableLevels = [];
+        
+        if (status.vip_status === 'vip-basic') {
+          applicableLevels.push('vip-basic');
+        } else if (status.vip_status === 'vip-plus') {
+          applicableLevels.push('vip-basic', 'vip-plus');
+        }
+        
+        // Filtrar itens VIP aplicáveis
+        const vipItems = dayConfig.filter(r => 
+          r.is_bonus && applicableLevels.includes(r.vip_level)
+        );
+        
+        // Adicionar itens VIP
+        vipItems.forEach(item => {
+          items.push({
+            name: item.item_name,
+            amount: item.amount,
+            isVip: true
+          });
         });
       }
-    });
-    
-    // Converter para array e adicionar status
-    const rewards = Object.values(rewardsByDay).map(reward => {
-      // Marcar como já reivindicado
-      reward.claimed = (status.claimed_days || []).includes(reward.day);
       
-      // Marcar como disponível para reivindicar
+      // Verificar se este dia foi reivindicado
+      const claimed = Array.isArray(status.claimed_days) && status.claimed_days.includes(day);
+      
+      // Verificar se este dia está disponível para reivindicar
       const nextDay = status.consecutive_days + 1;
-      reward.available = reward.day === nextDay && !reward.claimed;
+      const available = day === nextDay && !claimed;
       
-      return reward;
-    });
+      // Adicionar ao array de recompensas
+      rewardsByDay.push({
+        day,
+        items,
+        claimed,
+        available
+      });
+    }
     
-    return rewards;
+    return rewardsByDay;
   } catch (error) {
-    console.error('[API:daily-rewards] Erro ao buscar configuração de recompensas:', error);
-    
-    // Fallback para recompensas padrão em caso de erro
-    const basicRewards = [
-      { day: 1, items: [{ name: "Scrap", amount: 20, isVip: false }] },
-      { day: 2, items: [{ name: "Wood", amount: 1000, isVip: false }] },
-      { day: 3, items: [{ name: "Stone", amount: 500, isVip: false }] },
-      { day: 4, items: [{ name: "Metal Fragments", amount: 250, isVip: false }] },
-      { day: 5, items: [{ name: "Low Grade Fuel", amount: 100, isVip: false }] },
-      { day: 6, items: [{ name: "Scrap", amount: 50, isVip: false }] },
-      { day: 7, items: [{ name: "Scrap", amount: 100, isVip: false }] }
-    ];
-    
-    // Adicionar status
-    return basicRewards.map(reward => {
-      reward.claimed = (status.claimed_days || []).includes(reward.day);
-      const nextDay = status.consecutive_days + 1;
-      reward.available = reward.day === nextDay && !reward.claimed;
-      return reward;
-    });
+    console.error('[API:daily-rewards] Erro ao formatar recompensas:', error);
+    return [];
   }
 }
