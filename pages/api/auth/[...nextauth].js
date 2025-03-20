@@ -174,6 +174,34 @@ export const authOptions = {
         // Adicionar campos de username à sessão
         session.user.discord_username = token.discord_username;
         session.user.discord_global_name = token.discord_global_name;
+        
+        // Buscar role do usuário no Supabase
+        try {
+          // Garantir que o Discord ID seja uma string
+          const discordIdString = token.discord_id.toString();
+          
+          console.log(`[Auth:session] Buscando role para usuário: ${discordIdString}`);
+          
+          const { data: userData, error: userError } = await supabaseAdmin
+            .from('users')
+            .select('role')
+            .eq('discord_id', discordIdString)
+            .maybeSingle();
+            
+          if (userError) {
+            console.error('[Auth:session] Erro ao buscar role:', userError);
+          } else if (userData) {
+            console.log(`[Auth:session] Role encontrada: ${userData.role}`);
+            // Adicionar role à sessão
+            session.user.role = userData.role;
+          } else {
+            console.log('[Auth:session] Usuário não encontrado, definindo role padrão');
+            session.user.role = 'user';
+          }
+        } catch (error) {
+          console.error('[Auth:session] Erro ao buscar role do usuário:', error);
+          session.user.role = 'user'; // Fallback para role padrão
+        }
       }
       return session;
     },
