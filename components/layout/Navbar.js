@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSession, signIn, signOut } from 'next-auth/react';
-import { FaDiscord, FaBars, FaTimes, FaUserCircle } from 'react-icons/fa';
+import { FaDiscord, FaBars, FaTimes, FaUserCircle, FaShieldAlt } from 'react-icons/fa';
 import { useRouter } from 'next/router';
 
 const Navbar = () => {
@@ -120,6 +120,17 @@ const Navbar = () => {
                 >
                   Meu Perfil
                 </Link>
+                {session.user.role === 'admin' && (
+                  <Link 
+                    href="/admin/rewards" 
+                    className={`text-amber-400 hover:text-amber-300 transition-colors py-2 px-3 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 flex items-center ${isCurrentPage('/admin/rewards') ? 'font-semibold' : ''}`}
+                    role="menuitem"
+                    aria-current={isCurrentPage('/admin/rewards') ? 'page' : undefined}
+                  >
+                    <FaShieldAlt className="mr-1" />
+                    Admin
+                  </Link>
+                )}
               </>
             )}
           </div>
@@ -228,6 +239,18 @@ const Navbar = () => {
                 >
                   Meu Perfil
                 </Link>
+                {session.user.role === 'admin' && (
+                  <Link 
+                    href="/admin/rewards" 
+                    className={`text-amber-400 hover:text-amber-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 flex items-center ${isCurrentPage('/admin/rewards') ? 'font-semibold' : ''}`}
+                    onClick={() => setIsMenuOpen(false)}
+                    role="menuitem"
+                    aria-current={isCurrentPage('/admin/rewards') ? 'page' : undefined}
+                  >
+                    <FaShieldAlt className="mr-1" />
+                    Administração
+                  </Link>
+                )}
               </>
             )}
 
