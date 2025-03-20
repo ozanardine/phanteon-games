@@ -9,7 +9,7 @@ const formattedApiUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['cdn.discordapp.com', 'steamcdn-a.akamaihd.net'],
+    domains: ['cdn.discordapp.com', 'steamcdn-a.akamaihd.net', 'content.rustmaps.com', 'api.rustmaps.com'],
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
@@ -51,6 +51,12 @@ const nextConfig = {
     optimizeCss: true,
     // Melhorias de cache para módulos
     esmExternals: true,
+    // Adicionar otimização de carregamento de script
+    optimizePackageImports: ['react-icons'],
+    // Otimizar carregamento de fontes
+    fontLoaders: [
+      { loader: '@next/font/google', options: { subsets: ['latin'] } }
+    ],
   },
   
   // Configurações para PWA e estratégias de cache
@@ -72,6 +78,14 @@ const nextConfig = {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
           },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
         ],
       },
       {
@@ -85,6 +99,26 @@ const nextConfig = {
         ],
       },
     ];
+  },
+  
+  // Configurando o webpack para otimização adicional
+  webpack: (config, { dev, isServer }) => {
+    // Otimizações apenas para produção
+    if (!dev) {
+      // Substituir React por Preact em produção para melhor performance
+      // Descomentar se quiser usar Preact em vez de React
+      // config.resolve.alias = {
+      //   ...config.resolve.alias,
+      //   'react': 'preact/compat',
+      //   'react-dom/test-utils': 'preact/test-utils',
+      //   'react-dom': 'preact/compat',
+      // }
+      
+      // Otimização para reduzir o tamanho do bundle
+      config.optimization.minimize = true;
+    }
+    
+    return config;
   },
 };
 

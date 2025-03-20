@@ -201,7 +201,21 @@ async function fallbackToBattleMetrics(req, res, id) {
     if (id && serverData.game === 'rust') {
       try {
         console.log(`Fetching BattleMetrics data for server ${id}`);
-        const response = await fetch(`https://api.battlemetrics.com/servers/${id}`);
+        
+        // Adicionar timeout para evitar que a requisição fique pendente por muito tempo
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos de timeout
+        
+        const response = await fetch(`https://api.battlemetrics.com/servers/${id}`, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'PhanteonGames/1.0',
+            'Accept': 'application/json'
+          }
+        });
+        
+        // Limpar o timeout após a resposta
+        clearTimeout(timeoutId);
         
         if (response.ok) {
           const data = await response.json();
@@ -221,13 +235,27 @@ async function fallbackToBattleMetrics(req, res, id) {
             serverData.seed = details.rust_seed || serverData.seed;
             serverData.worldSize = details.rust_world_size || serverData.worldSize;
             serverData.lastWipe = details.rust_last_wipe || serverData.lastWipe;
+            
+            // Adicionar timestamp para cache control
+            serverData.lastUpdated = new Date().toISOString();
           }
+        } else {
+          // Log de erro específico para problemas de resposta
+          console.warn(`BattleMetrics API returned status ${response.status} for server ${id}`);
         }
       } catch (bmError) {
-        console.error(`Error fetching BattleMetrics data for server ${id}:`, bmError);
+        // Tratamento específico para timeout
+        if (bmError.name === 'AbortError') {
+          console.warn(`BattleMetrics API request timed out for server ${id}`);
+        } else {
+          console.error(`Error fetching BattleMetrics data for server ${id}:`, bmError);
+        }
       }
     }
 
+    // Adicionar headers de cache para melhorar performance
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300'); // 1 minuto no cliente, 5 minutos no edge
+    
     // Retornar dados combinados
     return res.status(200).json({
       server: serverData,
@@ -236,6 +264,16 @@ async function fallbackToBattleMetrics(req, res, id) {
     });
   } catch (error) {
     console.error('Error in fallback handler:', error);
-    return res.status(500).json({ error: error.message || 'Failed to fetch server details' });
+    
+    // Usar biblioteca de erro padronizada
+    const errorMessage = error.message || 'Falha ao buscar detalhes do servidor';
+    console.error(`[API:servers/${id}] ${errorMessage}`, error);
+    
+    // Resposta de erro formatada
+    return res.status(500).json({ 
+      success: false, 
+      error: errorMessage,
+      code: 'SERVER_FETCH_ERROR'
+    });
   }
 }

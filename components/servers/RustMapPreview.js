@@ -19,6 +19,7 @@ const RustMapPreview = ({ seed, worldSize }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const apiKey = process.env.NEXT_PUBLIC_RUSTMAPS_API_KEY;
+  const [currentFallbackIndex, setCurrentFallbackIndex] = useState(0);
 
   useEffect(() => {
     // Only load if we have seed and worldSize
@@ -44,40 +45,62 @@ const RustMapPreview = ({ seed, worldSize }) => {
     setImageLoaded(false);
     
     try {
-      // Try to construct a URL for RustMaps based on seed and worldSize
-      // Generate the proper URL format for current RustMaps API
+      // Melhoria na lógica para gerar URLs confiáveis
       let generatedMapUrl;
       
       if (apiKey) {
-        // If we have an API key, try to use the official API
+        // Se temos a chave da API, use a API oficial
         generatedMapUrl = `https://api.rustmaps.com/v3/maps/${worldSize}/${seed}/preview?apiKey=${apiKey}`;
+        console.log('Usando API oficial RustMaps com chave');
       } else {
-        // Without API key, use the content URL format with best-effort
-        // This is less reliable but might work for some seeds
+        // Sem chave de API, tente diferentes abordagens
+        // Primeiro tente o endpoint público do content
         generatedMapUrl = `https://content.rustmaps.com/maps/${worldSize}/${seed}/map_icons.png`;
+        console.log('Usando URL pública RustMaps content');
       }
       
-      // Fallback to known working URL if all else fails
-      const fallbackUrl = "https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png";
+      // Definimos nossos fallbacks em ordem de preferência
+      const fallbackUrls = [
+        generatedMapUrl,
+        // Backup para diferentes tamanhos
+        `https://content.rustmaps.com/maps/${worldSize === 3000 ? '3500' : '3000'}/${seed}/map_icons.png`,
+        // Fallbacks confiáveis para diferentes tamanhos de mapa
+        "https://content.rustmaps.com/maps/265/f888cf9ea6454502a6816893b82dbac6/map_icons.png",
+        "https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png"
+      ];
       
-      // Set the URL - try the generated one, but be ready to fall back
-      setMapUrl(generatedMapUrl || fallbackUrl);
+      // Começamos com a primeira opção
+      setMapUrl(fallbackUrls[0]);
+      setCurrentFallbackIndex(0); // Rastreie qual fallback estamos usando
+      
     } catch (err) {
       console.error('Error generating map URL:', err);
-      setError('Erro ao gerar URL do mapa');
+      setError('Erro ao gerar URL do mapa. Tente novamente mais tarde.');
       setIsLoading(false);
     }
   };
 
   const handleImageError = (e) => {
     console.error('Failed to load map image, trying fallback');
-    // If the generated URL fails, try the fallback
-    const fallbackUrl = "https://content.rustmaps.com/maps/265/f888cf9ea6454502a6816893b82dbac6/map_icons.png";
     
-    if (mapUrl !== fallbackUrl) {
-      setMapUrl(fallbackUrl);
+    // Lista dos fallbacks disponíveis
+    const fallbackUrls = [
+      mapUrl, // A atual que falhou (para referência)
+      // Backup para diferentes tamanhos
+      `https://content.rustmaps.com/maps/${worldSize === 3000 ? '3500' : '3000'}/${seed}/map_icons.png`,
+      // Fallbacks confiáveis
+      "https://content.rustmaps.com/maps/265/f888cf9ea6454502a6816893b82dbac6/map_icons.png",
+      "https://content.rustmaps.com/maps/264/7f8b8ac9a76744faaaf5ccd88f85b25f/map_icons.png"
+    ];
+    
+    // Tente o próximo fallback se disponível
+    const nextIndex = currentFallbackIndex + 1;
+    if (nextIndex < fallbackUrls.length) {
+      setCurrentFallbackIndex(nextIndex);
+      setMapUrl(fallbackUrls[nextIndex]);
     } else {
-      setError('Não foi possível carregar a imagem do mapa. Tente visitar o site do RustMaps diretamente.');
+      // Se já tentamos todos os fallbacks
+      setError('Não foi possível carregar a imagem do mapa. O servidor de mapas pode estar temporariamente indisponível.');
       setIsLoading(false);
     }
   };
