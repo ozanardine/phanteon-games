@@ -41,11 +41,10 @@ export default function RewardsAdminPage({ user }) {
   // Verificar se usuário é admin
   useEffect(() => {
     if (!user) {
-      // Aguardar carregamento do usuário
       return;
     }
     
-    if (user.role !== 'admin') {
+    if (!user.role || user.role !== 'admin') {
       toast.error('Acesso restrito a administradores');
       router.push('/perfil');
     }
@@ -54,7 +53,7 @@ export default function RewardsAdminPage({ user }) {
   // Carregar dados das recompensas
   useEffect(() => {
     // Só carregar se o usuário estiver presente e for admin
-    if (!user || user.role !== 'admin') return;
+    if (!user || !user.role || user.role !== 'admin') return;
     
     const fetchRewards = async () => {
       try {
@@ -253,30 +252,38 @@ export default function RewardsAdminPage({ user }) {
   };
   
   // Agrupar recompensas por dia para facilitar a visualização
-  const rewardsByDay = rewards.reduce((acc, reward) => {
-    const day = reward.day;
-    
-    if (!acc[day]) {
-      acc[day] = {
-        standard: [],
-        vipBasic: [],
-        vipPlus: [],
-        vipPremium: []
-      };
+  const rewardsByDay = React.useMemo(() => {
+    if (!rewards || !Array.isArray(rewards)) {
+      return {};
     }
     
-    if (reward.vip_level === 'none') {
-      acc[day].standard.push(reward);
-    } else if (reward.vip_level === 'vip-basic') {
-      acc[day].vipBasic.push(reward);
-    } else if (reward.vip_level === 'vip-plus') {
-      acc[day].vipPlus.push(reward);
-    } else if (reward.vip_level === 'vip-premium') {
-      acc[day].vipPremium.push(reward);
-    }
-    
-    return acc;
-  }, {});
+    return rewards.reduce((acc, reward) => {
+      if (!reward) return acc;
+      
+      const day = reward.day;
+      
+      if (!acc[day]) {
+        acc[day] = {
+          standard: [],
+          vipBasic: [],
+          vipPlus: [],
+          vipPremium: []
+        };
+      }
+      
+      if (reward.vip_level === 'none') {
+        acc[day].standard.push(reward);
+      } else if (reward.vip_level === 'vip-basic') {
+        acc[day].vipBasic.push(reward);
+      } else if (reward.vip_level === 'vip-plus') {
+        acc[day].vipPlus.push(reward);
+      } else if (reward.vip_level === 'vip-premium') {
+        acc[day].vipPremium.push(reward);
+      }
+      
+      return acc;
+    }, {});
+  }, [rewards]);
   
   if (!user) {
     return <LoadingSpinner />;
@@ -424,7 +431,7 @@ export default function RewardsAdminPage({ user }) {
             <div className="space-y-6">
               {statsLoading ? (
                 <LoadingSpinner />
-              ) : statistics ? (
+              ) : statistics && statistics.summary ? (
                 <>
                   <Card className="p-6">
                     <h2 className="text-xl font-bold mb-4">Resumo de Resgates</h2>
@@ -437,19 +444,19 @@ export default function RewardsAdminPage({ user }) {
                       
                       <StatsCard 
                         title="Padrão" 
-                        value={statistics.summary.byVipLevel['none'] || 0} 
+                        value={(statistics.summary.byVipLevel && statistics.summary.byVipLevel['none']) || 0} 
                         icon={<FaChartBar className="text-gray-400" />} 
                       />
                       
                       <StatsCard 
                         title="VIP Básico" 
-                        value={statistics.summary.byVipLevel['vip-basic'] || 0} 
+                        value={(statistics.summary.byVipLevel && statistics.summary.byVipLevel['vip-basic']) || 0} 
                         icon={<FaChartBar className="text-orange-400" />} 
                       />
                       
                       <StatsCard 
                         title="VIP Plus" 
-                        value={statistics.summary.byVipLevel['vip-plus'] || 0}
+                        value={(statistics.summary.byVipLevel && statistics.summary.byVipLevel['vip-plus']) || 0}
                         icon={<FaChartBar className="text-amber-400" />} 
                       />
                     </div>
@@ -471,15 +478,16 @@ export default function RewardsAdminPage({ user }) {
                           </tr>
                         </thead>
                         <tbody>
-                          {Object.keys(statistics.summary.byDay)
+                          {statistics.summary.byDay && Object.keys(statistics.summary.byDay)
                             .sort((a, b) => parseInt(a) - parseInt(b))
                             .map(day => {
                               // Encontrar estatísticas para este dia por nível VIP
-                              const dayStats = statistics.statistics.filter(s => s.day == day);
-                              const standard = dayStats.find(s => s.vip_level === 'none')?.claim_count || 0;
-                              const vipBasic = dayStats.find(s => s.vip_level === 'vip-basic')?.claim_count || 0;
-                              const vipPlus = dayStats.find(s => s.vip_level === 'vip-plus')?.claim_count || 0;
-                              const vipPremium = dayStats.find(s => s.vip_level === 'vip-premium')?.claim_count || 0;
+                              const dayStats = statistics.statistics && Array.isArray(statistics.statistics) ? 
+                                statistics.statistics.filter(s => s && s.day == day) : [];
+                              const standard = dayStats.find(s => s && s.vip_level === 'none')?.claim_count || 0;
+                              const vipBasic = dayStats.find(s => s && s.vip_level === 'vip-basic')?.claim_count || 0;
+                              const vipPlus = dayStats.find(s => s && s.vip_level === 'vip-plus')?.claim_count || 0;
+                              const vipPremium = dayStats.find(s => s && s.vip_level === 'vip-premium')?.claim_count || 0;
                               
                               return (
                                 <tr key={`day-${day}`} className="border-b border-gray-700 hover:bg-gray-800/30">
@@ -509,7 +517,7 @@ export default function RewardsAdminPage({ user }) {
             <div>
               {logsLoading ? (
                 <LoadingSpinner />
-              ) : syncLogs.length > 0 ? (
+              ) : syncLogs && syncLogs.length > 0 ? (
                 <Card className="p-0 overflow-hidden">
                   <div className="flex justify-between items-center bg-gray-800 p-4 border-b border-gray-700">
                     <h2 className="text-xl font-bold">Logs de Sincronização</h2>
@@ -535,33 +543,33 @@ export default function RewardsAdminPage({ user }) {
                       </thead>
                       <tbody>
                         {syncLogs.map(log => (
-                          <tr key={log.id} className="border-b border-gray-700 hover:bg-gray-800/30">
+                          <tr key={log.id || Math.random()} className="border-b border-gray-700 hover:bg-gray-800/30">
                             <td className="p-3 whitespace-nowrap">
-                              {new Date(log.created_at).toLocaleString()}
+                              {log && log.created_at ? new Date(log.created_at).toLocaleString() : 'Data desconhecida'}
                             </td>
                             <td className="p-3">
                               <span className={`px-2 py-1 rounded-lg text-xs ${
-                                log.source === 'plugin' ? 'bg-blue-900/50 text-blue-300' :
-                                log.source === 'website' ? 'bg-green-900/50 text-green-300' :
+                                log && log.source === 'plugin' ? 'bg-blue-900/50 text-blue-300' :
+                                log && log.source === 'website' ? 'bg-green-900/50 text-green-300' :
                                 'bg-purple-900/50 text-purple-300'
                               }`}>
-                                {log.source}
+                                {log && log.source ? log.source : 'desconhecido'}
                               </span>
                             </td>
                             <td className="p-3">
                               <span className={`px-2 py-1 rounded-lg text-xs ${
-                                log.status === 'success' ? 'bg-green-900/50 text-green-300' :
-                                log.status === 'warning' ? 'bg-yellow-900/50 text-yellow-300' :
+                                log && log.status === 'success' ? 'bg-green-900/50 text-green-300' :
+                                log && log.status === 'warning' ? 'bg-yellow-900/50 text-yellow-300' :
                                 'bg-red-900/50 text-red-300'
                               }`}>
-                                {log.status}
+                                {log && log.status ? log.status : 'desconhecido'}
                               </span>
                             </td>
                             <td className="p-3">
-                              {log.message}
+                              {log && log.message ? log.message : 'Sem mensagem'}
                             </td>
                             <td className="p-3">
-                              {log.server_id}
+                              {log && log.server_id ? log.server_id : 'N/A'}
                             </td>
                           </tr>
                         ))}
@@ -699,6 +707,10 @@ export default function RewardsAdminPage({ user }) {
 
 // Componente para exibir um cartão de recompensa
 function RewardCard({ reward, onEdit, onDelete }) {
+  if (!reward) {
+    return null; // Não renderizar nada se a recompensa for undefined
+  }
+  
   return (
     <div className={`bg-gray-800 border ${reward.is_bonus ? 'border-amber-500/50' : 'border-gray-700'} rounded-lg p-3 relative`}>
       {reward.is_bonus && (
@@ -708,9 +720,9 @@ function RewardCard({ reward, onEdit, onDelete }) {
       )}
       
       <div className="mb-2">
-        <h4 className="font-semibold text-lg">{reward.item_name}</h4>
-        <p className="text-gray-400 text-sm">Qtd: {reward.amount}</p>
-        <p className="text-gray-500 text-xs">ID: {reward.item_shortname}</p>
+        <h4 className="font-semibold text-lg">{reward.item_name || 'Sem nome'}</h4>
+        <p className="text-gray-400 text-sm">Qtd: {reward.amount || 0}</p>
+        <p className="text-gray-500 text-xs">ID: {reward.item_shortname || 'N/A'}</p>
       </div>
       
       <div className="flex justify-end space-x-2 mt-3">
@@ -734,13 +746,17 @@ function RewardCard({ reward, onEdit, onDelete }) {
 
 // Componente para exibir estatísticas
 function StatsCard({ title, value, icon }) {
+  if (value === undefined || value === null) {
+    value = 0;
+  }
+  
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center">
       <div className="mr-4 text-xl">
         {icon}
       </div>
       <div>
-        <p className="text-gray-400 text-sm">{title}</p>
+        <p className="text-gray-400 text-sm">{title || 'Estatística'}</p>
         <p className="text-2xl font-bold">{value.toLocaleString()}</p>
       </div>
     </div>
@@ -759,9 +775,19 @@ export async function getServerSideProps(context) {
     };
   }
   
+  // Verificar explicitamente se o usuário tem a role admin antes de renderizar a página
+  if (!session.user || !session.user.role || session.user.role !== 'admin') {
+    return {
+      redirect: {
+        destination: '/perfil',
+        permanent: false,
+      },
+    };
+  }
+  
   return {
     props: {
-      user: session.user,
+      user: session.user || null,
     },
   };
 } 
