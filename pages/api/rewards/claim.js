@@ -411,9 +411,7 @@ async function addToPendingRewards(userData, day, timestamp) {
       status: 'pending',
       claim_type: 'website',
       server_id: 'main',
-      requested_at: now,
-      delivered: false,
-      delivered_at: null
+      requested_at: now
     }]);
     
   if (error) throw error;

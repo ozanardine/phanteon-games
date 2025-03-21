@@ -43,7 +43,6 @@ export default async function handler(req, res) {
       .select('*')
       .eq('steam_id', userData.steam_id)
       .eq('status', 'pending')
-      .eq('delivered', false)
       .order('requested_at', { ascending: false });
 
     if (error) throw error;
