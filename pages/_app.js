@@ -5,6 +5,7 @@ import Layout from '../components/layout/Layout';
 import { useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import ErrorBoundary from '../components/ui/ErrorBoundary';
 
 function MyApp({ Component, pageProps: { session, ...pageProps } }) {
   const router = useRouter();
@@ -49,7 +50,9 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
         refetchOnWindowFocus={true} // Revalida quando a janela ganha foco
       >
         <Layout>
-          <Component {...pageProps} />
+          <ErrorBoundary>
+            <Component {...pageProps} />
+          </ErrorBoundary>
           <Toaster 
             position="top-right" 
             toastOptions={{

@@ -5,7 +5,7 @@ import Head from 'next/head';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { TabSelector } from '../components/ui/TabSelector';
+import TabSelector from '../components/ui/TabSelector';
 import { FiUsers, FiCrosshair, FiClock, FiCalendar, FiSearch } from 'react-icons/fi';
 import { FaSkull } from 'react-icons/fa';
 

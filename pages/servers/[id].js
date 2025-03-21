@@ -9,7 +9,7 @@ import {
   FiAlertTriangle, FiList, FiLink, FiClipboard, FiCheck, FiShield
 } from 'react-icons/fi';
 import { SiRust } from 'react-icons/si';
-import { TabSelector } from '../../components/ui/TabSelector';
+import TabSelector from '../../components/ui/TabSelector';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';

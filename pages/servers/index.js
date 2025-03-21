@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Image from 'next/image';
 import { FiServer, FiShield, FiCrosshair, FiRefreshCw, FiSearch, FiUsers, FiInfo } from 'react-icons/fi';
 import { SiRust } from 'react-icons/si';
-import { TabSelector } from '../../components/ui/TabSelector';
+import TabSelector from '../../components/ui/TabSelector';
 import { ServerCard } from '../../components/servers/ServerCard';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';

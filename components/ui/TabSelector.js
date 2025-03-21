@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function TabSelector({ tabs, activeTab, onChange, className = '' }) {
+export default function TabSelector({ tabs, activeTab, onChange, className = '' }) {
   return (
     <div className={`flex overflow-x-auto pb-2 scrollbar-hide ${className}`}>
       <div className="flex bg-dark-400 rounded-lg p-1">

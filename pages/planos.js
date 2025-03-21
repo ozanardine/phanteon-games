@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { FaCheck, FaGamepad, FaInfoCircle, FaServer, FaTimes } from 'react-icons/fa';
-import { TabSelector } from '../components/ui/TabSelector';
+import TabSelector from '../components/ui/TabSelector';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 

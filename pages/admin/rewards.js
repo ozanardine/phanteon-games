@@ -50,6 +50,32 @@ export default function RewardsAdminPage({ user }) {
     }
   }, [user, router]);
   
+  // Garantir que sempre retornamos JSX, mesmo durante verificações ou carregamentos
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-dark-300">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+  
+  // Verificação adicional para garantir que o usuário é admin
+  if (!user.role || user.role !== 'admin') {
+    // Não faça redirecionamentos aqui, apenas renderize uma mensagem
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-dark-300 p-4 text-center">
+        <h1 className="text-xl text-red-500 mb-4">Acesso Restrito</h1>
+        <p className="text-gray-300 mb-6">Esta página é restrita a administradores.</p>
+        <Button 
+          variant="primary"
+          onClick={() => router.push('/perfil')}
+        >
+          Voltar ao Perfil
+        </Button>
+      </div>
+    );
+  }
+  
   // Carregar dados das recompensas
   useEffect(() => {
     // Só carregar se o usuário estiver presente e for admin
@@ -58,6 +84,7 @@ export default function RewardsAdminPage({ user }) {
     const fetchRewards = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         const res = await fetch('/api/admin/rewards');
         
         if (!res.ok) {
@@ -284,10 +311,6 @@ export default function RewardsAdminPage({ user }) {
       return acc;
     }, {});
   }, [rewards]);
-  
-  if (!user) {
-    return <LoadingSpinner />;
-  }
   
   return (
     <>

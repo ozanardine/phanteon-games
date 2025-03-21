@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { toast } from 'react-hot-toast';
-import { TabSelector } from '../components/ui/TabSelector';
+import TabSelector from '../components/ui/TabSelector';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { 
   FaCrown, FaUser, FaServer, FaGift
