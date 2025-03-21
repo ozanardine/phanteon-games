@@ -195,7 +195,7 @@ function validateRewardData(data) {
   if (typeof data.amount !== 'number' || data.amount < 1) return false;
   
   // Validar nível VIP
-  const validVipLevels = ['none', 'vip-basic', 'vip-plus', 'vip-premium'];
+  const validVipLevels = ['none', 'vip-basic', 'vip-plus'];
   if (!validVipLevels.includes(data.vip_level)) return false;
   
   return true;

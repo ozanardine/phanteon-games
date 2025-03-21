@@ -293,8 +293,7 @@ export default function RewardsAdminPage({ user }) {
         acc[day] = {
           standard: [],
           vipBasic: [],
-          vipPlus: [],
-          vipPremium: []
+          vipPlus: []
         };
       }
       
@@ -304,8 +303,6 @@ export default function RewardsAdminPage({ user }) {
         acc[day].vipBasic.push(reward);
       } else if (reward.vip_level === 'vip-plus') {
         acc[day].vipPlus.push(reward);
-      } else if (reward.vip_level === 'vip-premium') {
-        acc[day].vipPremium.push(reward);
       }
       
       return acc;
@@ -408,31 +405,12 @@ export default function RewardsAdminPage({ user }) {
                       
                       {/* Recompensas VIP Plus */}
                       <div>
-                        <h3 className="font-semibold text-amber-400 mb-2">VIP Plus</h3>
+                        <h3 className="font-semibold text-blue-400 mb-2">VIP Plus</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {categories.vipPlus.length === 0 ? (
                             <p className="text-gray-500 text-sm">Nenhuma recompensa VIP Plus</p>
                           ) : (
                             categories.vipPlus.map(reward => (
-                              <RewardCard 
-                                key={reward.id}
-                                reward={reward}
-                                onEdit={() => handleEditReward(reward)}
-                                onDelete={() => handleDeleteReward(reward.id)}
-                              />
-                            ))
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Recompensas VIP Premium */}
-                      <div>
-                        <h3 className="font-semibold text-red-400 mb-2">VIP Premium</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {categories.vipPremium.length === 0 ? (
-                            <p className="text-gray-500 text-sm">Nenhuma recompensa VIP Premium</p>
-                          ) : (
-                            categories.vipPremium.map(reward => (
                               <RewardCard 
                                 key={reward.id}
                                 reward={reward}
@@ -480,7 +458,7 @@ export default function RewardsAdminPage({ user }) {
                       <StatsCard 
                         title="VIP Plus" 
                         value={(statistics.summary.byVipLevel && statistics.summary.byVipLevel['vip-plus']) || 0}
-                        icon={<FaChartBar className="text-amber-400" />} 
+                        icon={<FaChartBar className="text-blue-400" />} 
                       />
                     </div>
                   </Card>
@@ -496,7 +474,6 @@ export default function RewardsAdminPage({ user }) {
                             <th className="p-3 border-b border-gray-700">Padrão</th>
                             <th className="p-3 border-b border-gray-700">VIP Básico</th>
                             <th className="p-3 border-b border-gray-700">VIP Plus</th>
-                            <th className="p-3 border-b border-gray-700">VIP Premium</th>
                             <th className="p-3 border-b border-gray-700">Total</th>
                           </tr>
                         </thead>
@@ -510,7 +487,6 @@ export default function RewardsAdminPage({ user }) {
                               const standard = dayStats.find(s => s && s.vip_level === 'none')?.claim_count || 0;
                               const vipBasic = dayStats.find(s => s && s.vip_level === 'vip-basic')?.claim_count || 0;
                               const vipPlus = dayStats.find(s => s && s.vip_level === 'vip-plus')?.claim_count || 0;
-                              const vipPremium = dayStats.find(s => s && s.vip_level === 'vip-premium')?.claim_count || 0;
                               
                               return (
                                 <tr key={`day-${day}`} className="border-b border-gray-700 hover:bg-gray-800/30">
@@ -518,7 +494,6 @@ export default function RewardsAdminPage({ user }) {
                                   <td className="p-3">{standard}</td>
                                   <td className="p-3">{vipBasic}</td>
                                   <td className="p-3">{vipPlus}</td>
-                                  <td className="p-3">{vipPremium}</td>
                                   <td className="p-3 font-semibold">{statistics.summary.byDay[day]}</td>
                                 </tr>
                               );
@@ -647,7 +622,6 @@ export default function RewardsAdminPage({ user }) {
                 <option value="none">Padrão</option>
                 <option value="vip-basic">VIP Básico</option>
                 <option value="vip-plus">VIP Plus</option>
-                <option value="vip-premium">VIP Premium</option>
               </select>
             </div>
           </div>

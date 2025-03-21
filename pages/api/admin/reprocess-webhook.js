@@ -117,14 +117,10 @@ export default async function handler(req, res) {
               planIdToUse = 'vip-plus';
             } else if (existingPayment.plan_id === '0b81cf06-ed81-49ce-8680-8f9d9edc932e') {
               planIdToUse = 'vip-basic';
-            } else if (existingPayment.plan_id === '4de1c7bc-fc88-4af8-8f8c-580e34afd227') {
-              planIdToUse = 'vip-premium';
             } else {
               // Fallback baseado no nome do plano
               if (existingPayment.plan_name && existingPayment.plan_name.toLowerCase().includes('plus')) {
                 planIdToUse = 'vip-plus';
-              } else if (existingPayment.plan_name && existingPayment.plan_name.toLowerCase().includes('premium')) {
-                planIdToUse = 'vip-premium';
               } else {
                 planIdToUse = 'vip-basic'; // Valor padrão
               }
@@ -301,7 +297,7 @@ export default async function handler(req, res) {
   
       // Obter nome do plano com base no planId
       let planName = planId.replace('vip-', 'VIP ');
-      planName = planName.replace('basic', 'Básico').replace('plus', 'Plus').replace('premium', 'Premium');
+      planName = planName.replace('basic', 'Básico').replace('plus', 'Plus');
   
       // Buscar o ID do plano no banco
       let dbPlanId = planId;
@@ -309,8 +305,6 @@ export default async function handler(req, res) {
         dbPlanId = '0b81cf06-ed81-49ce-8680-8f9d9edc932e';
       } else if (planId === 'vip-plus') {
         dbPlanId = '3994ff53-f110-4c8f-a492-ad988528006f';
-      } else if (planId === 'vip-premium') {
-        dbPlanId = '4de1c7bc-fc88-4af8-8f8c-580e34afd227';
       }
   
       // Criar nova assinatura

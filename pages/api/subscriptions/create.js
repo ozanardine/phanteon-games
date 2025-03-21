@@ -7,8 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Mapeamento entre IDs de frontend e UUIDs do banco de dados
 const planIdMapping = {
   'vip-basic': '0b81cf06-ed81-49ce-8680-8f9d9edc932e',   // VIP Bronze
-  'vip-plus': '3994ff53-f110-4c8f-a492-ad988528006f',    // VIP Prata
-  'vip-premium': '4de1c7bc-fc88-4af8-8f8c-580e34afd227'  // VIP Ouro
+  'vip-plus': '3994ff53-f110-4c8f-a492-ad988528006f'     // VIP Prata
 };
 
 // Função para obter o UUID do plano a partir do ID do frontend

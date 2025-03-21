@@ -394,7 +394,7 @@ export default function Home() {
 
             <FeatureCard 
               icon={<FaGamepad className="text-primary text-2xl" />}
-              title="Recursos Premium"
+              title="Recursos VIP"
               description="Desbloqueie comandos e funcionalidades especiais que melhoram sua experiência nos servidores."
             />
 

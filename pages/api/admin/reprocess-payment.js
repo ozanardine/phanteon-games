@@ -84,7 +84,7 @@ export default async function handler(req, res) {
       
       // Obter nome do plano
       let planName = planId.replace('vip-', 'VIP ');
-      planName = planName.replace('basic', 'Básico').replace('plus', 'Plus').replace('premium', 'Premium');
+      planName = planName.replace('basic', 'Básico').replace('plus', 'Plus');
 
       // Buscar o ID do plano no banco
       let dbPlanId = planId;
