@@ -6,9 +6,13 @@ import { addVipPermissions } from '../../../lib/rust-server';
 import { addVipRole } from '../../../lib/discord';
 
 // Configuração de segurança
-const MERCADOPAGO_WEBHOOK_SECRET = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+const MERCADO_PAGO_WEBHOOK_SECRET = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
 // Tempo máximo permitido de diferença (5 minutos)
 const MAX_TIMESTAMP_DIFF = 5 * 60 * 1000;
+
+// Cache para evitar processamento duplicado de notificações
+const processedNotifications = new Set();
+const CACHE_LIMIT = 10000; // Limitar o tamanho do cache
 
 /**
  * Valida a assinatura do webhook do MercadoPago
@@ -19,7 +23,7 @@ const MAX_TIMESTAMP_DIFF = 5 * 60 * 1000;
 function validateMercadoPagoSignature(headers, body) {
   try {
     // Se não temos chave secreta configurada ou estamos em ambiente de desenvolvimento
-    if (!MERCADOPAGO_WEBHOOK_SECRET || process.env.NODE_ENV !== 'production') {
+    if (!MERCADO_PAGO_WEBHOOK_SECRET || process.env.NODE_ENV !== 'production') {
       console.warn('[Webhook] Validação de assinatura desabilitada - chave secreta não configurada ou ambiente não produtivo');
       return true;
     }
@@ -65,7 +69,7 @@ function validateMercadoPagoSignature(headers, body) {
     
     // Calcula o HMAC usando a chave secreta
     const expectedSignature = crypto
-      .createHmac('sha256', MERCADOPAGO_WEBHOOK_SECRET)
+      .createHmac('sha256', MERCADO_PAGO_WEBHOOK_SECRET)
       .update(stringToVerify)
       .digest('hex');
     
@@ -81,19 +85,349 @@ function validateMercadoPagoSignature(headers, body) {
     
     return isValid;
   } catch (error) {
-    console.error('[Webhook] Erro ao validar assinatura:', error);
+    console.error('[Webhook] Erro na validação de assinatura:', error);
     // Em caso de erro, permitimos passar em dev e rejeitamos em prod
     return process.env.NODE_ENV !== 'production';
   }
 }
 
-export default async function handler(req, res) {
-  // Captura o corpo bruto para validação de assinatura
-  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+/**
+ * Extrai identificador único da notificação para evitar processamento duplicado
+ */
+function getNotificationUniqueId(topic, id, body) {
+  const idString = `${topic}:${id}`;
   
+  // Se temos body com detalhes adicionais, adicionar ao hash
+  if (body && typeof body === 'object') {
+    // Adicionar payment_id se disponível para maior especificidade
+    if (body.payment_id) {
+      return `${idString}:payment:${body.payment_id}`;
+    }
+    
+    // Adicionar merchant_order_id se disponível
+    if (body.merchant_order_id) {
+      return `${idString}:order:${body.merchant_order_id}`;
+    }
+  }
+  
+  return idString;
+}
+
+/**
+ * Executa operação com retry automático
+ * @param {Function} operation - Função a executar
+ * @param {Object} options - Opções de configuração
+ * @returns {Promise<any>} - Resultado da operação
+ */
+async function withRetry(operation, options = {}) {
+  const {
+    maxRetries = 3,
+    initialDelay = 500,
+    maxDelay = 5000,
+    factor = 2,
+    operationName = 'Operação'
+  } = options;
+  
+  let attempt = 0;
+  let lastError = null;
+  let delay = initialDelay;
+  
+  while (attempt < maxRetries) {
+    try {
+      return await operation();
+    } catch (error) {
+      attempt++;
+      lastError = error;
+      
+      // Se for o último retry, não precisamos aguardar
+      if (attempt >= maxRetries) {
+        break;
+      }
+      
+      // Exponential backoff com jitter
+      const jitter = Math.random() * 0.3 + 0.85; // 0.85-1.15
+      delay = Math.min(delay * factor * jitter, maxDelay);
+      
+      console.warn(`[Retry] ${operationName} - Tentativa ${attempt}/${maxRetries} falhou: ${error.message}. Tentando novamente em ${delay.toFixed(0)}ms`);
+      
+      // Aguarda antes da próxima tentativa
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  // Se chegamos aqui, todas as tentativas falharam
+  console.error(`[Retry] ${operationName} - Todas as ${maxRetries} tentativas falharam. Último erro: ${lastError.message}`);
+  throw lastError;
+}
+
+/**
+ * Registra a notificação no banco de dados para rastreabilidade
+ */
+async function logNotification(notification, result, headers) {
+  try {
+    // Cria registro da notificação recebida
+    await supabaseAdmin
+      .from('webhook_logs')
+      .insert({
+        provider: 'mercadopago',
+        notification_id: notification.id,
+        notification_type: notification.topic,
+        status: result.success ? 'success' : 'failed',
+        details: {
+          result,
+          headers: {
+            'user-agent': headers['user-agent'],
+            'content-type': headers['content-type'],
+            'x-signature': headers['x-signature']
+          }
+        }
+      });
+  } catch (error) {
+    console.error('[Webhook] Erro ao registrar notificação:', error);
+    // Não propagamos esse erro, apenas logamos
+  }
+}
+
+/**
+ * Cria ou atualiza uma assinatura no banco de dados
+ */
+async function createOrUpdateSubscription(userId, planId, paymentDetails) {
+  return await withRetry(async () => {
+    // Busca informações do plano
+    const { data: planData, error: planError } = await supabaseAdmin
+      .from('plans')
+      .select('*')
+      .eq('id', planId)
+      .single();
+    
+    if (planError) {
+      throw new Error(`Erro ao buscar plano: ${planError.message}`);
+    }
+    
+    if (!planData) {
+      throw new Error(`Plano não encontrado: ${planId}`);
+    }
+    
+    // Busca informações do usuário
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (userError) {
+      throw new Error(`Erro ao buscar usuário: ${userError.message}`);
+    }
+    
+    if (!userData) {
+      throw new Error(`Usuário não encontrado: ${userId}`);
+    }
+    
+    // Calcula data de expiração
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + planData.duration_days);
+    
+    // Cria ou atualiza assinatura
+    const subscriptionData = {
+      user_id: userId,
+      plan_id: planId,
+      plan_name: planData.name,
+      payment_id: paymentDetails.paymentId,
+      status: 'active',
+      payment_status: paymentDetails.status,
+      amount: paymentDetails.amount,
+      currency: 'BRL',
+      start_date: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+      is_active: true,
+      steam_id: userData.steam_id,
+      payment_details: {
+        method: 'mercadopago',
+        payment_id: paymentDetails.paymentId,
+        transaction_time: new Date().toISOString()
+      }
+    };
+    
+    // Verifica se já existe uma assinatura ativa para este usuário
+    const { data: existingSubscription, error: subQueryError } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (subQueryError && !subQueryError.message.includes('No rows found')) {
+      throw new Error(`Erro ao verificar assinaturas existentes: ${subQueryError.message}`);
+    }
+    
+    let result;
+    
+    // Se já existe uma assinatura ativa, atualize-a
+    if (existingSubscription) {
+      const { data: updatedSub, error: updateError } = await supabaseAdmin
+        .from('subscriptions')
+        .update({
+          ...subscriptionData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingSubscription.id)
+        .select('*')
+        .single();
+        
+      if (updateError) {
+        throw new Error(`Erro ao atualizar assinatura: ${updateError.message}`);
+      }
+      
+      result = { data: updatedSub, isNew: false };
+    } else {
+      // Cria uma nova assinatura
+      const { data: newSub, error: insertError } = await supabaseAdmin
+        .from('subscriptions')
+        .insert({
+          ...subscriptionData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('*')
+        .single();
+        
+      if (insertError) {
+        throw new Error(`Erro ao criar assinatura: ${insertError.message}`);
+      }
+      
+      result = { data: newSub, isNew: true };
+    }
+    
+    return result;
+  }, {
+    maxRetries: 5,
+    initialDelay: 300,
+    maxDelay: 3000,
+    operationName: 'Criar/Atualizar Assinatura'
+  });
+}
+
+/**
+ * Aplica permissões VIP no servidor Rust
+ */
+async function applyRustPermissions(userData, subscriptionId) {
+  return await withRetry(async () => {
+    if (!userData.steam_id) {
+      throw new Error('SteamID não disponível para o usuário');
+    }
+    
+    try {
+      const result = await addVipPermissions(userData.steam_id);
+      
+      if (result.success) {
+        // Atualiza a flag de permissões aplicadas na assinatura
+        await supabaseAdmin
+          .from('subscriptions')
+          .update({
+            rust_permission_assigned: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', subscriptionId);
+        
+        return { success: true };
+      } else {
+        throw new Error(`Falha ao aplicar permissões: ${result.message}`);
+      }
+    } catch (serverError) {
+      // Registra a falha para reconciliação posterior
+      await supabaseAdmin
+        .from('system_logs')
+        .insert({
+          action: 'vip_permission_failed',
+          details: {
+            subscription_id: subscriptionId,
+            steam_id: userData.steam_id,
+            error: serverError.message
+          }
+        });
+      
+      throw serverError;
+    }
+  }, {
+    maxRetries: 3,
+    initialDelay: 500,
+    maxDelay: 5000,
+    operationName: 'Aplicar Permissões Rust'
+  });
+}
+
+/**
+ * Aplica cargo VIP no Discord
+ */
+async function applyDiscordRole(userData, planData, subscriptionId) {
+  return await withRetry(async () => {
+    if (!userData.discord_id) {
+      console.log(`[Webhook] Usuário ${userData.id} não tem Discord ID, pulando atribuição de cargo`);
+      return { success: false, reason: 'missing_discord_id' };
+    }
+    
+    try {
+      // Determina tipo de VIP com base no plano
+      const isVipPlus = planData.name.toLowerCase().includes('plus');
+      const roleType = isVipPlus ? 'vip-plus' : 'vip-basic';
+      
+      // Adiciona cargo no Discord
+      const result = await addVipRole(userData.discord_id, roleType);
+      
+      if (result.success) {
+        // Atualiza a flag de cargo Discord na assinatura
+        await supabaseAdmin
+          .from('subscriptions')
+          .update({
+            discord_role_assigned: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', subscriptionId);
+        
+        return { success: true };
+      } else {
+        throw new Error(`Falha ao adicionar cargo Discord: ${result.message}`);
+      }
+    } catch (error) {
+      // Registra a falha para reconciliação posterior
+      await supabaseAdmin
+        .from('system_logs')
+        .insert({
+          action: 'discord_role_failed',
+          details: {
+            subscription_id: subscriptionId,
+            discord_id: userData.discord_id,
+            error: error.message
+          }
+        });
+      
+      throw error;
+    }
+  }, {
+    maxRetries: 3,
+    initialDelay: 500,
+    maxDelay: 3000,
+    operationName: 'Aplicar Cargo Discord'
+  });
+}
+
+export default async function handler(req, res) {
   // Apenas método POST é permitido
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Método não permitido' });
+  }
+
+  // Capturar tempo de início para medir performance
+  const startTime = Date.now();
+  
+  // Captura do corpo bruto para validação de assinatura
+  let rawBody = '';
+  if (typeof req.body === 'object') {
+    rawBody = JSON.stringify(req.body);
+  } else if (typeof req.body === 'string') {
+    rawBody = req.body;
   }
 
   try {
@@ -105,7 +439,7 @@ export default async function handler(req, res) {
     console.log('[Webhook] Query recebidos:', JSON.stringify(query));
     console.log('[Webhook] Body recebido:', typeof body === 'string' ? body.substring(0, 200) : JSON.stringify(body).substring(0, 200));
 
-    // Validação de segurança ajustada para x-signature
+    // Validação de segurança
     if (!validateMercadoPagoSignature(headers, rawBody)) {
       console.warn('[Webhook] Assinatura inválida no webhook do MercadoPago');
       return res.status(401).json({ success: false, message: 'Assinatura de webhook inválida' });
@@ -179,8 +513,41 @@ export default async function handler(req, res) {
       });
     }
 
-    // Processa a notificação do Mercado Pago
-    const result = await processPaymentNotification(paymentNotification.topic, paymentNotification.id);
+    // Verificar se já processamos esta notificação específica
+    const notificationId = getNotificationUniqueId(paymentNotification.topic, paymentNotification.id, body);
+    
+    if (processedNotifications.has(notificationId)) {
+      console.log(`[Webhook] Notificação já processada: ${notificationId}, retornando 200 OK`);
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Notificação já processada anteriormente',
+        notification_id: notificationId
+      });
+    }
+    
+    // Adicionar ao cache de processados antes de processar para evitar concorrência
+    processedNotifications.add(notificationId);
+    
+    // Limitar tamanho do cache para evitar vazamento de memória
+    if (processedNotifications.size > CACHE_LIMIT) {
+      // Remover os itens mais antigos (convertendo para array, removendo primeiros e recriando Set)
+      const tempArray = Array.from(processedNotifications);
+      processedNotifications.clear();
+      tempArray.slice(Math.floor(CACHE_LIMIT * 0.2)).forEach(id => processedNotifications.add(id));
+    }
+
+    // Processa a notificação do Mercado Pago com retry
+    const result = await withRetry(
+      () => processPaymentNotification(paymentNotification.topic, paymentNotification.id),
+      {
+        maxRetries: 3,
+        initialDelay: 500,
+        operationName: 'Processar Notificação MP'
+      }
+    );
+    
+    // Registra a notificação para rastreabilidade
+    await logNotification(paymentNotification, result, headers);
 
     if (!result.success) {
       console.warn(`[Webhook] Notificação não processável: ${result.message}`);
@@ -192,194 +559,123 @@ export default async function handler(req, res) {
 
     console.log(`[Webhook] Pagamento aprovado: ID ${paymentId}, Usuário: ${userId}, Plano: ${planId}`);
 
-    // Busca informações do usuário
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .or(`discord_id.eq.${userId},discord_id.eq."${userId}"`) // Busca como número ou string
-      .maybeSingle();
-
-    if (userError) {
-      console.error('[Webhook] Erro ao buscar dados do usuário:', userError);
-      return res.status(500).json({ success: false, message: 'Erro ao buscar usuário' });
-    }
-
-    if (!userData) {
-      console.error('[Webhook] Usuário não encontrado para discord_id:', userId);
-      return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
-    }
-
-    // Busca a assinatura pendente ou qualquer assinatura recente
-    const { data: subscription, error: subError } = await supabaseAdmin
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', userData.id)
-      .or(`status.eq.pending,payment_preference_id.ilike.%${paymentId}%,payment_id.eq.${paymentId}`)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // Calcular data de expiração (30 dias a partir de agora)
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
-    const expiresAtISOString = expiresAt.toISOString();
-
-    if (subError) {
-      console.error('[Webhook] Erro ao buscar assinatura pendente:', subError);
-      return res.status(500).json({ success: false, message: 'Erro ao buscar assinatura pendente' });
-    }
-
-    let subscriptionId;
-
-    if (!subscription) {
-      console.log('[Webhook] Assinatura pendente não encontrada, criando nova assinatura');
-      
-      // Obter o nome do plano com base no planId
-      let planName = planId.replace('vip-', 'VIP ');
-      planName = planName.replace('basic', 'Básico').replace('plus', 'Plus');
-
-      // Buscar o ID do plano no banco de dados se planId for um código interno
-      let dbPlanId = planId;
-      if (planId === 'vip-basic') {
-        dbPlanId = '0b81cf06-ed81-49ce-8680-8f9d9edc932e';
-      } else if (planId === 'vip-plus') {
-        dbPlanId = '3994ff53-f110-4c8f-a492-ad988528006f';
-      }
-
-      // Criar uma nova assinatura
-      const { data: newSubscription, error: createError } = await supabaseAdmin
-        .from('subscriptions')
-        .insert([{
-          user_id: userData.id,
-          plan_id: dbPlanId,
-          plan_name: planName,
-          status: 'active',
-          payment_status: 'approved',
-          amount: parseFloat(amount) || 0,
-          price: parseFloat(amount) || 0,
-          payment_id: paymentId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          expires_at: expiresAtISOString,
-          steam_id: userData.steam_id,
-          discord_role_assigned: false,
-          rust_permission_assigned: false,
-          is_active: true
-        }])
-        .select()
-        .single();
-
-      if (createError) {
-        console.error('[Webhook] Erro ao criar nova assinatura:', createError);
-        return res.status(500).json({ success: false, message: 'Erro ao criar assinatura' });
-      }
-
-      subscriptionId = newSubscription.id;
-      console.log(`[Webhook] Nova assinatura criada, ID: ${subscriptionId}`);
-    } else {
-      // Atualiza a assinatura existente para ativa
-      const { error: updateError } = await supabaseAdmin
-        .from('subscriptions')
-        .update({
-          status: 'active',
-          payment_status: 'approved',
-          payment_id: paymentId,
-          updated_at: new Date().toISOString(),
-          expires_at: expiresAtISOString,
-          is_active: true
-        })
-        .eq('id', subscription.id);
-
-      if (updateError) {
-        console.error('[Webhook] Erro ao atualizar assinatura:', updateError);
-        return res.status(500).json({ success: false, message: 'Erro ao atualizar assinatura' });
-      }
-
-      subscriptionId = subscription.id;
-      console.log(`[Webhook] Assinatura atualizada para ativa, ID: ${subscriptionId}`);
-    }
-
-    // Adiciona permissões VIP no servidor Rust
-    if (userData.steam_id) {
-      try {
-        console.log(`[Webhook] Adicionando permissões VIP para SteamID: ${userData.steam_id}`);
-        const vipAdded = await addVipPermissions(userData.steam_id);
-        
-        if (!vipAdded) {
-          console.error('[Webhook] Erro ao adicionar permissões VIP no servidor Rust');
-        } else {
-          console.log('[Webhook] Permissões VIP adicionadas com sucesso no servidor Rust');
-          
-          // Atualiza o status no banco de dados
-          await supabaseAdmin
-            .from('subscriptions')
-            .update({ rust_permission_assigned: true })
-            .eq('id', subscriptionId);
-        }
-      } catch (serverError) {
-        console.error('[Webhook] Exceção ao adicionar permissões VIP:', serverError);
-        // Não falha o webhook se a integração com o servidor falhar
-      }
-    }
-
-    // Adiciona cargo VIP no Discord se o ID estiver disponível
-    if (userData.discord_id) {
-      try {
-        console.log(`[Webhook] Adicionando cargo VIP no Discord para ID: ${userData.discord_id}`);
-        const roleAdded = await addVipRole(userData.discord_id, planId); // Passando o planId aqui
-        
-        if (!roleAdded) {
-          console.error('[Webhook] Erro ao adicionar cargo VIP no Discord');
-        } else {
-          console.log('[Webhook] Cargo VIP adicionado com sucesso no Discord');
-          
-          // Atualiza o status no banco de dados
-          await supabaseAdmin
-            .from('subscriptions')
-            .update({ discord_role_assigned: true })
-            .eq('id', subscriptionId);
-        }
-      } catch (discordError) {
-        console.error('[Webhook] Exceção ao adicionar cargo Discord:', discordError);
-        // Não falha o webhook se a integração com o Discord falhar
-      }
-    }
-
-    // Atualiza a role do usuário com base no plano contratado
-    let newRole = 'user';
-    if (planId.includes('vip-plus') || planId.includes('vip_plus')) {
-      newRole = 'vip-plus';
-    } else if (planId.includes('vip')) {
-      newRole = 'vip';
-    }
-
-    // Não rebaixa um admin para vip
-    if (userData.role !== 'admin') {
-      const { error: roleError } = await supabaseAdmin
-        .from('users')
-        .update({ role: newRole })
-        .eq('id', userData.id);
-        
-      if (roleError) {
-        console.error('[Webhook] Erro ao atualizar role do usuário:', roleError);
-      } else {
-        console.log(`[Webhook] Role do usuário atualizada com sucesso para '${newRole}'`);
-      }
-    }
-
-    // Retorno de sucesso para o Mercado Pago
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Pagamento processado com sucesso',
-      subscription_id: subscriptionId
+    // Cria ou atualiza a assinatura no banco de dados
+    const subscriptionResult = await createOrUpdateSubscription(userId, planId, { 
+      paymentId, 
+      status, 
+      amount 
     });
+    
+    // Se a assinatura foi criada ou atualizada com sucesso, applica permissões
+    if (subscriptionResult) {
+      const subscription = subscriptionResult.data;
+      const isNewSubscription = subscriptionResult.isNew;
+      
+      console.log(`[Webhook] Assinatura ${isNewSubscription ? 'criada' : 'atualizada'}: ${subscription.id}`);
+      
+      // Busca informações completas do usuário
+      const { data: userData, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (userError) {
+        console.error(`[Webhook] Erro ao buscar dados do usuário: ${userError.message}`);
+      }
+      
+      // Busca informações completas do plano
+      const { data: planData, error: planError } = await supabaseAdmin
+        .from('plans')
+        .select('*')
+        .eq('id', planId)
+        .single();
+        
+      if (planError) {
+        console.error(`[Webhook] Erro ao buscar dados do plano: ${planError.message}`);
+      }
+      
+      // Aplica permissões VIP no servidor Rust (em parallel com Discord)
+      const rustPromise = userData?.steam_id 
+        ? applyRustPermissions(userData, subscription.id)
+            .then(result => ({ type: 'rust', success: true, result }))
+            .catch(error => ({ type: 'rust', success: false, error: error.message }))
+        : Promise.resolve({ type: 'rust', success: false, reason: 'no_steam_id' });
+          
+      // Aplica cargo VIP no Discord (em parallel com Rust)
+      const discordPromise = userData?.discord_id && planData 
+        ? applyDiscordRole(userData, planData, subscription.id)
+            .then(result => ({ type: 'discord', success: true, result }))
+            .catch(error => ({ type: 'discord', success: false, error: error.message }))
+        : Promise.resolve({ type: 'discord', success: false, reason: 'no_discord_id_or_plan' });
+      
+      // Aguarda conclusão de todas as operações
+      const [rustResult, discordResult] = await Promise.all([rustPromise, discordPromise]);
+      
+      // Log dos resultados
+      console.log(`[Webhook] Resultado da aplicação de permissões:`, {
+        rust: rustResult,
+        discord: discordResult
+      });
+      
+      // Atualiza data de conclusão da operação
+      const endTime = Date.now();
+      const processingTime = (endTime - startTime) / 1000;
+      
+      // Se tudo correu bem, adicionar ao log de sucesso
+      await supabaseAdmin
+        .from('system_logs')
+        .insert({
+          action: 'payment_processed',
+          details: {
+            notification_id: notificationId,
+            subscription_id: subscription.id,
+            user_id: userId,
+            processing_time: processingTime,
+            results: {
+              rust: rustResult,
+              discord: discordResult
+            }
+          }
+        });
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Pagamento processado com sucesso',
+        subscriptionId: subscription.id,
+        processingTime: `${processingTime.toFixed(2)}s`
+      });
+    } else {
+      console.error('[Webhook] Erro desconhecido ao criar/atualizar assinatura');
+      return res.status(200).json({
+        success: false,
+        message: 'Falha ao processar assinatura'
+      });
+    }
   } catch (error) {
-    // Logar erro detalhado mas responder com 200 para Mercado Pago não retentar
-    console.error('[Webhook] Erro ao processar webhook:', error);
-    return res.status(200).json({ 
-      success: false, 
-      message: 'Erro ao processar pagamento, mas registrado para análise',
-      error_message: error.message
+    console.error('[Webhook] Erro no processamento do webhook:', error);
+    
+    // Registra o erro no banco de dados para auditoria
+    try {
+      await supabaseAdmin
+        .from('system_logs')
+        .insert({
+          action: 'webhook_error',
+          details: {
+            error: error.message,
+            stack: error.stack,
+            query: req.query,
+            body_keys: req.body ? Object.keys(req.body) : []
+          }
+        });
+    } catch (logError) {
+      console.error('[Webhook] Erro ao registrar log de erro:', logError);
+    }
+    
+    // Sempre retorna 200 para o MercadoPago para evitar retentativas desnecessárias
+    return res.status(200).json({
+      success: false,
+      message: 'Erro interno no processamento'
     });
   }
 }
