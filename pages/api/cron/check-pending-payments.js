@@ -9,16 +9,14 @@ const MAX_RUN_TIME = 28 * 1000; // 28 segundos (menor que o limite de timeout do
 
 /**
  * Realiza verificação e processamento de pagamentos pendentes
- * Este endpoint é chamado pelo serviço de cron jobs (Vercel Cron)
+ * Este endpoint NÃO é mais chamado por cron, apenas manualmente via API
  */
 export default async function handler(req, res) {
-  // Verificar se é uma solicitação de cron job (do próprio Vercel)
-  // ou uma solicitação autorizada (caso queira executar manualmente)
-  const isVercelCron = req.headers['x-vercel-cron'] === 'true';
+  // Verificar se é uma solicitação autorizada (com chave API)
   const apiKey = req.headers['x-api-key'] || req.query.apiKey;
   const isAuthorized = apiKey === process.env.INTERNAL_API_KEY;
   
-  if (!isVercelCron && !isAuthorized) {
+  if (!isAuthorized) {
     return res.status(401).json({ success: false, message: 'Não autorizado' });
   }
   
@@ -32,7 +30,7 @@ export default async function handler(req, res) {
   
   try {
     const startTime = Date.now();
-    console.log('[Cron] Iniciando verificação de pagamentos pendentes');
+    console.log('[API] Iniciando verificação de pagamentos pendentes');
     
     // Resultados da operação
     const results = {
@@ -51,12 +49,12 @@ export default async function handler(req, res) {
       .limit(MAX_CHECKS_PER_RUN);
     
     if (queryError) {
-      console.error('[Cron] Erro ao buscar assinaturas pendentes:', queryError.message);
+      console.error('[API] Erro ao buscar assinaturas pendentes:', queryError.message);
       return res.status(500).json({ success: false, message: 'Erro ao buscar assinaturas' });
     }
     
     if (!pendingSubscriptions || pendingSubscriptions.length === 0) {
-      console.log('[Cron] Nenhuma assinatura pendente encontrada');
+      console.log('[API] Nenhuma assinatura pendente encontrada');
       
       // Liberar o lock
       releaseProcessLock('check_pending_payments');
@@ -68,13 +66,13 @@ export default async function handler(req, res) {
       });
     }
     
-    console.log(`[Cron] Encontradas ${pendingSubscriptions.length} assinaturas pendentes para verificar`);
+    console.log(`[API] Encontradas ${pendingSubscriptions.length} assinaturas pendentes para verificar`);
     
     // Verificar e processar cada assinatura pendente
     for (const subscription of pendingSubscriptions) {
       // Verificar se atingimos o tempo máximo de execução
       if (Date.now() - startTime > MAX_RUN_TIME) {
-        console.warn('[Cron] Tempo máximo de execução atingido. Interrompendo processamento.');
+        console.warn('[API] Tempo máximo de execução atingido. Interrompendo processamento.');
         results.details.push({
           id: 'timeout',
           message: 'Tempo máximo de execução atingido'
@@ -87,7 +85,7 @@ export default async function handler(req, res) {
       
       // Verificar se a assinatura tem um payment_id válido
       if (!subscription.payment_id) {
-        console.warn(`[Cron] Assinatura ${subscription.id} sem payment_id`);
+        console.warn(`[API] Assinatura ${subscription.id} sem payment_id`);
         results.details.push({
           id: subscription.id,
           success: false,
@@ -97,7 +95,7 @@ export default async function handler(req, res) {
       }
       
       try {
-        console.log(`[Cron] Verificando pagamento ${subscription.payment_id} da assinatura ${subscription.id}`);
+        console.log(`[API] Verificando pagamento ${subscription.payment_id} da assinatura ${subscription.id}`);
         
         // Processar pagamento pendente
         const result = await processUnresolvedPayment(subscription.payment_id);
@@ -126,11 +124,11 @@ export default async function handler(req, res) {
               })
               .eq('id', subscription.id);
               
-            console.log(`[Cron] Assinatura ${subscription.id} marcada como cancelada devido a pagamento ${result.status}`);
+            console.log(`[API] Assinatura ${subscription.id} marcada como cancelada devido a pagamento ${result.status}`);
           }
         }
       } catch (error) {
-        console.error(`[Cron] Erro ao processar pagamento ${subscription.payment_id}:`, error);
+        console.error(`[API] Erro ao processar pagamento ${subscription.payment_id}:`, error);
         
         results.errors++;
         results.details.push({
@@ -156,7 +154,7 @@ export default async function handler(req, res) {
         }
       });
     
-    console.log(`[Cron] Verificação concluída em ${executionTime.toFixed(2)}s. Processados: ${results.processed}/${results.checked}`);
+    console.log(`[API] Verificação concluída em ${executionTime.toFixed(2)}s. Processados: ${results.processed}/${results.checked}`);
     
     // Registrar última execução no cache
     setCacheItem('last_pending_payment_check', {
@@ -175,7 +173,7 @@ export default async function handler(req, res) {
       results
     });
   } catch (error) {
-    console.error('[Cron] Erro ao verificar pagamentos pendentes:', error);
+    console.error('[API] Erro ao verificar pagamentos pendentes:', error);
     
     // Liberar o lock mesmo em caso de erro
     releaseProcessLock('check_pending_payments');
@@ -188,7 +186,6 @@ export default async function handler(req, res) {
   }
 }
 
-// Configurar para executar a cada 30 minutos
 export const config = {
   api: {
     bodyParser: true,
