@@ -194,11 +194,49 @@ async function logNotification(notification, result, headers) {
 async function createOrUpdateSubscription(userId, planId, paymentDetails) {
   return await withRetry(async () => {
     // Busca informações do plano
-    const { data: planData, error: planError } = await supabaseAdmin
-      .from('plans')
-      .select('*')
-      .eq('id', planId)
-      .single();
+    // Verificar se planId é um UUID ou um slug/código
+    let planQuery;
+    
+    // Regex para verificar se é UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isUuid = uuidRegex.test(planId);
+    
+    console.log(`[Webhook] Buscando plano com ${isUuid ? 'UUID' : 'código'}: ${planId}`);
+    
+    if (isUuid) {
+      // Se for UUID, buscar diretamente pelo ID
+      planQuery = supabaseAdmin
+        .from('plans')
+        .select('*')
+        .eq('id', planId)
+        .single();
+    } else {
+      // Se for um código/slug, buscar pelo campo slug ou name
+      // Primeiro tenta por slug (se existir na tabela)
+      let { data: planBySlug, error: slugError } = await supabaseAdmin
+        .from('plans')
+        .select('*')
+        .eq('slug', planId)
+        .single();
+        
+      if (slugError || !planBySlug) {
+        // Se não encontrou por slug, tenta correspondência parcial no nome
+        planQuery = supabaseAdmin
+          .from('plans')
+          .select('*')
+          .ilike('name', `%${planId}%`)
+          .order('price', { ascending: false })
+          .limit(1)
+          .single();
+      } else {
+        // Encontrou o plano pelo slug, usar este resultado
+        const { data: planData } = planBySlug;
+        planQuery = { data: planData, error: null };
+      }
+    }
+    
+    // Obter o resultado final da consulta
+    const { data: planData, error: planError } = await planQuery;
     
     if (planError) {
       throw new Error(`Erro ao buscar plano: ${planError.message}`);
@@ -207,6 +245,8 @@ async function createOrUpdateSubscription(userId, planId, paymentDetails) {
     if (!planData) {
       throw new Error(`Plano não encontrado: ${planId}`);
     }
+    
+    console.log(`[Webhook] Plano encontrado: ${planData.name}, ID: ${planData.id}`);
     
     // Busca informações do usuário
     const { data: userData, error: userError } = await supabaseAdmin
@@ -230,7 +270,7 @@ async function createOrUpdateSubscription(userId, planId, paymentDetails) {
     // Cria ou atualiza assinatura
     const subscriptionData = {
       user_id: userId,
-      plan_id: planId,
+      plan_id: planData.id, // Usar o UUID do plano encontrado
       plan_name: planData.name,
       payment_id: paymentDetails.paymentId,
       status: 'active',

@@ -18,3 +18,5 @@ arquivos
 
 phanteon-bot
 phanteon-api
+sql/add_plans_slug_column.sql
+DEPLOY_INSTRUCOES.md
