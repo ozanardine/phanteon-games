@@ -59,10 +59,6 @@ const nextConfig = {
     esmExternals: true,
     // Adicionar otimização de carregamento de script
     optimizePackageImports: ['react-icons'],
-    // Otimizar carregamento de fontes
-    fontLoaders: [
-      { loader: '@next/font/google', options: { subsets: ['latin'] } }
-    ],
   },
   
   // Configurações para PWA e estratégias de cache
