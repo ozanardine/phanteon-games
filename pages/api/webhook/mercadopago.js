@@ -220,18 +220,40 @@ async function createOrUpdateSubscription(userId, planId, paymentDetails) {
         .single();
         
       if (slugError || !planBySlug) {
-        // Se não encontrou por slug, tenta correspondência parcial no nome
-        planQuery = supabaseAdmin
+        // Se não encontrou por slug, tenta busca mais específica
+        // Primeiro tenta correspondência exata (ignorando case) 
+        let { data: planByName, error: nameError } = await supabaseAdmin
           .from('plans')
           .select('*')
-          .ilike('name', `%${planId}%`)
-          .order('price', { ascending: false })
-          .limit(1)
+          .ilike('name', planId)  // Correspondência exata ignorando case
           .single();
+        
+        if (nameError || !planByName) {
+          // Se ainda não encontrou, busca prefixo (começa com...)
+          let { data: planByPrefix, error: prefixError } = await supabaseAdmin
+            .from('plans')
+            .select('*')
+            .ilike('name', `${planId}%`)  // Nome começando com o planId
+            .order('price', { ascending: false })
+            .limit(1);
+          
+          if (prefixError || !planByPrefix || planByPrefix.length === 0) {
+            // Último recurso - busca pelo nome contendo o termo, mas limitando a 1 resultado
+            planQuery = supabaseAdmin
+              .from('plans')
+              .select('*')
+              .ilike('name', `%${planId}%`)
+              .order('price', { ascending: false })
+              .limit(1);
+          } else {
+            planQuery = { data: planByPrefix[0], error: null };
+          }
+        } else {
+          planQuery = { data: planByName, error: null };
+        }
       } else {
         // Encontrou o plano pelo slug, usar este resultado
-        const { data: planData } = planBySlug;
-        planQuery = { data: planData, error: null };
+        planQuery = { data: planBySlug, error: null };
       }
     }
     
