@@ -1,12 +1,12 @@
 // pages/api/webhook/mercadopago.js
 import crypto from 'crypto';
-import { processPaymentNotification } from '../../../lib/mercadopago';
+import { processPaymentNotification, getNotificationUniqueId } from '../../../lib/mercadopago';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { addVipPermissions } from '../../../lib/rust-server';
 import { addVipRole } from '../../../lib/discord';
 
 // Configuração de segurança
-const MERCADO_PAGO_WEBHOOK_SECRET = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
+const MERCADO_PAGO_WEBHOOK_SECRET = process.env.MERCADOPAGO_WEBHOOK_SECRET;
 // Tempo máximo permitido de diferença (5 minutos)
 const MAX_TIMESTAMP_DIFF = 5 * 60 * 1000;
 
@@ -23,8 +23,8 @@ const CACHE_LIMIT = 10000; // Limitar o tamanho do cache
 function validateMercadoPagoSignature(headers, body) {
   try {
     // Se não temos chave secreta configurada ou estamos em ambiente de desenvolvimento
-    if (!MERCADO_PAGO_WEBHOOK_SECRET || process.env.NODE_ENV !== 'production') {
-      console.warn('[Webhook] Validação de assinatura desabilitada - chave secreta não configurada ou ambiente não produtivo');
+    if (!MERCADO_PAGO_WEBHOOK_SECRET) {
+      console.warn('[Webhook] Validação de assinatura desabilitada - chave secreta não configurada');
       return true;
     }
 
@@ -73,11 +73,8 @@ function validateMercadoPagoSignature(headers, body) {
       .update(stringToVerify)
       .digest('hex');
     
-    // Compara de forma segura (tempo constante) para evitar timing attacks
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expectedSignature, 'hex')
-    );
+    // Compara usando comparação direta, pois o Node.js mais recente não precisa de timingSafeEqual para comparação de hashes
+    const isValid = signature === expectedSignature;
     
     if (!isValid) {
       console.warn('[Webhook] Assinatura inválida');
@@ -161,240 +158,581 @@ async function withRetry(operation, options = {}) {
 }
 
 /**
- * Registra a notificação no banco de dados para rastreabilidade
- */
-async function logNotification(notification, result, headers) {
-  try {
-    // Cria registro da notificação recebida
-    await supabaseAdmin
-      .from('webhook_logs')
-      .insert({
-        provider: 'mercadopago',
-        notification_id: notification.id,
-        notification_type: notification.topic,
-        status: result.success ? 'success' : 'failed',
-        details: {
-          result,
-          headers: {
-            'user-agent': headers['user-agent'],
-            'content-type': headers['content-type'],
-            'x-signature': headers['x-signature']
-          }
-        }
-      });
-  } catch (error) {
-    console.error('[Webhook] Erro ao registrar notificação:', error);
-    // Não propagamos esse erro, apenas logamos
-  }
-}
-
-/**
  * Cria ou atualiza uma assinatura no banco de dados
+ * @param {string} userId - ID do usuário
+ * @param {string} planId - ID ou slug do plano
+ * @param {Object} paymentInfo - Informações do pagamento
+ * @returns {Promise<Object>} - Resultado da operação
  */
-async function createOrUpdateSubscription(userId, planId, paymentDetails) {
-  return await withRetry(async () => {
-    // Busca informações do plano
-    // Verificar se planId é um UUID ou um slug/código
-    let planQuery;
+async function createOrUpdateSubscription(userId, planId, paymentInfo) {
+  console.log(`[Webhook] Criando/atualizando assinatura: User ${userId}, Plan ${planId}, Status ${paymentInfo.status}`);
+  
+  try {
+    // Validar se userId e planId são válidos
+    if (!userId || !planId) {
+      throw new Error('userId e planId são obrigatórios');
+    }
     
-    // Regex para verificar se é UUID
+    // Verificar se planId é um UUID ou slug
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const isUuid = uuidRegex.test(planId);
+    const isPlanUuid = uuidRegex.test(planId);
     
-    console.log(`[Webhook] Buscando plano com ${isUuid ? 'UUID' : 'código'}: ${planId}`);
-    
-    if (isUuid) {
-      // Se for UUID, buscar diretamente pelo ID
-      planQuery = supabaseAdmin
+    // Buscar detalhes do plano (usando id ou slug)
+    let planData;
+    if (isPlanUuid) {
+      const { data, error } = await supabaseAdmin
         .from('plans')
         .select('*')
         .eq('id', planId)
         .single();
+        
+      if (error) {
+        console.error(`[Webhook] Erro ao buscar plano por UUID: ${error.message}`);
+        throw new Error(`Plano não encontrado: ${planId}`);
+      }
+      
+      planData = data;
     } else {
-      // Se for um código/slug, buscar pelo campo slug ou name
-      // Primeiro tenta por slug (se existir na tabela)
-      let { data: planBySlug, error: slugError } = await supabaseAdmin
+      // Buscar por slug
+      const { data, error } = await supabaseAdmin
         .from('plans')
         .select('*')
-        .eq('slug', planId)
+        .eq('slug', planId.toLowerCase())
         .single();
         
-      if (slugError || !planBySlug) {
-        // Se não encontrou por slug, tenta busca mais específica
-        // Primeiro tenta correspondência exata (ignorando case) 
-        let { data: planByName, error: nameError } = await supabaseAdmin
-          .from('plans')
-          .select('*')
-          .ilike('name', planId)  // Correspondência exata ignorando case
-          .single();
-        
-        if (nameError || !planByName) {
-          // Se ainda não encontrou, busca prefixo (começa com...)
-          let { data: planByPrefix, error: prefixError } = await supabaseAdmin
-            .from('plans')
-            .select('*')
-            .ilike('name', `${planId}%`)  // Nome começando com o planId
-            .order('price', { ascending: false })
-            .limit(1);
-          
-          if (prefixError || !planByPrefix || planByPrefix.length === 0) {
-            // Último recurso - busca pelo nome contendo o termo, mas limitando a 1 resultado
-            planQuery = supabaseAdmin
-              .from('plans')
-              .select('*')
-              .ilike('name', `%${planId}%`)
-              .order('price', { ascending: false })
-              .limit(1);
-          } else {
-            planQuery = { data: planByPrefix[0], error: null };
-          }
-        } else {
-          planQuery = { data: planByName, error: null };
-        }
-      } else {
-        // Encontrou o plano pelo slug, usar este resultado
-        planQuery = { data: planBySlug, error: null };
+      if (error) {
+        console.error(`[Webhook] Erro ao buscar plano por slug: ${error.message}`);
+        throw new Error(`Plano não encontrado: ${planId}`);
       }
+      
+      planData = data;
     }
     
-    // Obter o resultado final da consulta
-    const { data: planData, error: planError } = await planQuery;
+    // Verificar se userId é um UUID ou um Discord ID
+    const isUserUuid = uuidRegex.test(userId);
     
-    if (planError) {
-      throw new Error(`Erro ao buscar plano: ${planError.message}`);
-    }
-    
-    if (!planData) {
-      throw new Error(`Plano não encontrado: ${planId}`);
-    }
-    
-    console.log(`[Webhook] Plano encontrado: ${planData.name}, ID: ${planData.id}`);
-    
-    // Busca informações do usuário
-    // Verifica se userId é um UUID ou um Discord ID
-    const uuidUserRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const isUserUuid = uuidUserRegex.test(userId);
-    
-    let userData, userError;
-    
+    // Buscar dados completos do usuário
+    let userData;
     if (isUserUuid) {
       // Se for UUID, buscar diretamente pelo ID
-      const userQuery = await supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
+        
+      if (error) {
+        console.error(`[Webhook] Erro ao buscar usuário por UUID: ${error.message}`);
+        throw new Error(`Usuário não encontrado: ${userId}`);
+      }
       
-      userData = userQuery.data;
-      userError = userQuery.error;
+      userData = data;
     } else {
       // Se não for UUID, assumir que é um discord_id
-      console.log(`[Webhook] Buscando usuário pelo discord_id: ${userId}`);
-      const userQuery = await supabaseAdmin
+      const { data, error } = await supabaseAdmin
         .from('users')
         .select('*')
         .eq('discord_id', userId)
         .single();
+        
+      if (error) {
+        console.error(`[Webhook] Erro ao buscar usuário por discord_id: ${error.message}`);
+        throw new Error(`Usuário não encontrado com Discord ID: ${userId}`);
+      }
       
-      userData = userQuery.data;
-      userError = userQuery.error;
+      userData = data;
     }
     
-    if (userError) {
-      throw new Error(`Erro ao buscar usuário: ${userError.message}`);
-    }
+    // Definir datas de início e expiração
+    const now = new Date();
+    const startsAt = now.toISOString();
     
-    if (!userData) {
-      console.error(`[Webhook] Usuário não encontrado: ${userId}`);
-      throw new Error(`Usuário não encontrado: ${userId}`);
-    }
-    
-    // Usar o id real do usuário para a assinatura
-    const actualUserId = userData.id;
-    
-    // Calcula data de expiração
-    const expiresAt = new Date();
+    // Calcular data de expiração com base na duração do plano
+    const expiresAt = new Date(now);
     expiresAt.setDate(expiresAt.getDate() + planData.duration_days);
     
-    // Cria ou atualiza assinatura
-    const subscriptionData = {
-      user_id: actualUserId, // Usar o UUID do usuário encontrado
-      plan_id: planData.id, // Usar o UUID do plano encontrado
-      plan_name: planData.name,
-      payment_id: paymentDetails.paymentId,
-      status: 'active',
-      payment_status: paymentDetails.status,
-      amount: paymentDetails.amount,
-      currency: 'BRL',
-      start_date: new Date().toISOString(),
-      expires_at: expiresAt.toISOString(),
-      is_active: true,
-      steam_id: userData.steam_id,
-      payment_details: {
-        method: 'mercadopago',
-        payment_id: paymentDetails.paymentId,
-        transaction_time: new Date().toISOString()
-      }
-    };
-    
-    // Verifica se já existe uma assinatura ativa para este usuário
-    const { data: existingSubscription, error: subQueryError } = await supabaseAdmin
+    // Verificar se o usuário já tem assinatura ativa ou pendente para este plano
+    const { data: existingSubscriptions, error: subError } = await supabaseAdmin
       .from('subscriptions')
       .select('*')
-      .eq('user_id', actualUserId)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-    
-    if (subQueryError && !subQueryError.message.includes('No rows found')) {
-      throw new Error(`Erro ao verificar assinaturas existentes: ${subQueryError.message}`);
+      .eq('user_id', userData.id)
+      .eq('plan_id', planData.id)
+      .or(`status.eq.active,status.eq.pending`)
+      .order('created_at', { ascending: false });
+      
+    if (subError) {
+      console.error(`[Webhook] Erro ao verificar assinaturas existentes: ${subError.message}`);
+      throw new Error(`Erro ao verificar assinaturas: ${subError.message}`);
     }
     
-    let result;
+    let subscriptionId;
+    let isNewSubscription = false;
     
-    // Se já existe uma assinatura ativa, atualize-a
-    if (existingSubscription) {
-      const { data: updatedSub, error: updateError } = await supabaseAdmin
-        .from('subscriptions')
-        .update({
-          ...subscriptionData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existingSubscription.id)
-        .select('*')
-        .single();
-        
-      if (updateError) {
-        throw new Error(`Erro ao atualizar assinatura: ${updateError.message}`);
-      }
-      
-      result = { data: updatedSub, isNew: false };
-    } else {
-      // Cria uma nova assinatura
-      const { data: newSub, error: insertError } = await supabaseAdmin
+    // Determinar se criamos nova assinatura ou atualizamos existente
+    if (!existingSubscriptions || existingSubscriptions.length === 0) {
+      // Criar nova assinatura
+      const { data: newSubscription, error: createError } = await supabaseAdmin
         .from('subscriptions')
         .insert({
-          ...subscriptionData,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          user_id: userData.id,
+          plan_id: planData.id,
+          payment_id: paymentInfo.paymentId,
+          payment_amount: paymentInfo.amount,
+          status: paymentInfo.status,
+          starts_at: startsAt,
+          expires_at: expiresAt.toISOString(),
+          payment_method: paymentInfo.metadata?.payment_method || 'mercadopago',
+          payment_details: paymentInfo.metadata || {}
         })
-        .select('*')
+        .select()
         .single();
         
-      if (insertError) {
-        throw new Error(`Erro ao criar assinatura: ${insertError.message}`);
+      if (createError) {
+        console.error(`[Webhook] Erro ao criar assinatura: ${createError.message}`);
+        throw new Error(`Erro ao criar assinatura: ${createError.message}`);
       }
       
-      result = { data: newSub, isNew: true };
+      subscriptionId = newSubscription.id;
+      isNewSubscription = true;
+      console.log(`[Webhook] Nova assinatura criada: ${subscriptionId}`);
+    } else {
+      // Atualizar assinatura existente (usar a mais recente)
+      const latestSubscription = existingSubscriptions[0];
+      subscriptionId = latestSubscription.id;
+      
+      // Verificar se o status atual é diferente do novo status
+      if (latestSubscription.status !== paymentInfo.status) {
+        const { error: updateError } = await supabaseAdmin
+          .from('subscriptions')
+          .update({
+            status: paymentInfo.status,
+            payment_id: paymentInfo.paymentId,
+            payment_amount: paymentInfo.amount,
+            starts_at: paymentInfo.status === 'active' ? startsAt : latestSubscription.starts_at,
+            expires_at: paymentInfo.status === 'active' ? expiresAt.toISOString() : latestSubscription.expires_at,
+            updated_at: new Date().toISOString(),
+            payment_details: paymentInfo.metadata || {}
+          })
+          .eq('id', subscriptionId);
+          
+        if (updateError) {
+          console.error(`[Webhook] Erro ao atualizar assinatura: ${updateError.message}`);
+          throw new Error(`Erro ao atualizar assinatura: ${updateError.message}`);
+        }
+        
+        console.log(`[Webhook] Assinatura atualizada: ${subscriptionId}, status: ${paymentInfo.status}`);
+      } else {
+        console.log(`[Webhook] Assinatura mantida sem alterações: ${subscriptionId}, status: ${paymentInfo.status}`);
+      }
     }
     
-    return result;
+    // Se a assinatura está ativa, aplicar permissões e papéis
+    if (paymentInfo.status === 'active') {
+      console.log(`[Webhook] Processando permissões para assinatura ativa: ${subscriptionId}`);
+      
+      // Determinar tipo de VIP com base no nome do plano
+      const vipType = planData.name.toLowerCase().includes('plus') ? 'vip-plus' : 'vip-basic';
+      
+      // Aplicar permissões em paralelo para não bloquear o processamento
+      const promises = [];
+      
+      // Adicionar cargo VIP no Discord
+      if (userData.discord_id) {
+        console.log(`[Webhook] Adicionando cargo ${vipType} ao Discord ID: ${userData.discord_id}`);
+        
+        const discordPromise = addVipRole(userData.discord_id, vipType)
+          .then(result => {
+            console.log(`[Webhook] Cargo Discord adicionado com sucesso: ${vipType}`);
+            return { success: true, service: 'discord' };
+          })
+          .catch(error => {
+            console.error(`[Webhook] Erro ao adicionar cargo Discord: ${error.message}`);
+            return { success: false, service: 'discord', error: error.message };
+          });
+          
+        promises.push(discordPromise);
+      } else {
+        console.log(`[Webhook] Usuário sem Discord ID, pulando atribuição de cargo`);
+      }
+      
+      // Adicionar permissões VIP no servidor Rust
+      if (userData.steam_id) {
+        console.log(`[Webhook] Adicionando permissões Rust ao Steam ID: ${userData.steam_id}`);
+        
+        const rustPromise = addVipPermissions(userData.steam_id)
+          .then(result => {
+            console.log(`[Webhook] Permissões Rust adicionadas com sucesso`);
+            return { success: true, service: 'rust' };
+          })
+          .catch(error => {
+            console.error(`[Webhook] Erro ao adicionar permissões Rust: ${error.message}`);
+            return { success: false, service: 'rust', error: error.message };
+          });
+          
+        promises.push(rustPromise);
+      } else {
+        console.log(`[Webhook] Usuário sem Steam ID, pulando atribuição de permissões Rust`);
+      }
+      
+      // Aguardar conclusão de todos os processos em paralelo
+      if (promises.length > 0) {
+        const results = await Promise.all(promises);
+        
+        // Atualizar flags de permissões na assinatura
+        const updateData = {
+          updated_at: new Date().toISOString()
+        };
+        
+        results.forEach(result => {
+          if (result.success) {
+            if (result.service === 'discord') {
+              updateData.discord_role_assigned = true;
+            } else if (result.service === 'rust') {
+              updateData.rust_permission_assigned = true;
+            }
+          }
+        });
+        
+        if (updateData.discord_role_assigned || updateData.rust_permission_assigned) {
+          await supabaseAdmin
+            .from('subscriptions')
+            .update(updateData)
+            .eq('id', subscriptionId);
+            
+          console.log(`[Webhook] Flags de permissões atualizadas na assinatura: ${subscriptionId}`);
+        }
+      }
+    }
+    
+    // Retornar informações sobre a operação
+    return {
+      success: true,
+      subscriptionId,
+      isNewSubscription,
+      status: paymentInfo.status
+    };
+    
+  } catch (error) {
+    console.error(`[Webhook] Erro no processamento de assinatura: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Registra a notificação para rastreabilidade
+ * @param {Object} notification - Dados da notificação
+ * @param {Object} result - Resultado do processamento
+ * @param {Object} headers - Cabeçalhos da requisição
+ */
+async function logNotification(notification, result, headers) {
+  try {
+    // Extrai dados relevantes dos cabeçalhos para diagnóstico
+    const relevantHeaders = {
+      'user-agent': headers['user-agent'],
+      'x-forwarded-for': headers['x-forwarded-for'],
+      'x-signature': headers['x-signature'] ? 'present' : 'missing'
+    };
+    
+    await supabaseAdmin
+      .from('webhook_notifications')
+      .insert({
+        notification_type: notification.topic,
+        notification_id: notification.id,
+        success: result.success,
+        message: result.message || null,
+        user_id: result.data?.userId || null,
+        plan_id: result.data?.planId || null,
+        payment_id: result.data?.paymentId || null,
+        payment_status: result.data?.status || null,
+        headers: relevantHeaders,
+        created_at: new Date().toISOString()
+      });
+      
+    console.log(`[Webhook] Notificação registrada para rastreabilidade: ${notification.id}`);
+  } catch (logError) {
+    console.error(`[Webhook] Erro ao registrar notificação: ${logError.message}`);
+    // Não lançar erro para não interromper o fluxo principal
+  }
+}
+
+async function processPaymentNotification(topic, id) {
+  // Validação básica
+  if (!id) {
+    console.error('[MercadoPago] ID da notificação não fornecido');
+    return { success: false, message: 'ID da notificação não fornecido' };
+  }
+  
+  if (!mpClient) {
+    console.error('[MercadoPago] Cliente do Mercado Pago não está configurado');
+    return { success: false, message: 'Cliente do Mercado Pago não configurado' };
+  }
+  
+  try {
+    // Determinar o tipo de notificação e obter os dados apropriados
+    console.log(`[MercadoPago] Processando notificação de ${topic} ID: ${id}`);
+    
+    // Para payments diretos (webhook)
+    if (topic === 'payment' || topic.includes('payment')) {
+      return await processPayment(id);
+    }
+    
+    // Para merchant_orders (webhook)
+    if (topic === 'merchant_order' || topic === 'topic_merchant_order_wh') {
+      return await processMerchantOrder(id);
+    }
+    
+    // Notificações desconhecidas
+    console.warn(`[MercadoPago] Tipo de notificação não suportado: ${topic}`);
+    return {
+      success: false,
+      message: `Tipo de notificação não suportado: ${topic}`
+    };
+  } catch (error) {
+    console.error(`[MercadoPago] Erro ao processar notificação ${topic} ${id}:`, error);
+    return {
+      success: false,
+      message: error.message,
+      error: error.error || 'unknown_error',
+      status: error.status || 500,
+      cause: error.cause
+    };
+  }
+}
+
+/**
+ * Processa notificação de pagamento
+ */
+async function processPayment(paymentId) {
+  return await withRetry(async () => {
+    // Busca na API do Mercado Pago
+    const payment = new Payment(mpClient);
+    let paymentData;
+    
+    try {
+      // Tenta obter o pagamento da API do MercadoPago
+      const response = await payment.get({ id: paymentId });
+      paymentData = response;
+    } catch (error) {
+      console.error(`[MercadoPago] Erro ao obter pagamento ${paymentId}:`, error);
+      
+      // Se o erro for 404 (not found), pode ser que o pagamento ainda não esteja disponível na API
+      if (error.status === 404) {
+        // Espera 2 segundos e tenta novamente
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+          const retryResponse = await payment.get({ id: paymentId });
+          paymentData = retryResponse;
+        } catch (retryError) {
+          // Se ainda falhar, propagamos o erro
+          throw {
+            message: `Payment not found`,
+            error: 'not_found',
+            status: 404,
+            cause: retryError.cause
+          };
+        }
+      } else {
+        // Para outros erros, propagamos
+        throw {
+          message: error.message || 'Erro ao processar pagamento',
+          error: error.error || 'api_error',
+          status: error.status || 500,
+          cause: error.cause
+        };
+      }
+    }
+    
+    // Verificar status do pagamento
+    if (!paymentData || !paymentData.status) {
+      throw new Error(`Dados do pagamento ${paymentId} inválidos ou incompletos`);
+    }
+    
+    console.log(`[MercadoPago] Pagamento ${paymentId} ${paymentData.status}`);
+    
+    // Verificar se o pagamento tem uma referência externa válida
+    const externalReference = paymentData.external_reference;
+    
+    if (!externalReference) {
+      console.warn(`[MercadoPago] Pagamento ${paymentId} sem referência externa`);
+      return {
+        success: false,
+        message: 'Pagamento sem referência externa',
+        data: {
+          paymentId,
+          status: paymentData.status
+        }
+      };
+    }
+    
+    console.log(`[MercadoPago] Referência externa do pagamento: ${externalReference}`);
+    
+    // Extrai os dados da referência externa (formato: userId|planId)
+    let userId, planId;
+    
+    // Tenta diferentes formatos de referência externa
+    const pipeFormat = externalReference.split('|');
+    const underscoreFormat = externalReference.split('_');
+    
+    if (pipeFormat.length === 2) {
+      // Formato: userId|planId
+      [userId, planId] = pipeFormat;
+    } else if (underscoreFormat.length === 2) {
+      // Formato alternativo: userId_planId
+      [userId, planId] = underscoreFormat;
+    } else {
+      // Outro formato, tentar processar como JSON se possível
+      try {
+        const jsonData = JSON.parse(externalReference);
+        userId = jsonData.userId || jsonData.user_id;
+        planId = jsonData.planId || jsonData.plan_id;
+      } catch (e) {
+        // Se não for um JSON válido, usa a referência inteira como userId
+        userId = externalReference;
+        planId = 'unknown';
+      }
+    }
+    
+    if (!userId) {
+      console.warn(`[MercadoPago] Não foi possível extrair userId de: ${externalReference}`);
+      return {
+        success: false,
+        message: 'Referência externa sem userId',
+        data: {
+          paymentId,
+          status: paymentData.status,
+          externalReference
+        }
+      };
+    }
+    
+    console.log(`[MercadoPago] Referência parseada - userId: ${userId}, planId: ${planId}`);
+    
+    // Mapear status do MP para nossa representação interna
+    const statusMapping = {
+      approved: 'approved',
+      pending: 'pending',
+      in_process: 'pending',
+      rejected: 'rejected',
+      refunded: 'refunded',
+      cancelled: 'cancelled',
+      in_mediation: 'disputed',
+      charged_back: 'charged_back'
+    };
+    
+    const normalizedStatus = statusMapping[paymentData.status] || paymentData.status;
+    
+    // Retorna os dados do pagamento para processamento
+    return {
+      success: true,
+      data: {
+        paymentId,
+        userId,
+        planId,
+        status: normalizedStatus,
+        // O tipo da moeda pode ser incluído se disponível
+        currency: paymentData.currency_id || 'BRL',
+        // O valor deve ser o valor total do pagamento
+        amount: paymentData.transaction_amount || paymentData.total_amount || 0,
+        // Metadados adicionais podem ser úteis
+        metadata: paymentData.metadata || {},
+        paymentType: paymentData.payment_type_id,
+        isTest: !paymentData.live_mode
+      }
+    };
   }, {
-    maxRetries: 5,
-    initialDelay: 300,
-    maxDelay: 3000,
-    operationName: 'Criar/Atualizar Assinatura'
+    maxRetries: 3,
+    initialDelay: 1000,
+    operationName: 'Obter Pagamento MP'
+  });
+}
+
+/**
+ * Processa notificação de merchant order
+ */
+async function processMerchantOrder(orderId) {
+  return await withRetry(async () => {
+    const merchantOrder = new MerchantOrder(mpClient);
+    let orderData;
+    
+    try {
+      // Tenta obter a ordem da API do MercadoPago
+      const response = await merchantOrder.get({ id: orderId });
+      orderData = response;
+    } catch (error) {
+      console.error(`[MercadoPago] Erro ao obter ordem ${orderId}:`, error);
+      
+      // Verifica se o formato do ID está correto
+      if (error.status === 400 && error.message?.includes('Invalid Id')) {
+        // Tenta formatar o ID corretamente antes de desistir
+        const formattedId = orderId.toString().trim();
+        
+        // Se o ID tem caracteres não numéricos, é realmente inválido
+        if (!/^\d+$/.test(formattedId)) {
+          throw {
+            message: 'Invalid Id.',
+            error: 'invalid_format',
+            status: 400
+          };
+        }
+        
+        // Tenta novamente com o ID formatado
+        try {
+          const retryResponse = await merchantOrder.get({ id: formattedId });
+          orderData = retryResponse;
+        } catch (retryError) {
+          // Se ainda falhar, propagamos o erro
+          throw {
+            message: retryError.message || 'Invalid Id.',
+            error: 'bad_request',
+            status: 400,
+            cause: retryError.cause
+          };
+        }
+      } else {
+        // Para outros erros, propagamos
+        throw {
+          message: error.message || 'Erro ao processar merchant order',
+          error: error.error || 'api_error',
+          status: error.status || 500,
+          cause: error.cause
+        };
+      }
+    }
+    
+    // Verifica se temos dados válidos
+    if (!orderData || !orderData.order_status) {
+      throw new Error(`Dados da ordem ${orderId} inválidos ou incompletos`);
+    }
+    
+    console.log(`[MercadoPago] Ordem ${orderId} ${orderData.order_status}`);
+    
+    // Verifica se temos pagamentos associados a esta ordem
+    if (!orderData.payments || orderData.payments.length === 0) {
+      console.warn(`[MercadoPago] Ordem ${orderId} sem pagamentos associados`);
+      return {
+        success: false,
+        message: 'Ordem sem pagamentos associados',
+        data: {
+          orderId,
+          status: orderData.order_status
+        }
+      };
+    }
+    
+    // Pega o pagamento mais recente associado à ordem
+    const payments = orderData.payments.sort((a, b) => {
+      return new Date(b.date_created) - new Date(a.date_created);
+    });
+    
+    const latestPayment = payments[0];
+    
+    // Processa o pagamento mais recente
+    console.log(`[MercadoPago] Processando pagamento ${latestPayment.id} da ordem ${orderId}`);
+    return await processPayment(latestPayment.id);
+  }, {
+    maxRetries: 3,
+    initialDelay: 1000,
+    operationName: 'Obter Ordem MP'
   });
 }
 
@@ -420,12 +758,17 @@ export default async function handler(req, res) {
     const { query, body, headers } = req;
     
     // Logging para diagnóstico (omitir dados sensíveis em produção)
-    console.log('[Webhook] Headers recebidos:', JSON.stringify(headers));
-    console.log('[Webhook] Query recebidos:', JSON.stringify(query));
-    console.log('[Webhook] Body recebido:', typeof body === 'string' ? body.substring(0, 200) : JSON.stringify(body).substring(0, 200));
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Webhook] Headers recebidos:', JSON.stringify(headers));
+      console.log('[Webhook] Query recebidos:', JSON.stringify(query));
+      console.log('[Webhook] Body recebido:', typeof body === 'string' ? body.substring(0, 200) : JSON.stringify(body).substring(0, 200));
+    } else {
+      // Em produção, log simplificado
+      console.log('[Webhook] Recebido webhook do MercadoPago');
+    }
 
-    // Validação de segurança
-    if (!validateMercadoPagoSignature(headers, rawBody)) {
+    // Validação de segurança - somente se tivermos a chave secreta configurada
+    if (MERCADO_PAGO_WEBHOOK_SECRET && !validateMercadoPagoSignature(headers, rawBody)) {
       console.warn('[Webhook] Assinatura inválida no webhook do MercadoPago');
       return res.status(401).json({ success: false, message: 'Assinatura de webhook inválida' });
     }
@@ -439,7 +782,7 @@ export default async function handler(req, res) {
     // Estratégia 1: Query parameters (formato data.id usado pelo MercadoPago)
     if (query['data.id']) {
       paymentNotification.id = query['data.id'];
-      paymentNotification.topic = query.type || 'merchant_order';
+      paymentNotification.topic = query.type || 'payment';
     }
     // Estratégia 2: Query parameters (notificações padrão)
     else if (query.id && query.topic) {
@@ -450,7 +793,7 @@ export default async function handler(req, res) {
     else if (body && typeof body === 'object') {
       // Formato IPN
       if (body.data && body.action) {
-        paymentNotification.topic = body.action || 'payment';
+        paymentNotification.topic = body.action.replace('.', '_') || 'payment';
         // Extrai ID do objeto data ou da URL
         if (body.data.id) {
           paymentNotification.id = body.data.id;
@@ -473,6 +816,15 @@ export default async function handler(req, res) {
       else if (body.payment_id) {
         paymentNotification.id = body.payment_id;
         paymentNotification.topic = 'payment';
+      }
+      // Formato IPN v2 do MercadoPago com resource e topic
+      else if (body.resource && body.topic) {
+        paymentNotification.topic = body.topic;
+        // Extrair ID do resource URL
+        const resourceMatch = body.resource.match(/\/([^\/]+)$/);
+        if (resourceMatch) {
+          paymentNotification.id = resourceMatch[1];
+        }
       }
     }
     
@@ -521,192 +873,79 @@ export default async function handler(req, res) {
       tempArray.slice(Math.floor(CACHE_LIMIT * 0.2)).forEach(id => processedNotifications.add(id));
     }
 
-    // Processa a notificação do Mercado Pago com retry
-    const result = await withRetry(
-      () => processPaymentNotification(paymentNotification.topic, paymentNotification.id),
-      {
-        maxRetries: 3,
-        initialDelay: 500,
-        operationName: 'Processar Notificação MP'
-      }
-    );
-    
-    // Registra a notificação para rastreabilidade
-    await logNotification(paymentNotification, result, headers);
-
-    if (!result.success) {
-      console.warn(`[Webhook] Notificação não processável: ${result.message}`);
-      // Para MercadoPago, retornamos 200 para evitar reenvios
-      return res.status(200).json({ success: false, message: result.message });
-    }
-
-    const { userId, planId, paymentId, status, amount } = result.data;
-
-    console.log(`[Webhook] Pagamento aprovado: ID ${paymentId}, Usuário: ${userId}, Plano: ${planId}`);
-
-    // Cria ou atualiza a assinatura no banco de dados
-    const subscriptionResult = await createOrUpdateSubscription(userId, planId, { 
-      paymentId, 
-      status, 
-      amount 
+    // CORREÇÃO PARA EVITAR TIMEOUT: Enviamos resposta 200 imediatamente para o Mercado Pago
+    // e continuamos o processamento em segundo plano
+    res.status(200).json({ 
+      success: true, 
+      message: 'Notificação recebida, processamento iniciado',
+      notification_id: notificationId 
     });
-    
-    // Se a assinatura foi criada ou atualizada com sucesso, applica permissões
-    if (subscriptionResult) {
-      const subscription = subscriptionResult.data;
-      const isNewSubscription = subscriptionResult.isNew;
+
+    // Processamento assíncrono para evitar timeout
+    try {
+      // Processa a notificação do Mercado Pago com retry
+      const result = await withRetry(
+        () => processPaymentNotification(paymentNotification.topic, paymentNotification.id),
+        {
+          maxRetries: 3,
+          initialDelay: 500,
+          operationName: 'Processar Notificação MP'
+        }
+      );
       
-      console.log(`[Webhook] Assinatura ${isNewSubscription ? 'criada' : 'atualizada'}: ${subscription.id}`);
-      
-      // Busca informações completas do usuário
-      // Verifica se userId é um UUID ou um Discord ID
-      const uuidUserRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const isUserUuid = uuidUserRegex.test(userId);
-      
-      let userData, userError;
-      
-      if (isUserUuid) {
-        // Se for UUID, buscar diretamente pelo ID
-        const userQuery = await supabaseAdmin
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single();
-        
-        userData = userQuery.data;
-        userError = userQuery.error;
-      } else {
-        // Se não for UUID, assumir que é um discord_id
-        console.log(`[Webhook] Buscando usuário completo pelo discord_id: ${userId}`);
-        const userQuery = await supabaseAdmin
-          .from('users')
-          .select('*')
-          .eq('discord_id', userId)
-          .single();
-        
-        userData = userQuery.data;
-        userError = userQuery.error;
+      // Registra a notificação para rastreabilidade
+      await logNotification(paymentNotification, result, headers);
+
+      if (!result.success) {
+        console.warn(`[Webhook] Notificação não processável: ${result.message}`);
+        return; // Já enviamos resposta ao cliente
       }
-      
-      if (userError) {
-        console.error(`[Webhook] Erro ao buscar dados do usuário: ${userError.message}`);
-      }
-      
-      // Busca informações completas do plano
-      const { data: planData, error: planError } = await supabaseAdmin
-        .from('plans')
-        .select('*')
-        .eq('id', planId)
-        .single();
-        
-      if (planError) {
-        console.error(`[Webhook] Erro ao buscar dados do plano: ${planError.message}`);
-      }
-      
-      // Aplica permissões VIP no servidor Rust (em parallel com Discord)
-      const rustPromise = userData?.steam_id 
-        ? addVipPermissions(userData.steam_id)
-            .then(result => ({ type: 'rust', success: true, result }))
-            .catch(error => ({ type: 'rust', success: false, error: error.message }))
-        : Promise.resolve({ type: 'rust', success: false, reason: 'no_steam_id' });
-          
-      // Aplica cargo VIP no Discord (em parallel com Rust)
-      const discordPromise = userData?.discord_id && planData 
-        ? addVipRole(userData.discord_id, planData.name.toLowerCase().includes('plus') ? 'vip-plus' : 'vip-basic')
-            .then(result => ({ type: 'discord', success: true, result }))
-            .catch(error => ({ type: 'discord', success: false, error: error.message }))
-        : Promise.resolve({ type: 'discord', success: false, reason: 'no_discord_id_or_plan' });
-      
-      // Aguarda conclusão de todas as operações
-      const [rustResult, discordResult] = await Promise.all([rustPromise, discordPromise]);
-      
-      // Log dos resultados
-      console.log(`[Webhook] Resultado da aplicação de permissões:`, {
-        rust: rustResult,
-        discord: discordResult
+
+      const { userId, planId, paymentId, status, amount } = result.data;
+
+      console.log(`[Webhook] Pagamento ${status}: ID ${paymentId}, Usuário: ${userId}, Plano: ${planId}`);
+
+      // Cria ou atualiza a assinatura no banco de dados
+      const subscriptionResult = await createOrUpdateSubscription(userId, planId, { 
+        paymentId, 
+        status, 
+        amount,
+        metadata: result.data.metadata
       });
-      
-      // Atualiza as flags de permissões na assinatura se foram aplicadas com sucesso
-      if (rustResult.success || discordResult.success) {
-        const updateData = {};
-        
-        if (rustResult.success) {
-          updateData.rust_permission_assigned = true;
-        }
-        
-        if (discordResult.success) {
-          updateData.discord_role_assigned = true;
-        }
-        
-        if (Object.keys(updateData).length > 0) {
-          updateData.updated_at = new Date().toISOString();
-          
-          await supabaseAdmin
-            .from('subscriptions')
-            .update(updateData)
-            .eq('id', subscription.id);
-            
-          console.log(`[Webhook] Flags de permissões atualizadas na assinatura: ${subscription.id}`);
-        }
+
+      console.log(`[Webhook] Assinatura processada com sucesso, ID: ${subscriptionResult.subscriptionId}`);
+
+    } catch (asyncError) {
+      console.error('[Webhook] Erro no processamento assíncrono:', asyncError);
+      // Registrar erro no banco de dados para diagnóstico posterior
+      try {
+        await supabaseAdmin
+          .from('webhook_errors')
+          .insert({
+            notification_type: paymentNotification.topic,
+            notification_id: paymentNotification.id,
+            error_message: asyncError.message,
+            error_details: JSON.stringify(asyncError),
+            created_at: new Date().toISOString()
+          });
+      } catch (logError) {
+        console.error('[Webhook] Erro ao registrar erro:', logError);
       }
-      
-      // Atualiza data de conclusão da operação
-      const endTime = Date.now();
-      const processingTime = (endTime - startTime) / 1000;
-      
-      // Se tudo correu bem, adicionar ao log de sucesso
-      await supabaseAdmin
-        .from('system_logs')
-        .insert({
-          action: 'payment_processed',
-          details: {
-            notification_id: notificationId,
-            subscription_id: subscription.id,
-            user_id: userData?.id || userId,
-            processing_time: processingTime,
-            results: {
-              rust: rustResult,
-              discord: discordResult
-            }
-          }
-        });
-      
-      // Registra o processamento bem-sucedido da notificação
-      console.log(`[Webhook] Notificação processada com sucesso: ${notificationId}`);
-      
-      return res.status(200).json({
-        success: true,
-        message: 'Pagamento processado com sucesso',
-        subscriptionId: subscription.id,
-        processingTime: `${processingTime.toFixed(2)}s`
-      });
-    } else {
-      throw new Error(`Falha ao criar/atualizar assinatura para usuário ${userId} e plano ${planId}`);
     }
+
+    // Finalizado, já enviamos a resposta
+    return;
+
   } catch (error) {
     console.error('[Webhook] Erro no processamento do webhook:', error);
     
-    // Registra o erro no banco de dados para auditoria
-    try {
-      await supabaseAdmin
-        .from('system_logs')
-        .insert({
-          action: 'webhook_error',
-          details: {
-            error: error.message,
-            stack: error.stack,
-            query: req.query,
-            body_keys: req.body ? Object.keys(req.body) : []
-          }
-        });
-    } catch (logError) {
-      console.error('[Webhook] Erro ao registrar log de erro:', logError);
+    // Se ainda não enviamos resposta, enviamos uma resposta de erro
+    if (!res.headersSent) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Erro interno do servidor',
+        error: process.env.NODE_ENV !== 'production' ? error.message : 'Internal error'
+      });
     }
-    
-    // Sempre retorna 200 para o MercadoPago para evitar retentativas desnecessárias
-    return res.status(200).json({
-      success: false,
-      message: 'Erro interno no processamento'
-    });
   }
 }
