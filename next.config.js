@@ -6,6 +6,12 @@ const API_URL = process.env.API_URL || 'https://api.phanteongames.com';
 // Verificar se a URL da API tem o formato correto (sem barra no final)
 const formattedApiUrl = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
 
+// Verificação adicional para variáveis críticas
+const mercadoPagoToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+if (!mercadoPagoToken) {
+  console.warn('⚠️ AVISO: MERCADOPAGO_ACCESS_TOKEN não está definido no ambiente. O checkout não funcionará!');
+}
+
 const nextConfig = {
   reactStrictMode: true,
   images: {
