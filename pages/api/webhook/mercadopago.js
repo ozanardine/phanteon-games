@@ -271,11 +271,34 @@ async function createOrUpdateSubscription(userId, planId, paymentDetails) {
     console.log(`[Webhook] Plano encontrado: ${planData.name}, ID: ${planData.id}`);
     
     // Busca informações do usuário
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    // Verifica se userId é um UUID ou um Discord ID
+    const uuidUserRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isUserUuid = uuidUserRegex.test(userId);
+    
+    let userData, userError;
+    
+    if (isUserUuid) {
+      // Se for UUID, buscar diretamente pelo ID
+      const userQuery = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      userData = userQuery.data;
+      userError = userQuery.error;
+    } else {
+      // Se não for UUID, assumir que é um discord_id
+      console.log(`[Webhook] Buscando usuário pelo discord_id: ${userId}`);
+      const userQuery = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('discord_id', userId)
+        .single();
+      
+      userData = userQuery.data;
+      userError = userQuery.error;
+    }
     
     if (userError) {
       throw new Error(`Erro ao buscar usuário: ${userError.message}`);
@@ -285,13 +308,16 @@ async function createOrUpdateSubscription(userId, planId, paymentDetails) {
       throw new Error(`Usuário não encontrado: ${userId}`);
     }
     
+    // Usar o id real do usuário para a assinatura
+    const actualUserId = userData.id;
+    
     // Calcula data de expiração
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + planData.duration_days);
     
     // Cria ou atualiza assinatura
     const subscriptionData = {
-      user_id: userId,
+      user_id: actualUserId, // Usar o UUID do usuário encontrado
       plan_id: planData.id, // Usar o UUID do plano encontrado
       plan_name: planData.name,
       payment_id: paymentDetails.paymentId,
@@ -314,7 +340,7 @@ async function createOrUpdateSubscription(userId, planId, paymentDetails) {
     const { data: existingSubscription, error: subQueryError } = await supabaseAdmin
       .from('subscriptions')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', actualUserId)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(1)
