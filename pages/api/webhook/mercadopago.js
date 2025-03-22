@@ -305,7 +305,32 @@ async function createOrUpdateSubscription(userId, planId, paymentDetails) {
     }
     
     if (!userData) {
-      throw new Error(`Usuário não encontrado: ${userId}`);
+      console.error(`[Webhook] Usuário não encontrado: ${userId}`);
+    } else {
+      console.log(`[Webhook] Aplicando permissões para usuário: ${userData.discord_id || userData.id}`);
+      
+      // Obter o discord_id do usuário (agora pode estar em userData.discord_id ou diretamente no userId)
+      const discordId = userData.discord_id || (isUserUuid ? null : userId);
+      
+      if (discordId) {
+        try {
+          // Aplicar permissões no Discord
+          await applyDiscordPermissions(discordId, subscription.plan_id);
+          console.log(`[Webhook] Permissões do Discord aplicadas para usuário: ${discordId}`);
+        } catch (discordError) {
+          console.error(`[Webhook] Erro ao aplicar permissões no Discord: ${discordError.message}`);
+        }
+      } else {
+        console.error(`[Webhook] Discord ID não encontrado para o usuário: ${userData.id}`);
+      }
+      
+      try {
+        // Aplicar permissões no Rust
+        await applyRustPermissions(userData.steamid, subscription.plan_id);
+        console.log(`[Webhook] Permissões do Rust aplicadas para SteamID: ${userData.steamid}`);
+      } catch (rustError) {
+        console.error(`[Webhook] Erro ao aplicar permissões no Rust: ${rustError.message}`);
+      }
     }
     
     // Usar o id real do usuário para a assinatura
@@ -662,12 +687,35 @@ export default async function handler(req, res) {
       console.log(`[Webhook] Assinatura ${isNewSubscription ? 'criada' : 'atualizada'}: ${subscription.id}`);
       
       // Busca informações completas do usuário
-      const { data: userData, error: userError } = await supabaseAdmin
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // Verifica se userId é um UUID ou um Discord ID
+      const uuidUserRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isUserUuid = uuidUserRegex.test(userId);
+      
+      let userData, userError;
+      
+      if (isUserUuid) {
+        // Se for UUID, buscar diretamente pelo ID
+        const userQuery = await supabaseAdmin
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
         
+        userData = userQuery.data;
+        userError = userQuery.error;
+      } else {
+        // Se não for UUID, assumir que é um discord_id
+        console.log(`[Webhook] Buscando usuário completo pelo discord_id: ${userId}`);
+        const userQuery = await supabaseAdmin
+          .from('users')
+          .select('*')
+          .eq('discord_id', userId)
+          .single();
+        
+        userData = userQuery.data;
+        userError = userQuery.error;
+      }
+      
       if (userError) {
         console.error(`[Webhook] Erro ao buscar dados do usuário: ${userError.message}`);
       }
@@ -718,7 +766,7 @@ export default async function handler(req, res) {
           details: {
             notification_id: notificationId,
             subscription_id: subscription.id,
-            user_id: userId,
+            user_id: userData?.id || userId,
             processing_time: processingTime,
             results: {
               rust: rustResult,
@@ -727,18 +775,15 @@ export default async function handler(req, res) {
           }
         });
       
-      return res.status(200).json({
+      // Registra o processamento bem-sucedido da notificação
+      console.log(`[Webhook] Notificação processada com sucesso: ${notificationId}`);
+      
+      return {
         success: true,
-        message: 'Pagamento processado com sucesso',
-        subscriptionId: subscription.id,
-        processingTime: `${processingTime.toFixed(2)}s`
-      });
+        subscription: subscription
+      };
     } else {
-      console.error('[Webhook] Erro desconhecido ao criar/atualizar assinatura');
-      return res.status(200).json({
-        success: false,
-        message: 'Falha ao processar assinatura'
-      });
+      throw new Error(`Falha ao criar/atualizar assinatura para usuário ${userId} e plano ${planId}`);
     }
   } catch (error) {
     console.error('[Webhook] Erro no processamento do webhook:', error);
