@@ -306,31 +306,7 @@ async function createOrUpdateSubscription(userId, planId, paymentDetails) {
     
     if (!userData) {
       console.error(`[Webhook] Usuário não encontrado: ${userId}`);
-    } else {
-      console.log(`[Webhook] Aplicando permissões para usuário: ${userData.discord_id || userData.id}`);
-      
-      // Obter o discord_id do usuário (agora pode estar em userData.discord_id ou diretamente no userId)
-      const discordId = userData.discord_id || (isUserUuid ? null : userId);
-      
-      if (discordId) {
-        try {
-          // Aplicar permissões no Discord
-          await applyDiscordPermissions(discordId, subscription.plan_id);
-          console.log(`[Webhook] Permissões do Discord aplicadas para usuário: ${discordId}`);
-        } catch (discordError) {
-          console.error(`[Webhook] Erro ao aplicar permissões no Discord: ${discordError.message}`);
-        }
-      } else {
-        console.error(`[Webhook] Discord ID não encontrado para o usuário: ${userData.id}`);
-      }
-      
-      try {
-        // Aplicar permissões no Rust
-        await applyRustPermissions(userData.steamid, subscription.plan_id);
-        console.log(`[Webhook] Permissões do Rust aplicadas para SteamID: ${userData.steamid}`);
-      } catch (rustError) {
-        console.error(`[Webhook] Erro ao aplicar permissões no Rust: ${rustError.message}`);
-      }
+      throw new Error(`Usuário não encontrado: ${userId}`);
     }
     
     // Usar o id real do usuário para a assinatura
@@ -419,110 +395,6 @@ async function createOrUpdateSubscription(userId, planId, paymentDetails) {
     initialDelay: 300,
     maxDelay: 3000,
     operationName: 'Criar/Atualizar Assinatura'
-  });
-}
-
-/**
- * Aplica permissões VIP no servidor Rust
- */
-async function applyRustPermissions(userData, subscriptionId) {
-  return await withRetry(async () => {
-    if (!userData.steam_id) {
-      throw new Error('SteamID não disponível para o usuário');
-    }
-    
-    try {
-      const result = await addVipPermissions(userData.steam_id);
-      
-      if (result.success) {
-        // Atualiza a flag de permissões aplicadas na assinatura
-        await supabaseAdmin
-          .from('subscriptions')
-          .update({
-            rust_permission_assigned: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', subscriptionId);
-        
-        return { success: true };
-      } else {
-        throw new Error(`Falha ao aplicar permissões: ${result.message}`);
-      }
-    } catch (serverError) {
-      // Registra a falha para reconciliação posterior
-      await supabaseAdmin
-        .from('system_logs')
-        .insert({
-          action: 'vip_permission_failed',
-          details: {
-            subscription_id: subscriptionId,
-            steam_id: userData.steam_id,
-            error: serverError.message
-          }
-        });
-      
-      throw serverError;
-    }
-  }, {
-    maxRetries: 3,
-    initialDelay: 500,
-    maxDelay: 5000,
-    operationName: 'Aplicar Permissões Rust'
-  });
-}
-
-/**
- * Aplica cargo VIP no Discord
- */
-async function applyDiscordRole(userData, planData, subscriptionId) {
-  return await withRetry(async () => {
-    if (!userData.discord_id) {
-      console.log(`[Webhook] Usuário ${userData.id} não tem Discord ID, pulando atribuição de cargo`);
-      return { success: false, reason: 'missing_discord_id' };
-    }
-    
-    try {
-      // Determina tipo de VIP com base no plano
-      const isVipPlus = planData.name.toLowerCase().includes('plus');
-      const roleType = isVipPlus ? 'vip-plus' : 'vip-basic';
-      
-      // Adiciona cargo no Discord
-      const result = await addVipRole(userData.discord_id, roleType);
-      
-      if (result.success) {
-        // Atualiza a flag de cargo Discord na assinatura
-        await supabaseAdmin
-          .from('subscriptions')
-          .update({
-            discord_role_assigned: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', subscriptionId);
-        
-        return { success: true };
-      } else {
-        throw new Error(`Falha ao adicionar cargo Discord: ${result.message}`);
-      }
-    } catch (error) {
-      // Registra a falha para reconciliação posterior
-      await supabaseAdmin
-        .from('system_logs')
-        .insert({
-          action: 'discord_role_failed',
-          details: {
-            subscription_id: subscriptionId,
-            discord_id: userData.discord_id,
-            error: error.message
-          }
-        });
-      
-      throw error;
-    }
-  }, {
-    maxRetries: 3,
-    initialDelay: 500,
-    maxDelay: 3000,
-    operationName: 'Aplicar Cargo Discord'
   });
 }
 
@@ -733,14 +605,14 @@ export default async function handler(req, res) {
       
       // Aplica permissões VIP no servidor Rust (em parallel com Discord)
       const rustPromise = userData?.steam_id 
-        ? applyRustPermissions(userData, subscription.id)
+        ? addVipPermissions(userData.steam_id)
             .then(result => ({ type: 'rust', success: true, result }))
             .catch(error => ({ type: 'rust', success: false, error: error.message }))
         : Promise.resolve({ type: 'rust', success: false, reason: 'no_steam_id' });
           
       // Aplica cargo VIP no Discord (em parallel com Rust)
       const discordPromise = userData?.discord_id && planData 
-        ? applyDiscordRole(userData, planData, subscription.id)
+        ? addVipRole(userData.discord_id, planData.name.toLowerCase().includes('plus') ? 'vip-plus' : 'vip-basic')
             .then(result => ({ type: 'discord', success: true, result }))
             .catch(error => ({ type: 'discord', success: false, error: error.message }))
         : Promise.resolve({ type: 'discord', success: false, reason: 'no_discord_id_or_plan' });
@@ -753,6 +625,30 @@ export default async function handler(req, res) {
         rust: rustResult,
         discord: discordResult
       });
+      
+      // Atualiza as flags de permissões na assinatura se foram aplicadas com sucesso
+      if (rustResult.success || discordResult.success) {
+        const updateData = {};
+        
+        if (rustResult.success) {
+          updateData.rust_permission_assigned = true;
+        }
+        
+        if (discordResult.success) {
+          updateData.discord_role_assigned = true;
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+          updateData.updated_at = new Date().toISOString();
+          
+          await supabaseAdmin
+            .from('subscriptions')
+            .update(updateData)
+            .eq('id', subscription.id);
+            
+          console.log(`[Webhook] Flags de permissões atualizadas na assinatura: ${subscription.id}`);
+        }
+      }
       
       // Atualiza data de conclusão da operação
       const endTime = Date.now();
@@ -778,10 +674,12 @@ export default async function handler(req, res) {
       // Registra o processamento bem-sucedido da notificação
       console.log(`[Webhook] Notificação processada com sucesso: ${notificationId}`);
       
-      return {
+      return res.status(200).json({
         success: true,
-        subscription: subscription
-      };
+        message: 'Pagamento processado com sucesso',
+        subscriptionId: subscription.id,
+        processingTime: `${processingTime.toFixed(2)}s`
+      });
     } else {
       throw new Error(`Falha ao criar/atualizar assinatura para usuário ${userId} e plano ${planId}`);
     }
