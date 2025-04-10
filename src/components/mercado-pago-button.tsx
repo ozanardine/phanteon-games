@@ -105,7 +105,7 @@ export function MercadoPagoButton({ planId, planName, amount }: MercadoPagoButto
       ) : (
         <div className="flex justify-center">
           <Payment
-            initialization={{ preferenceId }}
+            initialization={{ preferenceId, amount }}
             onError={onError}
             onReady={onReady}
             customization={{
