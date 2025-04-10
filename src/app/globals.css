@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: 84 37% 22%;            /* military-green */
+  --primary-foreground: 0 0% 100%;  /* white */
+  
+  --secondary: 84 37% 27%;          /* olive-green */
+  --secondary-foreground: 0 0% 100%; /* white */
+  
+  --accent: 27 90% 54%;             /* intense-orange */
+  --accent-foreground: 0 0% 100%;   /* white */
+  
+  --background: 120 17% 7%;         /* dark-green-black */
+  --foreground: 0 0% 100%;          /* white */
+  
+  --muted: 120 5% 15%;              /* muted version of dark-green */
+  --muted-foreground: 0 0% 70%;     /* light grey */
+  
+  --card: 120 17% 9%;               /* slightly lighter dark-green-black */
+  --card-foreground: 0 0% 100%;     /* white */
+  
+  --border: 84 10% 20%;             /* darker olive-green */
+  --input: 84 10% 20%;              /* same as border */
+  
+  --destructive: 0 100% 50%;        /* red */
+  --destructive-foreground: 0 0% 100%; /* white */
+  
+  --ring: 27 90% 54%;               /* intense-orange */
+  
+  --radius: 0.5rem;
+}
+
+@layer base {
+  body {
+    @apply bg-dark-green-black text-white;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-intense-orange hover:bg-intense-orange/90 text-white font-bold py-2 px-4 rounded;
+  }
+  
+  .btn-secondary {
+    @apply bg-military-green hover:bg-military-green/90 text-white font-bold py-2 px-4 rounded;
+  }
+  
+  .card {
+    @apply bg-military-green p-4 rounded-lg shadow;
+  }
+  
+  .nav-link {
+    @apply text-white hover:text-intense-orange transition-colors;
+  }
+} 
