@@ -9,6 +9,9 @@ interface RequestBody {
   payer: {
     name: string;
     email: string;
+    cardDetails?: {
+      lastFourDigits: string;
+    };
   };
 }
 
@@ -33,72 +36,39 @@ export async function POST(request: Request) {
       );
     }
 
-    // Em produção, aqui seria implementada a integração com a API do Mercado Pago
-    // Exemplo de como seria o código real:
+    // Simulação de processamento de pagamento
+    // Em um ambiente de produção, aqui seria integrado com um gateway de pagamento real
     
-    /*
-    import { MercadoPagoConfig, Preference } from "mercadopago";
-    
-    const mercadoPagoAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN as string;
-    const client = new MercadoPagoConfig({ accessToken: mercadoPagoAccessToken });
-    const preference = new Preference(client);
-    
-    const preferenceData = {
-      items: [
-        {
-          id: planId,
-          title: `Plano VIP ${planName} - Phanter Ops`,
-          description: `Assinatura mensal do plano VIP ${planName}`,
-          quantity: 1,
-          unit_price: amount,
-          currency_id: "BRL",
-        },
-      ],
-      back_urls: {
-        success: `${process.env.NEXT_PUBLIC_SITE_URL}/pagamento/sucesso`,
-        failure: `${process.env.NEXT_PUBLIC_SITE_URL}/pagamento/falha`,
-        pending: `${process.env.NEXT_PUBLIC_SITE_URL}/pagamento/pendente`,
-      },
-      auto_return: "approved",
-      payer: {
-        name: payer.name,
-        email: payer.email,
-      },
-      metadata: {
-        planId,
-        userId: "ID do usuário seria armazenado aqui",
-      },
-      notification_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/payment-webhook`,
-    };
-    
-    const result = await preference.create({ body: preferenceData });
-    */
+    // Gerar um ID de transação simulado
+    const transactionId = `TRANS-${Date.now()}-${planId}`;
 
-    // Para desenvolvimento, geramos um ID falso
-    const preferenceId = `TEST-${Date.now()}-${planId}`;
-
-    // Registramos a preferência no Supabase para fins de histórico
-    const { error } = await supabase.from("payment_preferences").insert({
-      preference_id: preferenceId,
+    // Registrar a transação no Supabase
+    const { error } = await supabase.from("subscriptions").insert({
+      transaction_id: transactionId,
       plan_id: planId,
       plan_name: planName,
       amount,
-      payer_email: payer.email,
-      payer_name: payer.name,
-      status: "pending",
+      user_email: payer.email,
+      user_name: payer.name,
+      status: "active",
       created_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 dias a partir de hoje
     });
 
     if (error) {
-      console.error("Erro ao salvar preferência no Supabase:", error);
+      console.error("Erro ao salvar assinatura no Supabase:", error);
       return NextResponse.json(
         { message: "Erro ao processar a solicitação" },
         { status: 500 }
       );
     }
 
-    // Retornar o ID da preferência gerada
-    return NextResponse.json({ id: preferenceId });
+    // Retornar confirmação de sucesso
+    return NextResponse.json({ 
+      success: true,
+      transactionId,
+      message: "Pagamento processado com sucesso"
+    });
   } catch (error) {
     console.error("Erro na rota /api/create-preference:", error);
     return NextResponse.json(

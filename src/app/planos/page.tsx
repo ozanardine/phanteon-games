@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FaCrown, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
-import { MercadoPagoButton } from "@/components/mercado-pago-button";
+import { FaCrown, FaCheckCircle, FaTimesCircle, FaCreditCard } from "react-icons/fa";
+import Link from "next/link";
 
 interface PlanFeature {
   name: string;
@@ -20,6 +20,15 @@ interface Plan {
 
 export default function PlanosPage() {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [formData, setFormData] = useState({
+    cardNumber: "",
+    cardName: "",
+    expiry: "",
+    cvv: "",
+    email: ""
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const plans: Plan[] = [
     {
@@ -78,6 +87,29 @@ export default function PlanosPage() {
     if (paymentSection) {
       paymentSection.scrollIntoView({ behavior: "smooth" });
     }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmitPayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedPlan) return;
+    
+    setIsProcessing(true);
+    
+    // Simulação de processamento de pagamento
+    setTimeout(() => {
+      // Em produção, você faria uma chamada API para o Mercado Pago aqui
+      setIsProcessing(false);
+      setPaymentSuccess(true);
+    }, 2000);
   };
 
   return (
@@ -147,7 +179,7 @@ export default function PlanosPage() {
       </div>
 
       {/* Seção de Pagamento */}
-      {selectedPlan && (
+      {selectedPlan && !paymentSuccess && (
         <div id="payment-section" className="mt-16 bg-military-green p-8 rounded-lg">
           <h2 className="text-2xl font-bold mb-6 text-center">
             Finalizar assinatura - Plano {selectedPlan.name}
@@ -165,25 +197,125 @@ export default function PlanosPage() {
               </div>
             </div>
             
-            <div className="space-y-6">
-              <div>
-                <p className="text-center mb-4">
-                  Clique no botão abaixo para prosseguir com o pagamento via Mercado Pago
-                </p>
-                <MercadoPagoButton 
-                  planId={selectedPlan.id}
-                  amount={selectedPlan.price}
-                  planName={selectedPlan.name}
-                />
+            <form onSubmit={handleSubmitPayment} className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full p-2 rounded bg-dark-green-black border border-olive-green text-white"
+                    placeholder="seu@email.com"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Nome no Cartão</label>
+                  <input
+                    type="text"
+                    name="cardName"
+                    required
+                    value={formData.cardName}
+                    onChange={handleInputChange}
+                    className="w-full p-2 rounded bg-dark-green-black border border-olive-green text-white"
+                    placeholder="Nome completo"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Número do Cartão</label>
+                  <input
+                    type="text"
+                    name="cardNumber"
+                    required
+                    value={formData.cardNumber}
+                    onChange={handleInputChange}
+                    className="w-full p-2 rounded bg-dark-green-black border border-olive-green text-white"
+                    placeholder="0000 0000 0000 0000"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Validade</label>
+                    <input
+                      type="text"
+                      name="expiry"
+                      required
+                      value={formData.expiry}
+                      onChange={handleInputChange}
+                      className="w-full p-2 rounded bg-dark-green-black border border-olive-green text-white"
+                      placeholder="MM/AA"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">CVV</label>
+                    <input
+                      type="text"
+                      name="cvv"
+                      required
+                      value={formData.cvv}
+                      onChange={handleInputChange}
+                      className="w-full p-2 rounded bg-dark-green-black border border-olive-green text-white"
+                      placeholder="123"
+                    />
+                  </div>
+                </div>
               </div>
+              
+              <button
+                type="submit"
+                disabled={isProcessing}
+                className={`w-full py-3 rounded-md bg-intense-orange text-white font-medium flex items-center justify-center ${
+                  isProcessing ? "opacity-70 cursor-not-allowed" : "hover:bg-intense-orange/90"
+                }`}
+              >
+                {isProcessing ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <FaCreditCard className="mr-2" /> Finalizar Pagamento
+                  </>
+                )}
+              </button>
               
               <div className="text-sm text-gray-400 text-center">
                 <p>Ao assinar, você concorda com nossos Termos de Serviço e Política de Privacidade.</p>
-                <p className="mt-2">
-                  Após a confirmação do pagamento, os benefícios serão ativados automaticamente em sua conta.
-                </p>
+                <p className="mt-2">Seus dados de pagamento são processados de forma segura.</p>
               </div>
-            </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Confirmação de Pagamento */}
+      {paymentSuccess && (
+        <div className="mt-16 bg-military-green p-8 rounded-lg text-center">
+          <div className="w-16 h-16 bg-green-500 rounded-full mx-auto flex items-center justify-center mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Pagamento Concluído!</h2>
+          <p className="text-gray-300 mb-6">
+            Obrigado por assinar o plano {selectedPlan?.name}. Seus benefícios VIP já estão ativos.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/perfil" className="py-2 px-4 bg-olive-green hover:bg-olive-green/90 text-white rounded-md">
+              Ver meu perfil
+            </Link>
+            <Link href="/servidores" className="py-2 px-4 bg-intense-orange hover:bg-intense-orange/90 text-white rounded-md">
+              Ir para os servidores
+            </Link>
           </div>
         </div>
       )}
