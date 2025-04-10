@@ -108,12 +108,6 @@ export function MercadoPagoButton({ planId, planName, amount }: MercadoPagoButto
             initialization={{ preferenceId, amount }}
             onError={onError}
             onReady={onReady}
-            customization={{
-              texts: {
-                action: "Pagar",
-                valueProp: "Pagamento seguro"
-              }
-            }}
           />
         </div>
       )}
