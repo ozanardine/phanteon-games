@@ -17,15 +17,6 @@ const nextConfig = {
   experimental: {
     // Habilitar recursos experimentais de segurança e metadados
     scrollRestoration: true,
-  },
-  // Configurações específicas para o deployment na Vercel
-  // Determina quais páginas devem ser renderizadas estaticamente ou dinamicamente
-  exportPathMap: async function () {
-    return {
-      '/': { page: '/' },
-      // As páginas abaixo serão tratadas como dinâmicas
-      // via configuração 'force-dynamic' em cada arquivo
-    };
   }
 };
 
