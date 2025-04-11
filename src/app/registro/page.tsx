@@ -7,6 +7,9 @@ import { useAuth } from "@/contexts/auth-context";
 import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaDiscord, FaSteam } from "react-icons/fa";
 import supabase from "@/lib/supabase/client";
 
+// Impedir que esta página seja renderizada estaticamente
+export const dynamic = 'force-dynamic';
+
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     username: "",

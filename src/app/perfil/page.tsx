@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { FaUser, FaEnvelope, FaSignOutAlt, FaCog, FaUserEdit } from 'react-icons/fa'
 
+// Impedir que esta página seja renderizada estaticamente
+export const dynamic = 'force-dynamic'
+
 export default function ProfilePage() {
   const { user, profile, signOut, isLoading, refreshProfile } = useAuth()
   const [isEditing, setIsEditing] = useState(false)

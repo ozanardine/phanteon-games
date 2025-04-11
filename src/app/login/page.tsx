@@ -1,11 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/auth-context'
 import { FaDiscord, FaSteam, FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa'
 import supabase from '@/lib/supabase/client'
+
+// Impedir que esta página seja renderizada estaticamente
+export const dynamic = 'force-dynamic'
+
+// Componente separado que usa useSearchParams
+function RegisteredAlert() {
+  const searchParams = useSearchParams()
+  // Verificar se o usuário acabou de se registrar
+  const justRegistered = searchParams.get('registered') === 'true'
+  
+  if (!justRegistered) return null
+  
+  return (
+    <div className="bg-olive-green/30 border border-olive-green text-white px-4 py-3 rounded mb-6">
+      Sua conta foi criada com sucesso! Agora você pode fazer login.
+    </div>
+  )
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -14,11 +32,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { signIn } = useAuth()
-  
-  // Verificar se o usuário acabou de se registrar
-  const justRegistered = searchParams.get('registered') === 'true'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -87,11 +101,9 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {justRegistered && (
-        <div className="bg-olive-green/30 border border-olive-green text-white px-4 py-3 rounded mb-6">
-          Sua conta foi criada com sucesso! Agora você pode fazer login.
-        </div>
-      )}
+      <Suspense fallback={null}>
+        <RegisteredAlert />
+      </Suspense>
 
       {error && (
         <div className="bg-red-900/30 border border-red-500 text-red-500 px-4 py-3 rounded mb-6">
